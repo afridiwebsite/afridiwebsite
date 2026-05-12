@@ -43,10 +43,9 @@
         "yup": "^0.32.11"
     },
     "scripts": {
-        "start": "set NODE_OPTIONS=--openssl-legacy-provider && set PORT=3001 && craco start",
-        "build": "set NODE_OPTIONS=--openssl-legacy-provider && craco build",
-        "test": "set NODE_OPTIONS=--openssl-legacy-provider && craco test",
-        "eject": "react-scripts eject"
+         "start": "cross-env NODE_OPTIONS=--openssl-legacy-provider PORT=3001 craco start",
+         "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider craco build",
+         "test": "cross-env NODE_OPTIONS=--openssl-legacy-provider craco test"
     },
     "eslintConfig": {
         "extends": [
@@ -70,6 +69,7 @@
         "@types/react": "^17.0.38",
         "autoprefixer": "^9.8.6",
         "postcss": "^7.0.36",
+        "cross-env": "^7.0.3",
         "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.2.2"
     }
 }
