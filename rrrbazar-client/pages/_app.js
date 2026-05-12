@@ -8,7 +8,6 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'swiper/css';
 import 'swiper/css/navigation';
-import '@splidejs/react-splide/css/core';
 import api, { getSiteSettings } from '../api/api';
 import { googleLogout } from '@react-oauth/google';
 import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";

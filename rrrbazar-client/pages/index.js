@@ -1,4 +1,5 @@
-import { Splide, SplideSlide } from '@splidejs/react-splide';
+import { Autoplay, Pagination } from 'swiper';
+import { Swiper, SwiperSlide } from 'swiper/react';
 import { BrowserView, MobileView } from 'react-device-detect';
 import { FaTelegramPlane } from 'react-icons/fa';
 import api from '../api/api';
@@ -8,9 +9,9 @@ import { hasData, imgPath } from '../helpers/helpers';
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="section-heading">
+    <h3 className="text-center text-2xl font-bold">
       <span>{children}</span>
-      <span className="fire" aria-hidden="true">🔥</span>
+      
     </h3>
   );
 }
@@ -89,42 +90,47 @@ function Home({
       {hasData(banners) && (
         <section className="my-3 home_slider_wrapper">
           <div className="container">
-            <Splide
-              options={{
-                type: 'loop',
-                autoplay: true,
-                interval: 3000,
-                pauseOnHover: false,
-                arrows: false,
-                pagination: true,
-                perPage: 1,
-                drag: true,
-                speed: 600,
-              }}
-              aria-label="Banners"
+            <div className="home-banner-wrap">
+             <Swiper
+              autoplay={{ delay: 3000 }}
+              loop={true}
+              modules={[Pagination, Autoplay]}
+              pagination={{ clickable: true }}
+              slidesPerView={1}
               className="home-banner shadow-md"
             >
-              {banners.map((banner, index) => {
-                const slide = (
-                  <a href={banner.link} target="_blank" rel="noreferrer">
-                    <img
-                      src={imgPath(banner.banner)}
-                      alt={banner.note}
-                      className="w-full h-auto object-cover"
-                    />
-                  </a>
-                );
-                return (
-                  <SplideSlide key={index}>
-                    {banner.note === 'mobile' ? (
-                      <MobileView>{slide}</MobileView>
-                    ) : (
-                      <BrowserView>{slide}</BrowserView>
-                    )}
-                  </SplideSlide>
-                );
-              })}
-            </Splide>
+              {banners.map((banner, index) => (
+                <span key={index}>
+                  {banner.note == 'mobile' && (
+                    <MobileView>
+                      <SwiperSlide>
+                        <a href={banner.link} target="_blank" rel="noreferrer">
+                          <img
+                            src={imgPath(banner.banner)}
+                            alt={banner.note}
+                            className="w-full h-auto object-cover"
+                          />
+                        </a>
+                      </SwiperSlide>
+                    </MobileView>
+                  ) || (
+                    <BrowserView>
+                      <SwiperSlide>
+                        <a href={banner.link} target="_blank" rel="noreferrer">
+                          <img
+                            src={imgPath(banner.banner)}
+                            alt={banner.note}
+                            className="w-full h-auto object-cover"
+                          />
+                        </a>
+                      </SwiperSlide>
+                    </BrowserView>
+                  )}
+                </span>
+              ))}
+            </Swiper>
+              <div className="home-banner-dots" />
+            </div>
           </div>
         </section>
       )}

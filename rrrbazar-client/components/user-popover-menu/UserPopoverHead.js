@@ -10,10 +10,10 @@ function UserPopoverHead({ onClick, isOpen }) {
 
   return (
     <div
-      className="_flex_center gap-1.5 cursor-pointer"
+      className="_flex_center gap-1 cursor-pointer border p-1 rounded-full"
       onClick={onClick && onClick}
     >
-      <div className="hidden xs:block">
+      <div className="">
         <Avatar
           src={avatar || undefined}
           text={username[0]}
@@ -21,9 +21,7 @@ function UserPopoverHead({ onClick, isOpen }) {
           size={35}
         />
       </div>
-      <p className="_body2 font-semibold text-gray-500 capitalize select-none">
-        {username}
-      </p>
+ 
       <BiChevronDown
         className={`text-gray-500 duration-150 ${isOpen ? 'rotate-180' : ''}`}
       />

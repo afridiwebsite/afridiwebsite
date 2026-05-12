@@ -13,8 +13,8 @@ import Button from '../components/Button';
 import routes from '../config/routes';
 import Devider from './Devider';
 import UserMenuList from './user-popover-menu/UserMenuList';
-import navlinks from '/config/navlinks';
-import { globalContext } from '/pages/_app';
+import navlinks from '../config/navlinks';
+import { globalContext } from '../pages/_app';
 
 function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
   const { isAuth, signOut, authUser } = useContext(globalContext);
@@ -45,7 +45,7 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
             isOpenSidebar ? 'translate-x-0 delay-150' : '-translate-x-full'
           }`}
         >
-          <div className="xxs:flex justify-between items-center px-4 py-3">
+          <div className="xxs:flex justify-between items-center gap-4 px-4 py-3">
             {isAuth ? (
               <>
                 <div className="flex gap-3 items-center overflow-hidden">
@@ -53,6 +53,7 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
                     src={authUser?.avatar || null}
                     text={authUser?.username[0]}
                     size={50}
+                    className="bg-primary-100 text-primary-600"
                   />
                   <div className="pr-1.5 flex-grow-0">
                     <h6 className="_h6 line-clamp-1">{authUser?.username}</h6>
@@ -61,14 +62,14 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
                     </p>
                   </div>
                 </div>
-                <div className="flex justify-end mt-2 xxs:block xxs:mt-0">
+                <div className="flex justify-end items-start mt-2 xxs:block xxs:mt-0">
                   <Button
                     text="Logout"
                     onClick={() => {
                       closeSidebarForcely();
                       signOut();
                     }}
-                    className="small"
+                    className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-1.5 px-4 rounded small"
                   />
                 </div>
               </>
@@ -76,6 +77,7 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
               <>
                 <Button
                   text="Login"
+                  className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-6 rounded w-full"
                   onClick={() => {
                     closeSidebarForcely();
                     router.push(routes.login.name);

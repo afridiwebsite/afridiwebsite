@@ -674,6 +674,7 @@ function TopupOrderPage() {
                             onClick={handleSubmit}
                             type="submit"
                             loading={isSubmitting}
+                            className="primary"
                           >
                             Buy Now
                           </Button>

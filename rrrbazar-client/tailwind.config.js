@@ -12,25 +12,25 @@ module.exports = {
       },
       colors: {
         primary: {
-          DEFAULT: 'var(--theme-primary)',
-          50: 'var(--theme-primary)',
-          100: 'var(--theme-primary)',
-          200: 'var(--theme-primary)',
-          300: 'var(--theme-primary)',
-          400: 'var(--theme-primary)',
-          500: 'var(--theme-primary)',
-          600: 'var(--theme-primary)',
-          700: 'var(--theme-primary)',
-          800: 'var(--theme-primary)',
-          900: 'var(--theme-primary)',
+          DEFAULT: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          50: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          100: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          200: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          300: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          400: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          500: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          600: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          700: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          800: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
+          900: 'rgb(var(--theme-primary-rgb) / <alpha-value>)',
         },
         secondary: {
-          DEFAULT: 'var(--theme-secondary)',
-          500: 'var(--theme-secondary)',
+          DEFAULT: 'rgb(var(--theme-secondary-rgb) / <alpha-value>)',
+          500: 'rgb(var(--theme-secondary-rgb) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: 'var(--theme-accent)',
-          500: 'var(--theme-accent)',
+          DEFAULT: 'rgb(var(--theme-accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--theme-accent-rgb) / <alpha-value>)',
         },
         gray: {
           50: '#F5F5FD',
@@ -99,11 +99,16 @@ module.exports = {
 
       Object.keys(colors).forEach((color) => {
         const colorObject = colors[color];
-        const mainColor = colorObject[500] || colorObject?.main || colorObject;
-        const hoverColor = colorObject[600] || colorObject?.dark || colorObject;
-        const lightColor =
-          colorObject[100] || colorObject?.light || colorObject;
+        if (!colorObject || typeof colorObject !== 'object') return;
+
+        const mainColorRaw = colorObject[500] || colorObject?.main || colorObject;
+        const hoverColorRaw = colorObject[600] || colorObject?.dark || colorObject;
+        const lightColorRaw = colorObject[100] || colorObject?.light || colorObject;
         const contrastColor = colorObject?.contrastColor || '#fff';
+
+        const mainColor = typeof mainColorRaw === 'string' ? mainColorRaw.replace('<alpha-value>', '1') : mainColorRaw;
+        const hoverColor = typeof hoverColorRaw === 'string' ? hoverColorRaw.replace('<alpha-value>', '1') : hoverColorRaw;
+        const lightColor = typeof lightColorRaw === 'string' ? lightColorRaw.replace('<alpha-value>', '1') : lightColorRaw;
 
         const isPrimary = color === 'primary' ? ', &.primary' : '';
 

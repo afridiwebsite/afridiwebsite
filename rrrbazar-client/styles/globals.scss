@@ -7,8 +7,11 @@
 // Theme CSS variables — overridable from admin (Site Settings)
 :root {
   --theme-primary: #3856B5;
+  --theme-primary-rgb: 56 86 181;
   --theme-secondary: #1B2A4A;
+  --theme-secondary-rgb: 27 42 74;
   --theme-accent: #4D67D8;
+  --theme-accent-rgb: 77 103 216;
   --theme-bg: #EEF1F8;
 }
 
@@ -113,46 +116,76 @@ body {
   color: #b42727;
 }
 
-// Home banner — cap height so big source images don't dominate the page
-.home-banner {
-  max-height: 280px;
+// Home banner — explicit height so the slide can host an absolutely-positioned
+// or object-fit image regardless of the source aspect ratio.
+.home-banner-wrap {
+  position: relative;
+}
+.home-banner.swiper {
+  height: 520px;
   border-radius: 10px;
   overflow: hidden;
-  img {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  .swiper-slide {
+    height: 100%;
+  }
+  // The slide content tree is: .swiper-slide > (BrowserView|MobileView div)
+  // > <a> > <img>. <a> is inline by default and the device-detect wrapper is
+  // a bare <div>; neither establishes a height context for height:100% on
+  // the <img>. Force every link in the chain to be a full-size block.
+  .swiper-slide,
+  .swiper-slide > *,
+  .swiper-slide > * > *,
+  .swiper-slide a {
+    display: block;
     width: 100%;
     height: 100%;
-    max-height: 280px;
+  }
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     object-position: center;
   }
-  .swiper-slide,
-  .splide__slide {
-    max-height: 280px;
+}
+
+// Custom page indicator (rendered into .home-banner-dots via Swiper's `el`).
+.home-banner-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  pointer-events: auto;
+}
+.home-banner-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: width 0.25s ease, background-color 0.25s ease;
+  &:hover {
+    background: rgba(0, 0, 0, 0.32);
   }
-  // Splide dot indicators — primary theme, no arrows (configured in JS)
-  .splide__pagination {
-    bottom: 8px;
-    gap: 6px;
+  &.is-active {
+    width: 22px;
+    background: var(--theme-primary);
   }
-  .splide__pagination__page {
-    width: 8px;
-    height: 8px;
-    margin: 0;
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.6);
-    transition: transform 0.2s ease, background-color 0.2s ease;
-    &.is-active {
-      background: var(--theme-primary);
-      transform: scale(1.25);
-    }
+  &:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
   }
 }
+
 @media (max-width: 768px) {
-  .home-banner,
-  .home-banner img,
-  .home-banner .swiper-slide,
-  .home-banner .splide__slide {
-    max-height: 180px;
+  .home-banner.swiper {
+    height: 240px;
   }
 }
 
@@ -792,7 +825,7 @@ body {
 }
 
 .header_notice_home {
-  background: #54badf;
+  background: var(--theme-primary);
   color: #fff;
   padding: 10px 20px;
   border-radius: 3px;
@@ -825,7 +858,7 @@ body {
 }
 
 .news-app-promo-text {
-  color: #54badf;
+  color: var(--theme-primary);
   font-family: helvetica;
   min-width: 318px;
   border-right: 0;
@@ -879,7 +912,7 @@ body {
   width: 161px;
   height: auto;
   margin-bottom: 8px;
-  background: #54badf;
+  background: var(--theme-primary);
 }
 
 .news-app-promo-subsection--link {
