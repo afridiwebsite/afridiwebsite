@@ -10,23 +10,22 @@ import defaultFormat from '../config/dateFormatConfig';
 export default (sequelize: Sequelize) => {
   class User extends Model {
     public id!: number;
-    public first_name!: string;
-    public last_name!: string;
+    public username!: string;
+    public account_status!: string;
+    public is_admin!: number;
+    public is_phone_verify!: number;
     public email!: string;
-    public gender!: number;
     public wallet!: number;
     public coins!: number;
     public last_coin_claim_at!: Date;
-    public date_of_birth!: number;
-    public is_phone_verify!: number;
-    public image!: number;
-    public password!: number;
+    public password!: string;
     public city!: string;
     public address!: string;
     public zip_code!: string;
     public phone!: string;
     public avatar!: string;
-
+    public readonly created_at!: Date;
+    public readonly updated_at!: Date;
   }
 
   User.init({

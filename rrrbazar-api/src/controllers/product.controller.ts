@@ -22,7 +22,7 @@ class ProductController {
 
     getSingleProduct = async (req: express.Request, res: express.Response) => {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
         try {
             const product = await Product.findByPk(id);
 

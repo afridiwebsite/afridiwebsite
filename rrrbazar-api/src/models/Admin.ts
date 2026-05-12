@@ -12,13 +12,16 @@ export default (sequelize: Sequelize) => {
     public first_name!: string;
     public last_name!: string;
     public email!: string;
-    public username!: number;
-    public gender!: number;
-    public date_of_birth!: number;
-    public profile_image!: number;
-    public phone!: number;
+    public username!: string;
+    public gender!: string;
+    public date_of_birth!: Date;
+    public image!: string;
+    public phone!: string;
     public wallet!: number;
-    public password!: number;
+    public password!: string;
+    public status!: number;
+    public readonly created_at!: Date;
+    public readonly updated_at!: Date;
 
     static associate({ Order }: typeof Schema) {
       this.hasMany(Order, {

@@ -38,7 +38,7 @@ class PhysicalProductController {
         const response = new responseUtils()
         const reqPath = req.protocol + "://" + req.get("host");
 
-        const id = req.params.id
+        const id = (req.params.id as any);
         const data = await Product.findOne({
             where: {
                 id,
@@ -117,7 +117,7 @@ class PhysicalProductController {
 
     async updateProduct(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
         const {
             name,
             image,
@@ -153,7 +153,7 @@ class PhysicalProductController {
 
     async deleteProduct(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         await Product.destroy({
             where: {
@@ -222,7 +222,7 @@ class PhysicalProductController {
     async updatePhysicalProductOrderStatus(req: express.Request, res: express.Response) {
         const response = new responseUtils()
 
-        const order_id = req.params.id;
+        const order_id = (req.params.id as any);
         const admin = (req.admin as any);
         const statusToUpdate = req.body.status;
         const orderNote = req.body.order_note;

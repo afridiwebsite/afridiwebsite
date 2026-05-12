@@ -36,7 +36,7 @@ class NoticeController {
         const response = new responseUtils()
         const reqPath = req.protocol + "://" + req.get("host");
 
-        const id = req.params.id
+        const id = (req.params.id as any);
         const data = await Notice.findOne({
             where: {
                 id,
@@ -101,7 +101,7 @@ class NoticeController {
 
     async updateNotice(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
         const { title, image, link, notice, for_home_modal, template, is_active } = req.body
 
         const findNotice = await Notice.findByPk(id)
@@ -149,7 +149,7 @@ class NoticeController {
 
     async deleteNotice(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         await Notice.destroy({
             where: {

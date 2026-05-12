@@ -30,7 +30,7 @@ class TopupPackageController {
     async getTopupPackageById(req: express.Request, res: express.Response) {
         const response = new responseUtils()
 
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         try {
             const data = await TopupPackage.findByPk(id);
@@ -48,7 +48,7 @@ class TopupPackageController {
     async createTopupPackage(req: express.Request, res: express.Response) {
         const response = new responseUtils()
 
-        const id = req.params.id
+        const id = (req.params.id as any);
         const {
             product_id,
             name,
@@ -86,7 +86,7 @@ class TopupPackageController {
     async updateTopupPackage(req: express.Request, res: express.Response) {
         const response = new responseUtils()
 
-        const id = req.params.id
+        const id = (req.params.id as any);
         const {
             product_id,
             name,
@@ -130,7 +130,7 @@ class TopupPackageController {
     async deleteTopupPackage(req: express.Request, res: express.Response) {
         const response = new responseUtils()
 
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         try {
             await TopupPackage.destroy({ where: { id } });
@@ -148,7 +148,7 @@ class TopupPackageController {
 
     async getTopupPackagesByProductId(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         try {
             const topupPackages = await TopupPackage.findAll({
@@ -171,7 +171,7 @@ class TopupPackageController {
 
     async getTopupPackagePermissionByAdminId(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         try {
             const topupPackages = await TopupPackagePermission.findAll({

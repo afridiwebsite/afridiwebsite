@@ -74,7 +74,7 @@ class UserController {
   async updateUser(req: express.Request, res: express.Response) {
     const response = new responseUtils()
 
-    const id = req.params.id
+    const id = (req.params.id as any)
     const { phone,
       wallet,
       address,
@@ -110,7 +110,7 @@ class UserController {
   async getUserById(req: express.Request, res: express.Response) {
     const response = new responseUtils()
 
-    const id = req.params.id
+    const id = (req.params.id as any)
 
     const data = await User.findByPk(id)
 
@@ -128,7 +128,7 @@ class UserController {
   async deleteUser(req: express.Request, res: express.Response) {
     const response = new responseUtils()
 
-    const id = req.params.id
+    const id = (req.params.id as any)
 
 
     const data = await User.destroy({
@@ -144,7 +144,7 @@ class UserController {
   userEarnWallet = async (req: express.Request, res: express.Response, next: NextFunction) => {
     const response = new responseUtils;
     try {
-      const user_id = req.params.id
+      const user_id = (req.params.id as any)
       const user = await User.findByPk(user_id)
 
       if (!user) {
@@ -174,7 +174,7 @@ class UserController {
   userEarnWalletUpdate = async (req: express.Request, res: express.Response, next: NextFunction) => {
     const response = new responseUtils;
     try {
-      const user_id = req.params.id
+      const user_id = (req.params.id as any)
       const { type, amount } = req.body;
       const user = await User.findByPk(user_id)
       if (!user) {
@@ -401,7 +401,7 @@ class UserController {
     const response = new responseUtils;
     try {
 
-      const product_id = req.params.id
+      const product_id = (req.params.id as any)
 
       const product = await TopupProduct.findByPk(product_id)
 
@@ -1079,7 +1079,7 @@ class UserController {
   async resetPasswordOtp(req: express.Request, res: express.Response) {
     const response = new responseUtils;
     try {
-      const { id } = req.params
+      const { id } = (req.params as any)
       const user = await User.findByPk(id)
 
       if (!user) {
@@ -1108,7 +1108,7 @@ class UserController {
   async resetPasswordVerify(req: express.Request, res: express.Response) {
     const response = new responseUtils;
     try {
-      const { id } = req.params
+      const { id } = (req.params as any)
       const user = await User.findByPk(id)
 
       if (!user) {
@@ -1300,7 +1300,7 @@ class UserController {
   async getInventoriesById(req: express.Request, res: express.Response) {
     const response = new responseUtils;
     try {
-      const id = req.params.id
+      const id = (req.params.id as any)
 
       const data = await Inventorie.findByPk(id)
 

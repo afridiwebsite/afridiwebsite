@@ -24,7 +24,7 @@ class CategoryController {
 
     async getCategoryById(req: express.Request, res: express.Response) {
         const response = new responseUtils();
-        const data = await Category.findByPk(req.params.id, {
+        const data = await Category.findByPk((req.params.id as any), {
             include: [{ model: TopupProduct, as: 'topup_products' }],
         });
         if (!data) {
@@ -57,7 +57,7 @@ class CategoryController {
 
     async updateCategory(req: express.Request, res: express.Response) {
         const response = new responseUtils();
-        const id = req.params.id;
+        const id = (req.params.id as any);
         const { name, emoji, serial, is_active } = req.body;
         const cat = await Category.findByPk(id);
         if (!cat) {
@@ -78,15 +78,15 @@ class CategoryController {
 
     async deleteCategory(req: express.Request, res: express.Response) {
         const response = new responseUtils();
-        await Category.destroy({ where: { id: req.params.id } });
-        await ProductCategory.destroy({ where: { category_id: req.params.id } });
+        await Category.destroy({ where: { id: (req.params.id as any) } });
+        await ProductCategory.destroy({ where: { category_id: (req.params.id as any) } });
         response.message = 'Deleted';
         res.send(response.response);
     }
 
     async assignProductCategories(req: express.Request, res: express.Response) {
         const response = new responseUtils();
-        const product_id = Number(req.params.id);
+        const product_id = Number((req.params.id as any));
         const category_ids: number[] = Array.isArray(req.body.category_ids)
             ? req.body.category_ids
             : [];

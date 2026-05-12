@@ -121,7 +121,7 @@ class AdminController {
   async updateOrderStatus(req: express.Request, res: express.Response) {
     const response = new responseUtils()
 
-    const order_id = req.params.id;
+    const order_id = (req.params.id as any);
     const admin = (req.admin as any);
     const statusToUpdate = req.body.status;
     const orderNote = req.body.order_note;
@@ -277,7 +277,7 @@ class AdminController {
     const response = new responseUtils()
 
     try {
-      const id: string = req.params.id;
+      const id = (req.params.id as any);
 
       const authModule = await AuthModule.findByPk(id)
 
@@ -387,7 +387,7 @@ class AdminController {
 
   async deleteAdmin(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
       await Admin.destroy({
         where: {
@@ -406,7 +406,7 @@ class AdminController {
 
   async getAdminById(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
 
       const admin = await Admin.findOne({
@@ -437,7 +437,7 @@ class AdminController {
   async getAdminAuthById(req: express.Request, res: express.Response) {
     const response = new responseUtils()
     try {
-      const adminId = req.params.id
+      const adminId = (req.params.id as any)
 
       if (!adminId) throw new Error('Access Denied')
       const admin = await Admin.findByPk(adminId);
@@ -687,7 +687,7 @@ class AdminController {
 
   getAdminTransactionById = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
 
     try {
 
@@ -712,7 +712,7 @@ class AdminController {
 
   async getTransactionById(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
 
     try {
 
@@ -894,7 +894,7 @@ class AdminController {
 
     try {
 
-      const id = req.params.id
+      const id = (req.params.id as any);
       const { amount, status, number } = req.body
 
       const transaction = await AdminTransaction.findByPk(id);
@@ -923,7 +923,7 @@ class AdminController {
   async updateTransactionFullRow(req: express.Request, res: express.Response) {
     const response = new responseUtils()
 
-    const id = req.params.id
+    const id = (req.params.id as any);
     const { amount, status, number } = req.body
 
     const transaction = await Transaction.findByPk(id);
@@ -1502,7 +1502,7 @@ class AdminController {
 
   async deleteUniPin(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
       await StoreUnipin.destroy({
         where: {
@@ -1521,7 +1521,7 @@ class AdminController {
 
   async updateUniPin(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
       const status = req.body.status;
       const package_id = req.body.package_id;
@@ -1560,7 +1560,7 @@ class AdminController {
 
   async fetchUniPin(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
 
       const upin = await StoreUnipin.findByPk(id);
@@ -1662,7 +1662,7 @@ class AdminController {
 
   async deleteBotServer(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
       await AutoServer.destroy({
         where: {
@@ -1681,7 +1681,7 @@ class AdminController {
 
   async updateBotServer(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
       const name = req.body.name;
       const ip_url = req.body.ip_url;
@@ -1714,7 +1714,7 @@ class AdminController {
 
   async fetchBotServer(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     try {
 
       const bot_server = await AutoServer.findByPk(id);

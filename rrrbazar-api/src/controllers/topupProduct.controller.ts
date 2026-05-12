@@ -37,7 +37,7 @@ class TopupProductController {
         const response = new responseUtils()
         const reqPath = req.protocol + "://" + req.get("host");
 
-        const id = req.params.id
+        const id = (req.params.id as any);
         const data = await TopupProduct.findOne({
             where: {
                 id,
@@ -108,7 +108,7 @@ class TopupProductController {
 
     async updateProduct(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
         const {
             name,
             price,
@@ -158,7 +158,7 @@ class TopupProductController {
 
     async deleteProduct(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         await TopupProduct.destroy({
             where: {

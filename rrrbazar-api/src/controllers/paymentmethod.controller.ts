@@ -36,7 +36,7 @@ class PaymentMethodController {
     const response = new responseUtils()
     const reqPath = req.protocol + "://" + req.get("host");
 
-    const id = req.params.id
+    const id = (req.params.id as any);
     const data = await PaymentMethod.findOne({
       where: {
         id,
@@ -104,7 +104,7 @@ class PaymentMethodController {
 
   async updatePaymentMethod(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
     const { name, logo, info, status } = req.body
 
     const paymentMethod = await PaymentMethod.findByPk(id)
@@ -149,7 +149,7 @@ class PaymentMethodController {
 
   async deletePaymentMethod(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const id = req.params.id
+    const id = (req.params.id as any);
 
     await PaymentMethod.destroy({
       where: {

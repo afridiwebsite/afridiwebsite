@@ -36,7 +36,7 @@ class BannerController {
         const response = new responseUtils()
         const reqPath = req.protocol + "://" + req.get("host");
 
-        const id = req.params.id
+        const id = (req.params.id as any);
         const data = await Banner.findOne({
             where: {
                 id,
@@ -101,7 +101,7 @@ class BannerController {
 
     async updateBanner(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
         const { note, banner, link, isactive } = req.body
 
         const finBanner = await Banner.findByPk(id)
@@ -146,7 +146,7 @@ class BannerController {
 
     async deleteBanner(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const id = req.params.id
+        const id = (req.params.id as any);
 
         await Banner.destroy({
             where: {
