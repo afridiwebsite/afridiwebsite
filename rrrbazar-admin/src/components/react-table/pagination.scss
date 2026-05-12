@@ -1,0 +1,56 @@
+@import './variable';
+
+@mixin flex_center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+// -------- React Table Pagination Start --------
+._s_pagination_btn_wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    button {
+        font-size: 13px;
+        border: 1px solid $gray_400;
+        border-radius: 3px;
+        min-width: 28px;
+        height: 28px;
+        @include flex_center();
+        padding: 0 6px;
+        cursor: pointer;
+        outline: none;
+        background: $fff;
+        color: $gray_900;
+        flex-shrink: 0;
+        font-weight: 400;
+        user-select: none;
+
+        svg {
+            width: 15px;
+            height: 15px;
+            transform: scale(1.1);
+        }
+
+        &:hover {
+            background: $gray_200;
+        }
+
+        &._s_active_page {
+            border-color: $primary_100 !important;
+            background: $primary_light !important;
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    }
+    ._s_pagination_ellipsis {
+        padding: 0 7px;
+        display: inline-block;
+        color: $gray_600;
+    }
+}
+// -------- React Table Pagination End --------

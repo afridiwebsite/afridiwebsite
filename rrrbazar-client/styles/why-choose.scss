@@ -1,0 +1,20 @@
+.shop-about__card-container{width:100%;padding:10px 0;display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;}
+.shop-about__card-icon-container{max-width:60px;}
+.shop-about__card-icon{max-width:38px;display:block;}
+.shop-about__card-content{max-width:90%;}
+.shop-about__card-content{padding-left:10px;}
+.shop-about__card-title{margin:0 0 10px;font-family:Lato-Bold,sans-serif;}
+.shop-about__card-description{
+    word-break:break-word;
+    font-size:.75rem;
+    overflow-wrap:break-word;
+}
+@media screen and (min-width:768px){
+.shop-about__card-container{width:50%;display:inline-flex;}
+.shop-about__card-content{padding:5px 15px;}
+}
+.shop-about__header{font-family:Lato-Bold,sans-serif;}
+.shop-about__short-description{font-size:.875rem;margin-bottom:15px;}
+.shop-about__card-group{display:flex;flex-direction:row;flex-wrap:wrap;}
+/*! CSS Used fontfaces */
+@font-face{font-family:Lato-Bold;font-weight:400;src:local("Lato Bold"),local("Lato-Bold"),url(https://cdn1.codashop.com/S/content/fonts/Lato/Lato-Bold.woff2) format("woff2"),url(https://cdn1.codashop.com/S/content/fonts/Lato/Lato-Bold.woff) format("woff");font-display:swap;}

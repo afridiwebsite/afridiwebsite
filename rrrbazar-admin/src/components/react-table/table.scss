@@ -1,0 +1,611 @@
+// @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&display=swap');
+// @import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&display=swap');
+@import './variable';
+@mixin flex_center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+// -------- React Table Global Class Start --------
+._s_btn {
+    font-size: 13px;
+    border: 1px solid $gray_400;
+    border-radius: 3px;
+    min-width: 28px;
+    height: 28px;
+    @include flex_center();
+    padding: 0 6px;
+    cursor: pointer;
+    outline: none;
+    background: $fff;
+    color: $gray_900;
+    flex-shrink: 0;
+    transition: 0.2s ease-in-out;
+    font-weight: 400;
+    user-select: none;
+}
+// -------- React Table Global Class End --------
+
+// -------- React Table Start --------
+._s_react_table_wrapper {
+    width: 100%;
+    // font-family: 'DM Sans', sans-serif;
+    // font-family: 'Public Sans', sans-serif;
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    ._s_table_wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow: auto;
+        border-radius: 4px;
+        overflow: auto;
+        position: relative;
+        border: 1px solid $gray_300;
+    }
+}
+._s_react_table {
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    white-space: nowrap;
+
+    // -------- Table Header Start --------
+    thead {
+        background: $gray_300 !important;
+        // border-bottom: 1px solid $gray_300;
+        color: $gray_900;
+        font-weight: 700;
+
+        th {
+            padding: 10px 12px;
+            text-align: left;
+        }
+    }
+    // -------- Table Header End --------
+
+    // -------- Table Body Start --------
+    tbody {
+        // position: relative;
+        tr {
+            background: $fff;
+            margin-bottom: 5px;
+        }
+        td {
+            padding: 12px 14px;
+        }
+
+        ._s_table_indicator_tr,
+        ._s_table_indicator_tr td {
+            background: $fff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+    }
+    // -------- Table Body End --------
+
+    tr:not(thead tr):nth-child(odd) {
+        background: $gray_200 !important;
+    }
+}
+// -------- React Table End --------
+
+// -------- Table Pagination and rows per page section Start --------
+._s_pagination_and_rows_per_page_wrapper {
+    @include flex_center();
+    justify-content: space-between;
+    align-items: flex-start;
+    // flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+}
+._s_rows_per_page_select_wrapper {
+    @include flex_center();
+    @extend ._s_btn;
+    position: relative;
+    flex-shrink: 0;
+}
+._s_rows_per_page_select {
+    appearance: none;
+    border: none;
+    outline: none;
+    padding: 0 12px;
+    padding-right: 25px;
+    cursor: pointer;
+    height: 100%;
+    background-color: $fff;
+}
+._s_select_arrow_wrapper {
+    @include flex_center();
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 6px;
+    pointer-events: none;
+
+    svg {
+        color: $gray_800;
+    }
+}
+// -------- Table Pagination and rows per page section End --------
+
+// -------- React Table Setting Start --------
+._s_setting_modal_toggle_wrapper {
+    width: 38px;
+    height: 38px;
+    padding: 8px;
+    margin-left: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+
+    &:hover {
+        background: $gray_200;
+    }
+
+    svg {
+        width: 100%;
+        height: 100%;
+        color: $gray_900;
+    }
+}
+._s_overly_wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    @include flex_center();
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.2s ease-in-out;
+    z-index: 9999999999;
+
+    &._s_open_overly {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    ._s_overly_content_wrapper {
+        background: $fff;
+        border-radius: 8px;
+        overflow: hidden;
+        width: 450px;
+        max-height: 95vh;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+
+        ._s_overly_header {
+            border-bottom: 1px solid $gray_200;
+            padding: 10px 15px;
+            color: $gray_900;
+            flex-shrink: 0;
+            @include flex_center();
+            justify-content: space-between;
+
+            h3 {
+                font-size: 18px;
+                line-height: 22px;
+                margin: 0;
+            }
+
+            ._s_close_overly_btn {
+                background: $gray_200;
+                padding: 8px;
+                cursor: pointer;
+                line-height: 0;
+                border-radius: 4px;
+                color: $gray_700;
+
+                &:hover {
+                    background: $gray_300;
+                }
+            }
+        }
+
+        ._s_overly_body {
+            flex-grow: 1;
+            overflow: hidden;
+            overflow-y: auto;
+        }
+    }
+}
+// -------- React Table Setting End --------
+
+// -------- React Table Top Bar Start --------
+._s_table_topbar {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+
+    ._s_table_title {
+        margin: 0;
+        // margin-bottom: 5px;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 32px;
+    }
+    ._s_table_subtitle {
+        margin: 0;
+        font-size: 16px;
+        color: $gray_600;
+        line-height: 22px;
+    }
+    ._s_topbar_global_search_and_table_setting_wrapper {
+        display: flex;
+        justify-content: flex-end;
+        height: 38px;
+    }
+}
+// -------- React Table Top Bar End --------
+
+// -------- React Table Global Search Start --------
+._s_global_search_container {
+    position: static;
+
+    ._s_close_search_modal {
+        display: none;
+    }
+}
+._s_global_search_wrapper {
+    position: relative;
+    max-width: 220px;
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+
+    ._s_global_search_input {
+        font-size: 16px;
+        font-weight: 500;
+        color: $gray_800;
+        border: 1px solid $gray_400;
+        padding: 8px 13px;
+        padding-right: 40px;
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: 4px;
+        outline: none;
+        background: $fff;
+        transition: 0.2s ease-in-out;
+
+        &:hover {
+            border-color: $gray_600;
+        }
+
+        &:focus {
+            border-color: $gray_800;
+        }
+    }
+
+    ._s_clear_global_search_wrapper {
+        position: absolute;
+        top: 0;
+        right: 0px;
+        width: 38px;
+        height: 38px;
+        transform: scale(0.8);
+        background: $fff;
+        border-radius: 3px;
+        @include flex_center();
+        padding: 8px;
+        cursor: pointer;
+
+        svg {
+            width: 100%;
+            height: 100%;
+            color: $gray_700;
+        }
+
+        &:hover {
+            background: $gray_200;
+        }
+    }
+}
+
+// -------- React Table Global Search End --------
+
+// -------- React Table Indicator Start --------
+.loading_search_indicator {
+    &:hover {
+        background: $fff !important;
+        pointer-events: none;
+    }
+}
+.lds-dual-ring {
+    display: inline-block;
+    width: 100%;
+    height: 100%;
+}
+.lds-dual-ring:after {
+    content: ' ';
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid $gray_700;
+    border-color: $gray_700 transparent $gray_700 transparent;
+    animation: lds-dual-ring 0.5s linear infinite;
+}
+@keyframes lds-dual-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+._s_table_error_indicator_wrapper,
+._s_table_loading_indicator_wrapper,
+._s_no_result_indicator {
+    @include flex_center();
+    flex-direction: column;
+    padding: 0 20px;
+    height: 350px;
+}
+._s_table_loading_indicator_wrapper {
+    &._s_loading_absolute {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100% !important;
+        z-index: 5;
+        background: rgba(255, 255, 255, 0.6);
+    }
+}
+._s_table_error_indicator_wrapper {
+    ._s_error_icon {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 15px;
+
+        svg {
+            color: red;
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    ._s_error_title {
+        font-size: 25px;
+        color: $gray_800;
+        line-height: 30px;
+        margin-bottom: 20px;
+    }
+    ._s_try_again_btn {
+        padding: 10px 16px;
+        border-radius: 4px;
+        background: $primary_100;
+        color: $fff;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 15px;
+        letter-spacing: 0.5px;
+
+        &:hover {
+            background: $primary_200;
+        }
+    }
+}
+
+._s_no_result_indicator {
+    h4 {
+        color: $gray_800;
+        font-size: 22px;
+    }
+}
+
+.all_column_hidden_indicator {
+    @include flex_center();
+    flex-direction: column;
+    padding: 30px 20px;
+    min-height: 350px;
+
+    .all_column_hidden_indicator_scroller {
+        min-width: 350px;
+        // max-height: 400px;
+        overflow: hidden;
+        overflow-y: auto;
+        border: 1px solid $gray_300;
+        border-radius: 6px;
+
+        h3 {
+            padding: 15px 12px;
+            font-size: 18px;
+            border-bottom: 1px solid $gray_300;
+        }
+    }
+}
+// -------- React Table Indicator End --------
+
+// -------- React Table Loader Start --------
+
+// Loader Credit: https://loading.io/css/
+.lds-ellipsis {
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+.lds-ellipsis div {
+    position: absolute;
+    top: 33px;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: $gray_900;
+    animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+.lds-ellipsis div:nth-child(1) {
+    left: 8px;
+    animation: lds-ellipsis1 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(2) {
+    left: 8px;
+    animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(3) {
+    left: 32px;
+    animation: lds-ellipsis2 0.6s infinite;
+}
+.lds-ellipsis div:nth-child(4) {
+    left: 56px;
+    animation: lds-ellipsis3 0.6s infinite;
+}
+@keyframes lds-ellipsis1 {
+    0% {
+        transform: scale(0);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+@keyframes lds-ellipsis3 {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(0);
+    }
+}
+@keyframes lds-ellipsis2 {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(24px, 0);
+    }
+}
+
+// -------- React Table Loader End --------
+
+// -------- React Table Column Show Hide Setting Start --------
+._s_column_show_hide_list {
+    font-family: 'Public Sans', sans-serif;
+    @include flex_center();
+    justify-content: space-between;
+    background: $fff;
+
+    &:hover {
+        background: $gray_200;
+    }
+
+    ._s_cstm_table_checkbox {
+        margin-right: 10px;
+    }
+
+    & > label {
+        flex-grow: 1;
+        display: block;
+        flex-shrink: 1;
+        cursor: pointer;
+        padding: 10px 15px;
+        padding-right: 0;
+        user-select: none;
+        min-height: 40px;
+        @include flex_center();
+        justify-content: flex-start;
+        font-size: 16px;
+        color: $gray_800;
+    }
+
+    ._s_drag_handler {
+        cursor: grab;
+        padding: 0 15px;
+        color: $gray_600;
+        min-height: 40px;
+        @include flex_center();
+        flex-shrink: 0;
+
+        &:hover {
+            background: $gray_300;
+        }
+    }
+
+    &.dragging_element {
+        z-index: 9999999999;
+    }
+}
+// -------- React Table Column Show Hide Setting End --------
+
+// -------- React Table Setting Start --------
+// -------- React Table Setting End --------
+
+@media only screen and (max-width: 400px) {
+    .all_column_hidden_indicator_scroller {
+        min-width: 100% !important;
+        max-width: 100% !important;
+    }
+    ._s_close_search_modal {
+        width: 43px;
+        height: 38px;
+        padding: 7px;
+        color: $gray_700;
+        border-radius: 4px;
+        margin-right: 6px;
+        cursor: pointer;
+
+        &:hover {
+            background: $fff;
+        }
+    }
+
+    ._s_global_search_wrapper {
+        width: 100%;
+        max-width: 100%;
+
+        ._s_global_search_input {
+            display: none !important;
+            border-color: transparent !important;
+        }
+    }
+
+    ._s_clear_global_search_wrapper {
+        transform: scale(1) !important;
+    }
+
+    ._s_global_search_container._s_show_mobile_search_modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: 9999999999;
+        background: $gray_200;
+        padding: 6px;
+
+        ._s_clear_global_search_wrapper {
+            transform: scale(0.8) !important;
+        }
+
+        ._s_global_search_input,
+        ._s_close_search_modal {
+            display: block !important;
+        }
+    }
+
+    ._s_overly_wrapper {
+        ._s_overly_content_wrapper {
+            width: 92%;
+        }
+    }
+}

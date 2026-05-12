@@ -1,0 +1,23 @@
+@import './variable';
+
+._s_collapse_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    color: $gray_800;
+    font-size: 16px;
+    font-weight: 600;
+
+    &:hover {
+        background: $gray_200;
+    }
+
+    ._s_collapse_chevron {
+        color: $gray_700;
+        &._s_rotate_chevron {
+            transform: rotate(90deg);
+        }
+    }
+}
