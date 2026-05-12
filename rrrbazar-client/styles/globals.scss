@@ -125,14 +125,33 @@ body {
     object-fit: cover;
     object-position: center;
   }
-  .swiper-slide {
+  .swiper-slide,
+  .splide__slide {
     max-height: 280px;
+  }
+  // Splide dot indicators — primary theme, no arrows (configured in JS)
+  .splide__pagination {
+    bottom: 8px;
+    gap: 6px;
+  }
+  .splide__pagination__page {
+    width: 8px;
+    height: 8px;
+    margin: 0;
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.6);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    &.is-active {
+      background: var(--theme-primary);
+      transform: scale(1.25);
+    }
   }
 }
 @media (max-width: 768px) {
   .home-banner,
   .home-banner img,
-  .home-banner .swiper-slide {
+  .home-banner .swiper-slide,
+  .home-banner .splide__slide {
     max-height: 180px;
   }
 }

@@ -14,7 +14,7 @@ function AddBanner() {
     const isactive = useRef(null);
 
     const [bannerImage, setBannerImage] = useState(null)
-    const { path, uploading } = useUpload(bannerImage)
+    const { path, uploading, uploadFailed } = useUpload(bannerImage)
 
     const [loading, setLoading] = useState(null)
     const history = useHistory()
@@ -22,24 +22,33 @@ function AddBanner() {
     const createPaymentMethodHandler = (e) => {
         e.preventDefault()
 
-        if (!uploading) {
-            setLoading(true)
-            axiosInstance.post('/admin/banner/create', {
-                note: note.current.value,
-                banner: path,
-                link: link.current.value,
-                isactive: isactive.current.checked ? 1 : 0,
-            }).then(res => {
+        if (uploading) return
+        if (!path) {
+            toast.error(
+                uploadFailed
+                    ? 'Image upload failed. Please re-select the file.'
+                    : 'Please wait for the image to finish uploading.',
+                toastDefault
+            )
+            return
+        }
+
+        setLoading(true)
+        axiosInstance.post('/admin/banner/create', {
+            note: note.current.value,
+            banner: path,
+            link: link.current.value,
+            isactive: isactive.current.checked ? 1 : 0,
+        }).then(res => {
                 toast.success('Banner created successfully', toastDefault)
 
                 setTimeout(() => {
                     history.push('/banner')
                 }, 1500);
-            }).catch(err => {
-                toast.error(getErrors(err, false, true), toastDefault)
-                setLoading(false)
-            })
-        }
+        }).catch(err => {
+            toast.error(getErrors(err, false, true), toastDefault)
+            setLoading(false)
+        })
     }
 
     return (
@@ -76,7 +85,7 @@ function AddBanner() {
                                 </div>
 
                                 <div className="mt-4">
-                                    <button type="submit" disabled={uploading} className="cstm_btn w-full block">Create Banner</button>
+                                    <button type="submit" disabled={uploading || !path} className="cstm_btn w-full block">Create Banner</button>
                                 </div>
                             </div>
                         </form>

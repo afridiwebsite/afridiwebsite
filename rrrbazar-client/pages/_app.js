@@ -8,6 +8,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'swiper/css';
 import 'swiper/css/navigation';
+import '@splidejs/react-splide/css/core';
 import api, { getSiteSettings } from '../api/api';
 import { googleLogout } from '@react-oauth/google';
 import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
@@ -22,6 +23,7 @@ import {
   setLocal,
   setSession,
 } from '../lib/localStorage';
+import { hexToRgb } from '../helpers/helpers';
 import '../styles/globals.scss';
 import '../styles/why-choose.scss';
 
@@ -65,9 +67,21 @@ function MyApp({ Component, pageProps }) {
   useEffect(() => {
     if (!siteSettings) return;
     const r = document.documentElement;
-    if (siteSettings.primary_color) r.style.setProperty('--theme-primary', siteSettings.primary_color);
-    if (siteSettings.secondary_color) r.style.setProperty('--theme-secondary', siteSettings.secondary_color);
-    if (siteSettings.accent_color) r.style.setProperty('--theme-accent', siteSettings.accent_color);
+    if (siteSettings.primary_color) {
+      r.style.setProperty('--theme-primary', siteSettings.primary_color);
+      const rgb = hexToRgb(siteSettings.primary_color);
+      if (rgb) r.style.setProperty('--theme-primary-rgb', rgb);
+    }
+    if (siteSettings.secondary_color) {
+      r.style.setProperty('--theme-secondary', siteSettings.secondary_color);
+      const rgb = hexToRgb(siteSettings.secondary_color);
+      if (rgb) r.style.setProperty('--theme-secondary-rgb', rgb);
+    }
+    if (siteSettings.accent_color) {
+      r.style.setProperty('--theme-accent', siteSettings.accent_color);
+      const rgb = hexToRgb(siteSettings.accent_color);
+      if (rgb) r.style.setProperty('--theme-accent-rgb', rgb);
+    }
   }, [siteSettings]);
 
   const setWhereItHas = (key, value) => {

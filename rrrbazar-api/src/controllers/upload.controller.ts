@@ -37,18 +37,29 @@ class UploadController {
 
     #resizeAndGenerateThumb = async (file: any) => {
         const { filename: image } = file;
-        const buff = await sharp(file.path)
+        // Read into a Buffer first and feed sharp the Buffer (not file.path).
+        // On Windows, AV/indexers briefly hold a handle on a file multer
+        // just wrote, and libvips can mmap the input — both make a
+        // subsequent writeFileSync to the same path fail with
+        // "UNKNOWN: unknown error, open …". Reading once up-front
+        // closes the handle before we write back.
+        const inputBuf = await fs.promises.readFile(file.path);
+
+        const buff = await sharp(inputBuf)
             .resize(900)
             .withMetadata()
             .toBuffer()
 
-        fs.writeFileSync(file.destination + image, buff);
-        
         const thumbBuff = await sharp(buff)
             .resize(100)
             .withMetadata()
             .toBuffer()
-        fs.writeFileSync(path.join(file.destination, 'thumb', image), thumbBuff)
+
+        const thumbDir = path.join(file.destination, 'thumb');
+        await fs.promises.mkdir(thumbDir, { recursive: true });
+
+        await fs.promises.writeFile(path.join(file.destination, image), buff);
+        await fs.promises.writeFile(path.join(thumbDir, image), thumbBuff);
 
         return image
 

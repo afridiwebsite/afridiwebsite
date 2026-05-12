@@ -41,7 +41,10 @@ function Footer() {
   return (
     <footer
       className="mt-auto text-white"
-      style={{ background: 'var(--theme-secondary, #1B2A4A)' }}
+      style={{
+        background:
+          'linear-gradient(to bottom, var(--theme-secondary, #1B2A4A) 20%, var(--theme-primary, #3856B5))',
+      }}
     >
       <div className="container py-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
