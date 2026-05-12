@@ -28,15 +28,25 @@ const DEFAULTS = {
 const { Admin, AuthModule, AdminAuth } = Schema;
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out
-// every (path, METHOD) pair. Express 5 moved `_router` -> `router`,
-// which is why express-list-endpoints@7 returns 0 entries here.
+// every (path, METHOD) pair. Express 5 moved `_router` -> `router`;
+// Express 4 keeps `_router` and exposes `router` as a deprecated
+// getter that *throws* on access — so try the safe properties first
+// and guard the Express 5 path with a try/catch.
 function listAdminEndpoints(): Array<{ path: string; method: string }> {
     const root: any = adminRouter as any;
-    const stack: any[] =
-        root?.router?.stack || // Express 5 app
-        root?._router?.stack || // Express 4 app
-        root?.stack || // express.Router()
-        [];
+    let stack: any[] | undefined;
+    if (Array.isArray(root?.stack)) {
+        stack = root.stack; // express.Router()
+    } else if (root?._router?.stack) {
+        stack = root._router.stack; // Express 4 app
+    } else {
+        try {
+            stack = root?.router?.stack; // Express 5 app
+        } catch {
+            stack = undefined; // Express 4 deprecation getter
+        }
+    }
+    stack = stack || [];
 
     const out: Array<{ path: string; method: string }> = [];
     for (const layer of stack) {
