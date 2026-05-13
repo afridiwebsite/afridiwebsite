@@ -1,7 +1,16 @@
 {
-    "extends": "next/core-web-vitals",
-    "rules": {
-    // Other rules
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "react/no-unknown-property": [
+      "error",
+      {
+        "ignore": [
+          "jsx",
+          "global",
+          "scrollamount"
+        ]
+      }
+    ],
     "@next/next/no-img-element": "off"
   }
 }

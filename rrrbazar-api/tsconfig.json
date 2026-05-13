@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2019",                          
-    "module": "commonjs",                    
+    "module": "Node16",                    
     "lib": ["es6"],                     
     "allowJs": true,
     "outDir": "build",                          
     "rootDir": "src",
+    "moduleResolution": "node16",
+    "skipLibCheck": true,
     "typeRoots": ["./node_modules/@types", "./types"],
     "strict": true,         
     "noImplicitAny": true,
