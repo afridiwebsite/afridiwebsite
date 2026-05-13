@@ -22,7 +22,7 @@ function CategorySection({ title, products }) {
   if (!products || products.length === 0) return null;
   return (
     <section className="container mt-3 mb-3 animate-fade-in">
-      <div className="section-card home-section-card">
+      <div className="">
         <SectionTitle>{title}</SectionTitle>
         <div className="grid grid-cols-3 xs:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
           {products.map((p, i) => (
@@ -138,7 +138,7 @@ function Home({
   };
 
   return (
-    <>
+    <div className="mb-20">
       {renderNotice()}
 
       {hasData(banners) && (
@@ -246,7 +246,7 @@ function Home({
           </div>
         </section>
       )}
-    </>
+    </div>
   );
 }
 
@@ -293,8 +293,7 @@ export async function getServerSideProps(ctx) {
 
   try {
     const headerNotice = await api.get('/notice-header');
-    
-
+  
     header_notice = headerNotice?.data?.data;
     console.log(header_notice,'dsd')
   } catch (error) {

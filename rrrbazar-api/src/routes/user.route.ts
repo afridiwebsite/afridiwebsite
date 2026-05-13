@@ -7,6 +7,7 @@ import categoryController from '../controllers/category.controller';
 import siteSettingController from '../controllers/siteSetting.controller';
 import coinController from '../controllers/coin.controller';
 import spinController from '../controllers/spin.controller';
+import searchController from '../controllers/search.controller';
 import publicTopupProductController from '../controllers/publicTopupProduct.controller';
 const router = express.Router();
 
@@ -69,5 +70,9 @@ router.get('/spin/overview', userAuth, spinController.overview)
 router.post('/spin/spin', userAuth, spinController.spin)
 router.get('/spin/history', userAuth, spinController.history)
 // Spin apis ----END----
+
+// Search ----START----
+router.get('/search', searchController.search)
+// Search ----END----
 
 export default router;

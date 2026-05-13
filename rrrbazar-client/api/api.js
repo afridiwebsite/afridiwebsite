@@ -74,6 +74,10 @@ export const getSpinOverview = async () => api.get('/spin/overview');
 export const doSpin = async () => api.post('/spin/spin');
 export const getSpinHistory = async () => api.get('/spin/history');
 
+// Global search (products + packages)
+export const searchGlobal = async (q, limit = 8) =>
+  api.get(`/search?q=${encodeURIComponent(q)}&limit=${limit}`);
+
 export const reSendOtp = async () => {
   const data = getSession(__reset_password_data_key);
   const user_id = data?.user?.id;

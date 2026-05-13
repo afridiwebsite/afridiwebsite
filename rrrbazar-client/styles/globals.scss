@@ -39,7 +39,6 @@ body {
 
 // ref.png section title bar — pill heading sitting in its own white card
 .section-card {
-  background: #fff;
   border-radius: 10px;
   padding: 12px 16px 16px;
   box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04);
@@ -335,6 +334,289 @@ body {
 }
 .header-pill-wallet:hover {
   box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+}
+
+// --- Header search (components/Header.js → HeaderSearch) ---
+.header-search {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.header-search-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.header-search-bar:focus-within {
+  border-color: var(--theme-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.header-search-input {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+.header-search-btn {
+  background: var(--theme-primary, #2563eb);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 20px;
+  margin: 2px;
+  border: 0;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+.header-search-btn:hover { filter: brightness(1.06); }
+.header-search-btn:active { transform: scale(0.96); }
+
+.header-search-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.18);
+  padding: 10px;
+  max-height: 70vh;
+  overflow-y: auto;
+  z-index: 200;
+}
+.header-search-empty {
+  padding: 18px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+.header-search-empty strong { color: #1f2937; }
+
+.header-search-group { margin-bottom: 6px; }
+.header-search-group-title {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #9ca3af;
+  padding: 6px 8px 4px;
+}
+.header-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+.header-search-row:hover { background: #f3f4f6; }
+.header-search-row-img {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: #f3f4f6;
+}
+.header-search-row-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.header-search-row-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-search-row-sub {
+  font-size: 11px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-search-all {
+  display: block;
+  text-align: center;
+  margin-top: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--theme-primary, #2563eb),
+    var(--theme-accent, #4D67D8)
+  );
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+.header-search-all:hover { filter: brightness(1.06); transform: translateY(-1px); }
+
+// --- /search page (pages/search.js) ---
+.search-page { min-height: 60vh; }
+
+.search-page-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  padding: 6px 6px 6px 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-page-bar:focus-within {
+  border-color: var(--theme-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.search-page-bar-icon { color: #9ca3af; flex-shrink: 0; }
+.search-page-input {
+  flex: 1;
+  font-size: 14px;
+  padding: 10px 4px;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+.search-page-btn {
+  background: var(--theme-primary, #2563eb);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+.search-page-btn:hover { filter: brightness(1.06); }
+.search-page-btn:active { transform: scale(0.97); }
+
+.search-page-meta {
+  margin: 14px 4px 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.search-page-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: #4b5563;
+}
+.search-page-empty-emoji {
+  font-size: 40px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.search-page-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--theme-primary, #2563eb);
+  margin: 0;
+}
+
+.search-product-tile {
+  display: block;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  border-bottom: 3px solid var(--theme-primary, #2563eb);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.search-product-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+  border-bottom-color: var(--theme-accent, #4D67D8);
+}
+.search-product-img-wrap {
+  aspect-ratio: 1 / 1;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+.search-product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.search-product-tile:hover .search-product-img { transform: scale(1.06); }
+.search-product-name {
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-package-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.search-package-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+.search-package-img {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: #f3f4f6;
+}
+.search-package-main {
+  flex: 1;
+  min-width: 0;
+}
+.search-package-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-package-sub {
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-package-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--theme-primary, #2563eb);
+  flex-shrink: 0;
 }
 
 // Topup product page polish — used on pages/topup/[id].js.
@@ -743,7 +1025,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 800;
   text-align: center;
   text-transform: uppercase;
@@ -770,10 +1052,247 @@ body {
     transparent
   );
 }
+// Outer animation wrapper kept for the staggered fade-in cascade. The
+// wrapper also has to be promoted above its grid siblings on hover —
+// otherwise tiles in the next row paint over the popover regardless of
+// the popover's own z-index (because each .game-tile-anim is its own
+// stacking context root once z-index is non-auto).
 .game-tile-anim {
   transition: transform 0.2s ease;
+  position: relative;
+  overflow: visible;
+  z-index: 1;
 }
-.game-tile-anim:hover { transform: translateY(-3px); }
+.game-tile-anim:hover,
+.game-tile-anim:focus-within {
+  z-index: 60;
+}
+
+// Product tile (rendered by components/game/index.js).
+.game-card {
+  position: relative;
+  overflow: visible; // so the popover can extend below the card
+  z-index: 1;
+}
+.game-card.is-hover {
+  z-index: 30; // raise above sibling tiles when popover is open
+}
+
+.game-card-link {
+  display: block;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  // Primary-color accent strip at the bottom of every tile.
+  border-bottom: 3px solid var(--theme-primary, #2563eb);
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.25s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.game-card:hover .game-card-link {
+  transform: translateY(-3px);
+  border-color: rgba(0, 0, 0, 0.06);
+  border-bottom-color: var(--theme-accent, #4D67D8);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.game-card-image-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f3f4f6;
+  overflow: hidden;
+  z-index: 2; // sits on top of the title so the rise-from-behind clip works
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  animation: game-image-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.game-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.45s ease;
+  will-change: transform;
+}
+.game-card:hover .game-card-image {
+  transform: scale(1.06);
+}
+@keyframes game-image-in {
+  from { opacity: 0; transform: scale(1.04); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+// Title slides up from behind the image. The wrapper has overflow: hidden so
+// the title is clipped while it sits inside its band; the keyframe starts
+// the inner h6 fully tucked under the image (translateY(-100%)) and rises
+// it to translateY(0). Combined with z-index ordering, the effect is the
+// text emerging from underneath the image.
+.game-card-title-wrap {
+  position: relative;
+  padding: 14px 10px 12px;
+  text-align: center;
+  background: #fff;
+  overflow: hidden;
+  z-index: 1;
+}
+.game-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+  animation: game-title-rise 0.55s 0.18s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes game-title-rise {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+// Floating package menu — anchored below the tile.
+.game-card-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, -6px);
+  width: 240px;
+  max-width: 90vw;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.16);
+  padding: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+  z-index: 40;
+}
+.game-card.is-hover .game-card-menu {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.game-card-menu-arrow {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-left: 1px solid #eef2f7;
+  border-top: 1px solid #eef2f7;
+  border-radius: 3px 0 0 0;
+}
+.game-card-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.game-card-menu-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-card-menu-count {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.game-card-menu-empty {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 12px 0;
+}
+
+.game-card-pkg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.game-card-pkg {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px;
+  font-size: 12px;
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: game-pkg-in 0.32s ease-out forwards;
+  transition: background 0.15s ease;
+}
+.game-card-pkg:hover { background: #f9fafb; }
+.game-card-pkg-name {
+  color: #374151;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-card-pkg-price {
+  color: var(--theme-primary, #2563eb);
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.game-card-pkg-more {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  padding: 4px 0;
+  font-weight: 600;
+}
+@keyframes game-pkg-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.game-card-menu-cta {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--theme-primary, #2563eb),
+    var(--theme-accent, #4D67D8)
+  );
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.28);
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+.game-card-menu-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+// Menus near the right/left edge of the viewport overflow off-screen with
+// the default centered transform — clamp on small grids by flipping anchor
+// when the tile is at the edge of the row. (Best-effort; for fully reliable
+// positioning a JS-driven floating-ui swap would be cleaner, but this is
+// good enough for the typical 6-col grid.)
+@media (max-width: 480px) {
+  .game-card-menu { width: 220px; }
+}
 
 // Latest order row card — lift + theme-primary tint on hover.
 .order-row-card {
