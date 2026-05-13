@@ -18,6 +18,7 @@ export default (sequelize: Sequelize) => {
     public wallet!: number;
     public coins!: number;
     public last_coin_claim_at!: Date;
+    public claim_streak!: number;
     public password!: string;
     public city!: string;
     public address!: string;
@@ -73,6 +74,11 @@ export default (sequelize: Sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    claim_streak: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
     },
     email: {
       type: DataTypes.STRING,

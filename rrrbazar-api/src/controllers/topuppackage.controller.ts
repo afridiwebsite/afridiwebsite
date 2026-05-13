@@ -56,7 +56,8 @@ class TopupPackageController {
             bprice,
             in_stock,
             serial,
-            logo
+            logo,
+            coin_value,
         } = req.body
 
         try {
@@ -68,7 +69,8 @@ class TopupPackageController {
                 bprice,
                 in_stock,
                 serial,
-                logo
+                logo,
+                coin_value: Number(coin_value) || 0,
             })
 
             response.message = 'Created successfully'
@@ -94,7 +96,8 @@ class TopupPackageController {
             bprice,
             in_stock,
             serial,
-            logo
+            logo,
+            coin_value,
         } = req.body
 
         try {
@@ -112,6 +115,9 @@ class TopupPackageController {
             topupPackage.logo = logo;
             if (in_stock == 1 || in_stock == 0) {
                 topupPackage.in_stock = in_stock;
+            }
+            if (coin_value !== undefined) {
+                topupPackage.coin_value = Number(coin_value) || 0;
             }
             await topupPackage.save()
 

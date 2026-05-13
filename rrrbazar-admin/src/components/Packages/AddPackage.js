@@ -24,6 +24,7 @@ function AddPackage(props) {
     const in_stock = useRef(null);
     const serial = useRef(null);
     const logo = useRef(null);
+    const coin_value = useRef(null);
 
     const addPackageHandler = (e) => {
         e.preventDefault()
@@ -35,6 +36,7 @@ function AddPackage(props) {
             bprice: buy_price.current.value,
             serial: serial.current.value,
             logo: path,
+            coin_value: coin_value.current.value || 0,
             in_stock: in_stock.current.checked ? 1 : 0
         }).then(res => {
             toast.success('Topup package created successfully', toastDefault)
@@ -102,12 +104,15 @@ function AddPackage(props) {
 
                                     <div className="form_grid">
                                         <div>
-                                            <label class="inline-flex items-center">
+                                            <label htmlFor="coin_value">Coin reward per purchase</label>
+                                            <input ref={coin_value} id="coin_value" className="form_input" type="number" min="0" defaultValue={0} placeholder="0" />
+                                        </div>
+                                        <div>
+                                            <label class="inline-flex items-center mt-6">
                                                 <input ref={in_stock} id="in_stock" value="1" className="form-checkbox" type="checkbox" />
                                                 <span class="ml-2">In Stock</span>
                                             </label>
                                         </div>
-                                    
                                     </div>
 
                                     <div>

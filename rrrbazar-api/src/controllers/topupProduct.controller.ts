@@ -84,7 +84,6 @@ class TopupProductController {
             is_active,
             is_offer,
             offer_items,
-            coin_value
         } = req.body
 
         const data = await TopupProduct.create({
@@ -100,7 +99,6 @@ class TopupProductController {
             is_active,
             is_offer,
             offer_items,
-            coin_value: coin_value || 0
         })
         response.data = data
         res.send(response.response)
@@ -123,7 +121,6 @@ class TopupProductController {
             is_active,
             is_offer,
             offer_items,
-            coin_value
         } = req.body
 
         const product = await TopupProduct.findByPk(id)
@@ -148,7 +145,6 @@ class TopupProductController {
         product.serial = serial;
         product.is_offer = is_offer;
         product.offer_items = offer_items;
-        if (coin_value !== undefined) product.coin_value = coin_value;
 
         await product.save();
 

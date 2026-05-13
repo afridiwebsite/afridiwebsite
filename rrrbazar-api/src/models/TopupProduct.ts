@@ -19,7 +19,6 @@ export default (sequelize: Sequelize) => {
         public is_active!: number;
         public is_offer!: number;
         public offer_items!: number;
-        public coin_value!: number;
 
         static associate({ Category, ProductCategory }: typeof Schema) {
             this.belongsToMany(Category, {
@@ -84,11 +83,6 @@ export default (sequelize: Sequelize) => {
         offer_items: {
             type: DataTypes.INTEGER,
             defaultValue: 1
-        },
-        coin_value: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            defaultValue: 0
         },
         created_at: {
             type: DataTypes.DATE,

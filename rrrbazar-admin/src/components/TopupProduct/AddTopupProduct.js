@@ -15,7 +15,6 @@ function AddTopupProduct() {
     const name = useRef(null);
     const logo = useRef(null);
     const price = useRef(null);
-    const coin_value = useRef(null);
     const isactivefortopup = useRef(null);
     const is_active_product = useRef(null);
     const is_offer_product = useRef(null);
@@ -46,10 +45,9 @@ function AddTopupProduct() {
                 name: name.current.value,
                 logo: path,
                 price: price.current.value,
-                coin_value: coin_value.current.value || 0,
                 isactivefortopup: isactivefortopup.current.checked ? 1 : 0,
                 is_active: is_active_product.current.checked ? 1 : 0,
-                is_offer: is_offer_product.current.checked ? 1 : 0,
+                is_offer: 0,
                 offer_items: offer_items.current.value || 0,
                 rules: convertToHTML(editorState.getCurrentContent())
 
@@ -103,10 +101,6 @@ function AddTopupProduct() {
                                         <label htmlFor="logo">Logo</label>
                                         <input ref={logo} id="logo" className="form_input" type="file" required onChange={e => setProductLogo(e.target.files[0])} />
                                     </div>
-                                    <div>
-                                        <label htmlFor="coin_value">Coin reward per purchase</label>
-                                        <input ref={coin_value} id="coin_value" className="form_input" type="number" min="0" defaultValue={0} placeholder="0" />
-                                    </div>
                                 </div>
 
                                 <div className="my-3">
@@ -149,20 +143,7 @@ function AddTopupProduct() {
                                     </label>
                                 </div>
                                 
-                                <div className="my-2" >
-                                    <label className="py-2 inline-block cursor-pointer select-none" >
-                                        <input type="checkbox" defaultChecked ref={is_offer_product} className="mr-2" />
-                                        Offer Products
-                                    </label>
-                                </div>
-
-                                <div className="form_grid">
-                                    <div>
-                                        <label htmlFor="offer_items">Name</label>
-                                        <input ref={offer_items} id="offer_items" className="form_input" type="number" placeholder="Enter offer items" />
-                                    </div>
-                                </div>
-                                
+                              
 
                                 <div>
                                     <button type="submit" disabled={uploading} className="cstm_btn w-full block">Create Product</button>

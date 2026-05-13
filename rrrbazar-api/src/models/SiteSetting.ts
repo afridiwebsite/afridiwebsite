@@ -12,6 +12,13 @@ export default (sequelize: Sequelize) => {
         public coin_to_money_rate!: number;
         public daily_claim_amount!: number;
         public daily_claim_interval_hours!: number;
+        public day_1_reward!: number;
+        public day_2_reward!: number;
+        public day_3_reward!: number;
+        public day_4_reward!: number;
+        public day_5_reward!: number;
+        public day_6_reward!: number;
+        public day_7_reward!: number;
     }
 
     SiteSetting.init({
@@ -55,6 +62,13 @@ export default (sequelize: Sequelize) => {
             allowNull: true,
             defaultValue: 24
         },
+        day_1_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 2 },
+        day_2_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 4 },
+        day_3_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 6 },
+        day_4_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 8 },
+        day_5_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 10 },
+        day_6_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 12 },
+        day_7_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 14 },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,

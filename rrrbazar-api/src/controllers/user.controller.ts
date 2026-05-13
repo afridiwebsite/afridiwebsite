@@ -752,9 +752,9 @@ class UserController {
 
       const order = await Order.create(user_order_data)
 
-      // Award coins for purchase (package coin_value, fallback to product coin_value)
+      // Award coins for purchase — coin reward is configured per package.
       try {
-        const coinReward = Number(topupPackage.coin_value || product.coin_value || 0);
+        const coinReward = Number(topupPackage.coin_value || 0);
         if (coinReward > 0) {
           user.coins = (user.coins || 0) + coinReward;
           await user.save();

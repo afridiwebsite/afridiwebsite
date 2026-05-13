@@ -34,6 +34,13 @@ class SiteSettingController {
             coin_to_money_rate,
             daily_claim_amount,
             daily_claim_interval_hours,
+            day_1_reward,
+            day_2_reward,
+            day_3_reward,
+            day_4_reward,
+            day_5_reward,
+            day_6_reward,
+            day_7_reward,
         } = req.body;
 
         const settings = await getOrCreate();
@@ -47,6 +54,13 @@ class SiteSettingController {
         if (daily_claim_amount !== undefined) settings.daily_claim_amount = daily_claim_amount;
         if (daily_claim_interval_hours !== undefined)
             settings.daily_claim_interval_hours = daily_claim_interval_hours;
+        if (day_1_reward !== undefined) settings.day_1_reward = Number(day_1_reward) || 0;
+        if (day_2_reward !== undefined) settings.day_2_reward = Number(day_2_reward) || 0;
+        if (day_3_reward !== undefined) settings.day_3_reward = Number(day_3_reward) || 0;
+        if (day_4_reward !== undefined) settings.day_4_reward = Number(day_4_reward) || 0;
+        if (day_5_reward !== undefined) settings.day_5_reward = Number(day_5_reward) || 0;
+        if (day_6_reward !== undefined) settings.day_6_reward = Number(day_6_reward) || 0;
+        if (day_7_reward !== undefined) settings.day_7_reward = Number(day_7_reward) || 0;
 
         await settings.save();
         response.data = settings;

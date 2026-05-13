@@ -162,24 +162,27 @@ function TopupOrderPage() {
           {hasData(productData) && (
             <div className="grid grid-cols-1 lg:grid-cols-[400px,auto] gap-7">
               {/* Topup Product Info And Rules --Start-- */}
-              <div>
-                <div className="border border-gray-200 rounded-md overflow-hidden">
+              <div className="animate-fade-in-up" style={{ animationDelay: '40ms' }}>
+                <div className="topup-product-card">
                   {/* Top up Image */}
-                  <img
-                    src={imgPath(productInfo?.logo)}
-                    className="w-full h-[120px] object-cover bg-gray-100"
-                    alt=""
-                  />
-                  <div className="py-3 px-4 mt-[-25px]">
+                  <div className="topup-product-banner">
+                    <img
+                      src={imgPath(productInfo?.logo)}
+                      className="w-full h-[160px] object-cover"
+                      alt=""
+                    />
+                    <div className="topup-product-banner-overlay" />
+                  </div>
+                  <div className="py-3 px-4 mt-[-30px] relative">
                     {/* Product name */}
-                    <h5 className="_h5 bg-white inline-block rounded-full border border-gray-200 px-4 py-0.5">
+                    <h5 className="_h5 bg-white inline-block rounded-full border border-gray-200 shadow-sm px-4 py-1">
                       {productInfo?.name}
                     </h5>
                     {/* Product Description */}
                     {productInfo?.rules && productInfo?.rules !== '<p></p>' && (
                       <>
-                        <p className="_subtitle2 mt-2.5 mb-2">Description: </p>
-                        <div className="_body2 text-[13px]">
+                        <p className="_subtitle2 mt-3 mb-1.5 theme-text-primary">Description</p>
+                        <div className="_body2 text-[13px] text-gray-700">
                           {ReactHtmlParser(productInfo?.rules)}
                         </div>
                       </>
@@ -341,9 +344,13 @@ function TopupOrderPage() {
                           <div className="_absolute_full z-50"></div>
                         )}
                         {/* Account Info Form --Start-- */}
-                        <div className="_order_box_wrapper" style={{
-                                      display: displayUnipinVoucher
-                                    }}>
+                        <div
+                          className="_order_box_wrapper animate-fade-in-up"
+                          style={{
+                            display: displayUnipinVoucher,
+                            animationDelay: '80ms',
+                          }}
+                        >
                           <div className="_order_box_header">
                             <div className="_order_header_step_circle">1</div>
                             <h5 className="_order_header_title">
@@ -490,7 +497,10 @@ function TopupOrderPage() {
                         {/* Account Info Form --End-- */}
 
                         {/* Select Recharge --Start-- */}
-                        <div className="_order_box_wrapper">
+                        <div
+                          className="_order_box_wrapper animate-fade-in-up"
+                          style={{ animationDelay: '140ms' }}
+                        >
                           <div className="_order_box_header">
                             <div className="_order_header_step_circle">2</div>
                             <h5 className="_order_header_title">
@@ -568,7 +578,10 @@ function TopupOrderPage() {
                         {/* Select Recharge --End-- */}
 
                         {/* Select Payment Option --Start-- */}
-                        <div className="_order_box_wrapper">
+                        <div
+                          className="_order_box_wrapper animate-fade-in-up"
+                          style={{ animationDelay: '200ms' }}
+                        >
                           <div className="_order_box_header">
                             <div className="_order_header_step_circle">3</div>
                             <h5 className="_order_header_title">
@@ -640,52 +653,71 @@ function TopupOrderPage() {
                         />
                         {/* Show Error After Submit Form --End-- */}
 
-                        <div className="flex justify-end gap-3">
-                          {!isAuth && (
-                            <Link
-                              href={
-                                routes.login.name + addRedirectQuery(router)
-                              }
-                            >
-                              <a>
-                                <Button type="button" className="outlined">
-                                  Login
-                                </Button>
-                              </a>
-                            </Link>
+                        <div
+                          className="topup-cta-bar animate-fade-in-up"
+                          style={{ animationDelay: '260ms' }}
+                        >
+                          {values.selectedpackage && (
+                            <div className="topup-cta-summary">
+                              <span className="topup-cta-label">Total</span>
+                              <span className="topup-cta-amount">
+                                ৳ {values.selectedpackage.price}
+                              </span>
+                              <span className="topup-cta-pack">
+                                {values.selectedpackage.name}
+                              </span>
+                            </div>
                           )}
-                          {((isAuth && !userWallet && selectedPaymentMethod != 'auto_payment') || (isNotEnoughMoney && selectedPaymentMethod != 'auto_payment')) && (
-                            <Link
-                              href={
-                                routes.addMoney.name + addRedirectQuery(router)
+                          <div className="flex items-center gap-3 ml-auto">
+                            {!isAuth && (
+                              <Link
+                                href={
+                                  routes.login.name + addRedirectQuery(router)
+                                }
+                              >
+                                <a>
+                                  <Button type="button" className="outlined">
+                                    Login
+                                  </Button>
+                                </a>
+                              </Link>
+                            )}
+                            {((isAuth && !userWallet && selectedPaymentMethod != 'auto_payment') || (isNotEnoughMoney && selectedPaymentMethod != 'auto_payment')) && (
+                              <Link
+                                href={
+                                  routes.addMoney.name + addRedirectQuery(router)
+                                }
+                              >
+                                <a>
+                                  <Button type="button" className="outlined">
+                                    Add Money
+                                  </Button>
+                                </a>
+                              </Link>
+                            )}
+                            <Button
+                              disabled={
+                                !isAuth || (!userWallet && selectedPaymentMethod != 'auto_payment') || (isNotEnoughMoney && selectedPaymentMethod != 'auto_payment')
                               }
+                              onClick={handleSubmit}
+                              type="submit"
+                              loading={isSubmitting}
+                              className="primary topup-buy-now"
                             >
-                              <a>
-                                <Button type="button" className="outlined">
-                                  Add Money
-                                </Button>
-                              </a>
-                            </Link>
-                          )}
-                          <Button
-                            disabled={
-                              !isAuth || (!userWallet && selectedPaymentMethod != 'auto_payment') || (isNotEnoughMoney && selectedPaymentMethod != 'auto_payment')
-                            }
-                            onClick={handleSubmit}
-                            type="submit"
-                            loading={isSubmitting}
-                            className="primary"
-                          >
-                            Buy Now
-                          </Button>
+                              Buy Now
+                            </Button>
+                          </div>
                         </div>
 
                         <br /><br /><br />
 
                         {/* Last Order Form --Start-- */}
-                        <div className="_order_box_wrapper">
+                        <div
+                          className="_order_box_wrapper animate-fade-in-up"
+                          style={{ animationDelay: '320ms' }}
+                        >
                           <div className="_order_box_header">
-                            <div className="_order_header_step_circle"></div>
+                            <div className="_order_header_step_circle">i</div>
                             <h5 className="_order_header_title">
                               Description
                             </h5>
@@ -706,9 +738,12 @@ function TopupOrderPage() {
 
 
                         {/* Last Order Form --Start-- */}
-                        <div className="_order_box_wrapper">
+                        <div
+                          className="_order_box_wrapper animate-fade-in-up"
+                          style={{ animationDelay: '380ms' }}
+                        >
                           <div className="_order_box_header">
-                            <div className="_order_header_step_circle"></div>
+                            <div className="_order_header_step_circle">📜</div>
                             <h5 className="_order_header_title">
                               Last Order List
                             </h5>

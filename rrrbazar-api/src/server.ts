@@ -1,6 +1,7 @@
+require('dotenv').config();
 import express from 'express';
 import cors from 'cors';
-require('dotenv').config();
+import loggerMiddleware from './middleware/logger.middleware';
 const HttpException = require('./utils/HttpException.utils');
 const errorMiddleware = require('./middleware/error.middleware');
 import userRouter from './routes/user.route';
@@ -11,6 +12,7 @@ import adminController from './controllers/admin.controller';
 import { registerUserValidator } from './middleware/validators/registerUserValidator';
 
 const app = express();
+app.use(loggerMiddleware);
 app.use(cors());
 // Express 5: use a regex catch-all instead of "*"
 // @ts-ignore: Unreachable code error

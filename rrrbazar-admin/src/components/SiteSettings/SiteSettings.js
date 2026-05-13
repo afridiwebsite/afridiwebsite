@@ -17,6 +17,10 @@ function SiteSettings() {
     const coin_to_money_rate = useRef(null)
     const daily_claim_amount = useRef(null)
     const daily_claim_interval_hours = useRef(null)
+    const dayRewardRefs = [
+        useRef(null), useRef(null), useRef(null), useRef(null),
+        useRef(null), useRef(null), useRef(null),
+    ]
 
     const [logoFile, setLogoFile] = useState(null)
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
@@ -41,6 +45,13 @@ function SiteSettings() {
             coin_to_money_rate: parseFloat(coin_to_money_rate.current.value || 0),
             daily_claim_amount: parseInt(daily_claim_amount.current.value || 0, 10),
             daily_claim_interval_hours: parseInt(daily_claim_interval_hours.current.value || 24, 10),
+            day_1_reward: parseInt(dayRewardRefs[0].current?.value || 0, 10),
+            day_2_reward: parseInt(dayRewardRefs[1].current?.value || 0, 10),
+            day_3_reward: parseInt(dayRewardRefs[2].current?.value || 0, 10),
+            day_4_reward: parseInt(dayRewardRefs[3].current?.value || 0, 10),
+            day_5_reward: parseInt(dayRewardRefs[4].current?.value || 0, 10),
+            day_6_reward: parseInt(dayRewardRefs[5].current?.value || 0, 10),
+            day_7_reward: parseInt(dayRewardRefs[6].current?.value || 0, 10),
         }
         axiosInstance
             .post('/admin/site-settings/update', payload)
@@ -119,6 +130,27 @@ function SiteSettings() {
                                         <label>Claim interval (hours)</label>
                                         <input ref={daily_claim_interval_hours} defaultValue={data.daily_claim_interval_hours} type="number" min="1" className="form_input" required />
                                     </div>
+                                </div>
+
+                                <h4 className="font-bold mt-6 mb-2">Daily streak rewards</h4>
+                                <p className="text-sm text-gray-500 mb-3">
+                                    Coin amount awarded for each day of the 7-day login streak.
+                                    Resets to Day 1 if the user misses a day.
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+                                    {[1, 2, 3, 4, 5, 6, 7].map((d, i) => (
+                                        <div key={d}>
+                                            <label className="text-xs">Day {d}</label>
+                                            <input
+                                                ref={dayRewardRefs[i]}
+                                                defaultValue={data[`day_${d}_reward`] ?? (d * 2)}
+                                                type="number"
+                                                min="0"
+                                                className="form_input"
+                                                required
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
 
                                 <div className="mt-6">
