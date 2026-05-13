@@ -55,6 +55,7 @@ import AddBot from "./components/autobot/AddBot";
 import EditBot from "./components/autobot/EditBot";
 import Categories from "./components/Categories/Categories";
 import SiteSettings from "./components/SiteSettings/SiteSettings";
+import SpinRewards from "./components/SiteSettings/SpinRewards";
 
 
 function App() {
@@ -96,6 +97,7 @@ function App() {
 
             <Route path="/categories" exact component={Categories} />
             <Route path="/site-settings" exact component={SiteSettings} />
+            <Route path="/spin-rewards" exact component={SpinRewards} />
 
             <Route path="/physical-product" exact component={PhysicalProduct} />
             <Route path="/physical-product/add" exact component={AddPhysicalProduct} />

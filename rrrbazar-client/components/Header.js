@@ -8,11 +8,9 @@
  */
 import { useRouter } from 'next/dist/client/router';
 import Link from 'next/link';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { HiMenuAlt3 } from 'react-icons/hi';
 import Button from '../components/Button';
-import DailyLoginBonus from './DailyLoginBonus';
-import { getMyCoins } from '../api/api';
 import navlinks from '../config/navlinks';
 import routes from '../config/routes';
 import { globalContext } from '../pages/_app';
@@ -29,42 +27,15 @@ function Header() {
   const router = useRouter();
   const { isAuth, authUser, siteSettings } = useContext(globalContext);
   const [isOpenSidebar, setIsOpenSidebar] = useState(false);
-  const [coinModalOpen, setCoinModalOpen] = useState(false);
-  const [coinSnap, setCoinSnap] = useState(null);
 
   const openSidebar = () => setIsOpenSidebar(true);
 
   const logoSrc = siteSettings?.logo_full_url || '/logo.png';
   const siteName = siteSettings?.site_name || __site_name_2;
 
-  // Lightweight poll for the header coin chip — only when logged in.
-  // Refreshes when the modal closes (post-claim) too.
-  useEffect(() => {
-    if (!isAuth) {
-      setCoinSnap(null);
-      return undefined;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await getMyCoins();
-        if (!cancelled) setCoinSnap(res?.data?.data || null);
-      } catch (e) { /* ignore */ }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [isAuth, coinModalOpen]);
-
-  const coinBalance = coinSnap?.coins ?? 0;
-  const canClaim = !!coinSnap?.can_claim;
-
   return (
     <>
       <NoticePopup />
-      <DailyLoginBonus
-        open={coinModalOpen}
-        onClose={() => setCoinModalOpen(false)}
-      />
       <MobileSidebar
         isOpenSidebar={isOpenSidebar}
         setIsOPenSidebar={setIsOpenSidebar}
@@ -146,7 +117,8 @@ function Header() {
             <div className="flex items-center gap-2 md:gap-3">
               {isAuth ? (
                 <>
-                  {/* Daily-bonus / coin balance pill — opens the streak modal */}
+                  {/* Coin pill / daily-bonus trigger lives on the dedicated
+                      /spin page now. Kept commented for easy revival.
                   <button
                     type="button"
                     onClick={() => setCoinModalOpen(true)}
@@ -157,6 +129,7 @@ function Header() {
                     <span className="header-pill-value">{coinBalance}</span>
                     {canClaim && <span className="header-pill-dot" aria-hidden="true" />}
                   </button>
+                  */}
                   {/* Wallet pill — links to Add Money */}
                   <Link href={routes.addMoney.name}>
                     <a

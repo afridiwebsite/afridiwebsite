@@ -10,6 +10,7 @@ mean you can safely run them again.
 | `002_create_mysql_functions.sql` | Creates the `COUNT_VOUCHER(package_id)` stored function used by `/api/v1/topuppackage/:product_id`. Without this, that endpoint returns a MySQL "FUNCTION x does not exist" error. |
 | `003_move_coin_value_to_packages.sql` | Backfills `topuppackages.coin_value` from the parent product where the package value is still 0/NULL, then drops `topup_products.coin_value`. Coin rewards are now configured per-package. |
 | `004_daily_streak_system.sql` | Adds `users.claim_streak` plus seven `day_N_reward` columns on `site_settings` for the 7-day daily-login bonus. |
+| `005_spin_system.sql` | Adds `spin_rewards` and `spin_results` tables, `site_settings.spin_cost_coins` / `spin_daily_limit` columns, and seeds six default wheel rewards. |
 
 ## Apply
 

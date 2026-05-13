@@ -69,6 +69,11 @@ export const convertCoins = async (amount) =>
   api.post('/coins/convert', { amount });
 export const getCoinHistory = async () => api.get('/coins/history');
 
+// Spin / gacha
+export const getSpinOverview = async () => api.get('/spin/overview');
+export const doSpin = async () => api.post('/spin/spin');
+export const getSpinHistory = async () => api.get('/spin/history');
+
 export const reSendOtp = async () => {
   const data = getSession(__reset_password_data_key);
   const user_id = data?.user?.id;

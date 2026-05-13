@@ -29,6 +29,8 @@ import Category from './Category'
 import ProductCategory from './ProductCategory'
 import SiteSetting from './SiteSetting'
 import CoinTransaction from './CoinTransaction'
+import SpinReward from './SpinReward'
+import SpinResult from './SpinResult'
 
 
 
@@ -77,5 +79,7 @@ export const Schema = {
   Category: Category(sequelize),
   ProductCategory: ProductCategory(sequelize),
   SiteSetting: SiteSetting(sequelize),
-  CoinTransaction: CoinTransaction(sequelize)
+  CoinTransaction: CoinTransaction(sequelize),
+  SpinReward: SpinReward(sequelize),
+  SpinResult: SpinResult(sequelize)
 }

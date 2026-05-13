@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
-const smsHelper = async (number, text = '') => {
-  let success;
+const smsHelper = async (number: string, text: string = '') => {
+  let success: boolean;
   try {
     console.log(`https://api.sms.net.bd/sendsms?api_key=${process.env.SMS_HASH_TOKEN}&msg=${text}&to=${number}`);
     await fetch(
@@ -15,4 +15,4 @@ const smsHelper = async (number, text = '') => {
   }
 };
 
-module.exports = smsHelper;
+export default smsHelper;

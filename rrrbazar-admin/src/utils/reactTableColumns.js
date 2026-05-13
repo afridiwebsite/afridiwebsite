@@ -585,28 +585,13 @@ export const productTableColumns = [
         }
     },
     {
-        Header: 'Price/Stock',
-        accessor: 'price',
-    },
-    {
         Header: 'Rules',
         accessor: 'rules',
         Cell: (e) => {
             return <ProductDescriptionSeeMore text={e.value} />
         }
     },
-    {
-        Header: 'Active for topup',
-        accessor: 'isactivefortopup',
-    },
-    {
-        Header: 'IS OFFER PRODUC',
-        accessor: 'is_offer'
-    },
-    {
-        Header: 'Offer Items',
-        accessor: 'offer_items',
-    },
+
     {
         Header: 'Created at',
         accessor: 'created_at',

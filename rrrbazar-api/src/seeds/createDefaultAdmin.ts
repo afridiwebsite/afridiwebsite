@@ -25,7 +25,43 @@ const DEFAULTS = {
     last_name: process.env.SEED_ADMIN_LAST_NAME || 'Admin',
 };
 
-const { Admin, AuthModule, AdminAuth } = Schema;
+const { Admin, AuthModule, AdminAuth, SpinReward } = Schema;
+
+// Eight default spin wheel segments seeded on first run. Weights are tuned
+// so small wins are common and the jackpot is rare. Only inserted when the
+// table is empty so an admin's manual edits never get overwritten.
+const DEFAULT_SPIN_REWARDS: Array<{
+    label: string;
+    type: string;
+    amount: number;
+    weight: number;
+    color: string;
+    serial: number;
+}> = [
+    { label: '1 Coin',      type: 'coin', amount: 1,   weight: 35, color: '#f59e0b', serial: 1 },
+    { label: '3 Coins',     type: 'coin', amount: 3,   weight: 25, color: '#10b981', serial: 2 },
+    { label: '5 Coins',     type: 'coin', amount: 5,   weight: 18, color: '#3b82f6', serial: 3 },
+    { label: 'Try Again',   type: 'none', amount: 0,   weight: 12, color: '#94a3b8', serial: 4 },
+    { label: '10 Coins',    type: 'coin', amount: 10,  weight: 10, color: '#a855f7', serial: 5 },
+    { label: '25 Coins',    type: 'coin', amount: 25,  weight: 6,  color: '#06b6d4', serial: 6 },
+    { label: '50 Coins',    type: 'coin', amount: 50,  weight: 3,  color: '#ef4444', serial: 7 },
+    { label: 'Jackpot 100', type: 'coin', amount: 100, weight: 1,  color: '#facc15', serial: 8 },
+];
+
+// Endpoints we always want present as `auth_module` rows, regardless of
+// whether the live router introspection picks them up. Useful when a new
+// feature ships and the seed needs to backfill permissions for existing
+// installs without a server restart between deploy and seed.
+const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
+    // Spin wheel admin CRUD
+    { path: '/spin-rewards',            method: 'GET'  },
+    { path: '/spin-rewards/create',     method: 'POST' },
+    { path: '/spin-rewards/update/:id', method: 'POST' },
+    { path: '/spin-rewards/delete/:id', method: 'POST' },
+    // Site settings (needed to save spin cost / daily limit / day rewards)
+    { path: '/site-settings',        method: 'GET'  },
+    { path: '/site-settings/update', method: 'POST' },
+];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out
 // every (path, METHOD) pair. Express 5 moved `_router` -> `router`;
@@ -62,16 +98,33 @@ function listAdminEndpoints(): Array<{ path: string; method: string }> {
 }
 
 async function syncAuthModulesFromAdminRouter() {
-    const endpoints = listAdminEndpoints();
+    const discovered = listAdminEndpoints();
+
+    // Merge router-discovered endpoints with the explicit ensured list,
+    // de-duped on (path, method). This way:
+    //   - New routes added since the last seed get picked up automatically.
+    //   - Endpoints in `ENSURED_ENDPOINTS` are guaranteed present even if
+    //     the live router didn't expose them (e.g. older built bundle).
+    const seen = new Set<string>();
+    const merged: Array<{ path: string; method: string }> = [];
+    const push = (ep: { path: string; method: string }) => {
+        const k = `${ep.method.toUpperCase()} ${ep.path}`;
+        if (seen.has(k)) return;
+        seen.add(k);
+        merged.push({ path: ep.path, method: ep.method.toUpperCase() });
+    };
+    discovered.forEach(push);
+    ENSURED_ENDPOINTS.forEach(push);
+
     let created = 0;
-    for (const ep of endpoints) {
+    for (const ep of merged) {
         const [, isNew] = await AuthModule.findOrCreate({
             where: { auth_url: ep.path, method: ep.method },
             defaults: { auth_url: ep.path, method: ep.method },
         });
         if (isNew) created++;
     }
-    return { total: endpoints.length, created };
+    return { total: merged.length, created, discovered: discovered.length };
 }
 
 async function ensureAdmin() {
@@ -97,6 +150,17 @@ async function ensureAdmin() {
     return { admin, fresh: true };
 }
 
+async function seedDefaultSpinRewards() {
+    // Only seed when the table is empty — we never want to overwrite an
+    // admin's tuned weights / labels.
+    const existing = await SpinReward.count();
+    if (existing > 0) return { created: 0, existing };
+    await SpinReward.bulkCreate(
+        DEFAULT_SPIN_REWARDS.map((r) => ({ ...r, is_active: 1 })),
+    );
+    return { created: DEFAULT_SPIN_REWARDS.length, existing: 0 };
+}
+
 async function grantAllPermissions(adminId: number) {
     const modules = await AuthModule.findAll();
     // Wipe and re-grant — keeps the admin permission set in sync with the
@@ -115,8 +179,8 @@ async function grantAllPermissions(adminId: number) {
         await sequelize.authenticate();
 
         console.log('→ Syncing auth_module rows from the admin router…');
-        const { total, created } = await syncAuthModulesFromAdminRouter();
-        console.log(`  found ${total} endpoints, ${created} new module rows.`);
+        const { total, created, discovered } = await syncAuthModulesFromAdminRouter();
+        console.log(`  discovered ${discovered} from router + ${ENSURED_ENDPOINTS.length} ensured (${total} total), ${created} new module rows.`);
 
         console.log(`→ Upserting admin <${DEFAULTS.email}>…`);
         const { admin, fresh } = await ensureAdmin();
@@ -125,6 +189,14 @@ async function grantAllPermissions(adminId: number) {
         console.log('→ Granting every permission to the admin…');
         const granted = await grantAllPermissions(admin.id);
         console.log(`  granted ${granted} permissions.`);
+
+        console.log('→ Seeding default spin rewards…');
+        const spin = await seedDefaultSpinRewards();
+        if (spin.created > 0) {
+            console.log(`  inserted ${spin.created} default rewards.`);
+        } else {
+            console.log(`  skipped (${spin.existing} reward(s) already configured).`);
+        }
 
         console.log('\n✅ Seed complete.');
         console.log('   email:    ' + DEFAULTS.email);

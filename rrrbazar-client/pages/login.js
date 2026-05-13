@@ -2,7 +2,14 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useContext, useState } from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { FaShieldAlt, FaBolt, FaLock } from 'react-icons/fa';
+import {
+  FaShieldAlt, FaBolt, FaLock,
+  FaCoins, FaGamepad, FaRocket, FaTrophy, FaGem, FaStar,
+} from 'react-icons/fa';
+import {
+  GiTwoCoins, GiConsoleController, GiCardJoker, GiDiamonds,
+} from 'react-icons/gi';
+import { HiSparkles } from 'react-icons/hi';
 import api from '../api/api';
 import Alert from '../components/Alert';
 import CircularProgress from '../components/CircularProgress';
@@ -14,6 +21,23 @@ const FEATURES = [
   { Icon: FaShieldAlt, label: 'Secure',  tint: 'emerald' },
   { Icon: FaBolt,      label: 'Fast',    tint: 'blue'    },
   { Icon: FaLock,      label: 'Private', tint: 'purple'  },
+];
+
+// Background decoration — hand-tuned scatter so we don't fight the card.
+// Kept static (not Math.random) so SSR markup matches the client render.
+const FLOATING_ICONS = [
+  { Icon: FaCoins,             top: '6%',  left: '7%',  size: 30, delay: 0,   duration: 7, color: '#f59e0b' },
+  { Icon: FaGamepad,           top: '12%', left: '86%', size: 34, delay: 1.2, duration: 8, color: '#6366f1' },
+  { Icon: GiTwoCoins,          top: '22%', left: '14%', size: 38, delay: 2.4, duration: 6, color: '#f97316' },
+  { Icon: GiConsoleController, top: '28%', left: '80%', size: 32, delay: 0.6, duration: 9, color: '#10b981' },
+  { Icon: HiSparkles,          top: '36%', left: '4%',  size: 22, delay: 3.0, duration: 6, color: '#fbbf24' },
+  { Icon: FaGem,               top: '42%', left: '90%', size: 26, delay: 1.8, duration: 7, color: '#06b6d4' },
+  { Icon: FaRocket,            top: '54%', left: '8%',  size: 30, delay: 0.9, duration: 8, color: '#ef4444' },
+  { Icon: GiDiamonds,          top: '58%', left: '88%', size: 28, delay: 2.1, duration: 6, color: '#a855f7' },
+  { Icon: FaTrophy,            top: '70%', left: '5%',  size: 28, delay: 1.5, duration: 7, color: '#eab308' },
+  { Icon: FaStar,              top: '74%', left: '92%', size: 22, delay: 0.3, duration: 8, color: '#facc15' },
+  { Icon: GiCardJoker,         top: '86%', left: '18%', size: 26, delay: 2.7, duration: 6, color: '#ec4899' },
+  { Icon: FaCoins,             top: '88%', left: '78%', size: 24, delay: 3.3, duration: 7, color: '#f59e0b' },
 ];
 
 function LoginPage() {
@@ -48,6 +72,32 @@ function LoginPage() {
       </Head>
 
       <div className="login-page ">
+        {/* Floating decorative icons + soft blobs — cosmetic only, behind
+            the card. aria-hidden because the symbols carry no meaning. */}
+        <div className="login-icons" aria-hidden="true">
+          <span className="login-blob login-blob-a" />
+          <span className="login-blob login-blob-b" />
+          {FLOATING_ICONS.map((item, i) => {
+            const Icon = item.Icon;
+            return (
+              <span
+                key={i}
+                className="login-icon"
+                style={{
+                  top: item.top,
+                  left: item.left,
+                  color: item.color,
+                  animationDelay: `${item.delay}s`,
+                  animationDuration: `${item.duration}s`,
+                  fontSize: `${item.size}px`,
+                }}
+              >
+                <Icon />
+              </span>
+            );
+          })}
+        </div>
+
         <header className="login-logo-bar">
           <Link href="/">
             <a aria-label="Go to home">

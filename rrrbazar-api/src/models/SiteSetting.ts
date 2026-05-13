@@ -17,6 +17,8 @@ export default (sequelize: Sequelize) => {
         public day_5_reward!: number;
         public day_6_reward!: number;
         public day_7_reward!: number;
+        public spin_cost_coins!: number;
+        public spin_daily_limit!: number;
     }
 
     SiteSetting.init({
@@ -57,6 +59,8 @@ export default (sequelize: Sequelize) => {
         day_5_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 10 },
         day_6_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 12 },
         day_7_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 14 },
+        spin_cost_coins:  { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
+        spin_daily_limit: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,

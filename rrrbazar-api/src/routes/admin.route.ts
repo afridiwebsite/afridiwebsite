@@ -11,6 +11,7 @@ import topupProductController from '../controllers/topupProduct.controller';
 import userController from '../controllers/user.controller';
 import categoryController from '../controllers/category.controller';
 import siteSettingController from '../controllers/siteSetting.controller';
+import spinController from '../controllers/spin.controller';
 import auth from '../middleware/auth.middleware';
 import { createAdminValidator } from '../middleware/validators/adminValidator';
 import { addPermissionValidator, adminWalletRequestValidator, authModuleActiveValidator } from '../middleware/validators/authModuleValidator';
@@ -121,6 +122,13 @@ router.post('/topup-product/:id/categories', auth, categoryController.assignProd
 // Site settings apis ----START----
 router.get('/site-settings', auth, siteSettingController.get)
 router.post('/site-settings/update', auth, siteSettingController.update)
+
+// Spin rewards CRUD ----START----
+router.get('/spin-rewards', auth, spinController.adminList)
+router.post('/spin-rewards/create', auth, spinController.adminCreate)
+router.post('/spin-rewards/update/:id', auth, spinController.adminUpdate)
+router.post('/spin-rewards/delete/:id', auth, spinController.adminDelete)
+// Spin rewards CRUD ----END----
 // Site settings apis ----END----
 
 // Topup Products apis ----START----

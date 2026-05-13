@@ -52,6 +52,10 @@ const routes = Object.freeze({
   myShop: {
     name: '/profile/my-shop',
   },
+  spin: {
+    name: '/spin',
+    auth: true,
+  },
 });
 
 export default routes;

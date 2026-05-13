@@ -1,17 +1,15 @@
 import fetch from 'node-fetch';
-const { Op, Sequelize } = require('sequelize');
+import { Op, Sequelize } from 'sequelize';
 import Schema from '../models';
 const {
   AutoServer
 } = Schema;
 
-
-
-const autoOrder = async (order_id, player_id, package_id, unipin, dtype = '80') => {
-  let success;
+const autoOrder = async (order_id: number, player_id: string, package_id: number, unipin: string, dtype: string = '80') => {
+  let success: any;
   try {
     let bot_url = "";
-    let bot = await AutoServer.findOne({
+    let bot: any = await AutoServer.findOne({
       attributes: [
         [Sequelize.fn('MIN', Sequelize.col('total_order')), 'min_val'],
         'ip_url',
@@ -52,7 +50,7 @@ const autoOrder = async (order_id, player_id, package_id, unipin, dtype = '80') 
         pacakge: package_id,
         code: unipin,
         orderid: order_id,
-        url: 'https://api.rrrbazar.com/api/v1/check_order?type=' + dtype
+        url: `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}`
       })
     });
     if (!response.ok) {
@@ -68,4 +66,4 @@ const autoOrder = async (order_id, player_id, package_id, unipin, dtype = '80') 
   }
 };
 
-module.exports = autoOrder;
+export default autoOrder;

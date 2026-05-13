@@ -14,11 +14,8 @@ import { convertToHTML } from "draft-convert";
 function AddTopupProduct() {
   const name = useRef(null);
   const logo = useRef(null);
-  const price = useRef(null);
   const isactivefortopup = useRef(null);
   const is_active_product = useRef(null);
-  const is_offer_product = useRef(null);
-  const offer_items = useRef(null);
 
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [productLogo, setProductLogo] = useState(null);
@@ -45,11 +42,11 @@ function AddTopupProduct() {
         .post("/admin/topup-product/create", {
           name: name.current.value,
           logo: path,
-          price: 0,
+          price: 1,
           isactivefortopup: isactivefortopup.current.checked ? 1 : 0,
           is_active: is_active_product.current.checked ? 1 : 0,
           is_offer: 0,
-          offer_items: offer_items.current.value || 0,
+          offer_items:  0,
           rules: convertToHTML(editorState.getCurrentContent()),
         })
         .then(async (res) => {

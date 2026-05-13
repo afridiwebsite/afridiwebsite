@@ -39,6 +39,8 @@ class SiteSettingController {
             day_5_reward,
             day_6_reward,
             day_7_reward,
+            spin_cost_coins,
+            spin_daily_limit,
         } = req.body;
 
         const settings = await getOrCreate();
@@ -56,6 +58,8 @@ class SiteSettingController {
         if (day_5_reward !== undefined) settings.day_5_reward = Number(day_5_reward) || 0;
         if (day_6_reward !== undefined) settings.day_6_reward = Number(day_6_reward) || 0;
         if (day_7_reward !== undefined) settings.day_7_reward = Number(day_7_reward) || 0;
+        if (spin_cost_coins !== undefined)  settings.spin_cost_coins  = Number(spin_cost_coins)  || 0;
+        if (spin_daily_limit !== undefined) settings.spin_daily_limit = Number(spin_daily_limit) || 0;
 
         await settings.save();
         response.data = settings;

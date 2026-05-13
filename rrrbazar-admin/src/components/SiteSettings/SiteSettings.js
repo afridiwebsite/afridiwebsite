@@ -19,6 +19,8 @@ function SiteSettings() {
         useRef(null), useRef(null), useRef(null), useRef(null),
         useRef(null), useRef(null), useRef(null),
     ]
+    const spin_cost_coins = useRef(null)
+    const spin_daily_limit = useRef(null)
 
     const [logoFile, setLogoFile] = useState(null)
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
@@ -66,6 +68,8 @@ function SiteSettings() {
             day_5_reward: parseInt(dayRewardRefs[4].current?.value || 0, 10),
             day_6_reward: parseInt(dayRewardRefs[5].current?.value || 0, 10),
             day_7_reward: parseInt(dayRewardRefs[6].current?.value || 0, 10),
+            spin_cost_coins: parseInt(spin_cost_coins.current?.value || 0, 10),
+            spin_daily_limit: parseInt(spin_daily_limit.current?.value || 0, 10),
         }
         axiosInstance
             .post('/admin/site-settings/update', payload)
@@ -172,6 +176,39 @@ function SiteSettings() {
                                     <div>
                                         <label>Coin to money rate (1 coin = X BDT)</label>
                                         <input ref={coin_to_money_rate} defaultValue={data.coin_to_money_rate} type="number" step="0.0001" min="0" className="form_input" required />
+                                    </div>
+                                </div>
+
+                                <h4 className="font-bold mt-6 mb-2">Spin wheel</h4>
+                                <p className="text-sm text-gray-500 mb-3">
+                                    Global spin settings. The wheel segments
+                                    themselves are managed at{' '}
+                                    <a href="/spin-rewards" className="text-blue-600 underline">
+                                        Spin Rewards
+                                    </a>.
+                                </p>
+                                <div className="form_grid">
+                                    <div>
+                                        <label>Cost per spin (coins)</label>
+                                        <input
+                                            ref={spin_cost_coins}
+                                            defaultValue={data.spin_cost_coins ?? 0}
+                                            type="number"
+                                            min="0"
+                                            className="form_input"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">0 = free</p>
+                                    </div>
+                                    <div>
+                                        <label>Daily spin limit</label>
+                                        <input
+                                            ref={spin_daily_limit}
+                                            defaultValue={data.spin_daily_limit ?? 0}
+                                            type="number"
+                                            min="0"
+                                            className="form_input"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">0 = no limit</p>
                                     </div>
                                 </div>
 
