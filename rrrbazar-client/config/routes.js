@@ -52,10 +52,6 @@ const routes = Object.freeze({
   myShop: {
     name: '/profile/my-shop',
   },
-  coins: {
-    name: '/coins',
-    auth: true,
-  },
 });
 
 export default routes;

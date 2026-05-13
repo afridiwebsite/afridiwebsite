@@ -94,9 +94,6 @@ function Footer() {
             <Link href="/contact-us">
               <a className="hover:text-white">Contact Us</a>
             </Link>
-            <Link href="/coins">
-              <a className="hover:text-white">My Coins</a>
-            </Link>
           </FooterColumn>
 
           <FooterColumn title="Stay Connected">

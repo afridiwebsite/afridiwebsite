@@ -9,9 +9,10 @@ import { hasData, imgPath } from '../helpers/helpers';
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="text-center text-2xl font-bold">
+    <h3 className="home-section-title">
+      <span className="home-section-title-bar" aria-hidden="true" />
       <span>{children}</span>
-      
+      <span className="home-section-title-bar" aria-hidden="true" />
     </h3>
   );
 }
@@ -20,14 +21,14 @@ function CategorySection({ title, products }) {
   if (!products || products.length === 0) return null;
   return (
     <section className="container mt-3 mb-3 animate-fade-in">
-      <div className="section-card">
+      <div className="section-card home-section-card">
         <SectionTitle>{title}</SectionTitle>
         <div className="grid grid-cols-3 xs:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
           {products.map((p, i) => (
             <div
               key={p.id || i}
-              style={{ animationDelay: `${i * 30}ms` }}
-              className="animate-fade-in-up"
+              style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
+              className="animate-fade-in-up game-tile-anim"
             >
               <Game game={p} />
             </div>
@@ -175,12 +176,16 @@ function Home({
 
       {/* Latest Orders */}
       {product_order && product_order.length > 0 && (
-        <section className="container my-4">
-          <div className="section-card">
+        <section className="container my-4 animate-fade-in">
+          <div className="section-card home-section-card">
             <SectionTitle>Latest Orders</SectionTitle>
             <div className="flex flex-col gap-2">
               {product_order.slice(0, 12).map((po, i) => (
-                <div key={po.id} style={{ animationDelay: `${i * 25}ms` }}>
+                <div
+                  key={po.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
+                >
                   <OrderRow order={po} />
                 </div>
               ))}

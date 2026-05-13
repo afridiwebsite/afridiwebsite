@@ -151,16 +151,22 @@ function Header() {
                     type="button"
                     onClick={() => setCoinModalOpen(true)}
                     aria-label="Open daily login bonus"
-                    className="relative flex items-center gap-1.5 rounded-full bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 px-2.5 py-1 transition-colors"
+                    className="header-pill header-pill-coin"
                   >
-                    <span aria-hidden="true" className="text-base leading-none">🪙</span>
-                    <span className="text-sm font-bold text-yellow-700">
-                      {coinBalance}
-                    </span>
-                    {canClaim && (
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
-                    )}
+                    <span aria-hidden="true" className="header-pill-emoji">🪙</span>
+                    <span className="header-pill-value">{coinBalance}</span>
+                    {canClaim && <span className="header-pill-dot" aria-hidden="true" />}
                   </button>
+                  {/* Wallet pill — links to Add Money */}
+                  <Link href={routes.addMoney.name}>
+                    <a
+                      aria-label="Open wallet — add money"
+                      className="header-pill header-pill-wallet"
+                    >
+                      <span aria-hidden="true" className="header-pill-emoji">💰</span>
+                      <span className="header-pill-value">৳ {authUser?.wallet ?? 0}</span>
+                    </a>
+                  </Link>
                   <div className="hidden md:block">
                     <UserPopoverMenu />
                   </div>
@@ -168,27 +174,7 @@ function Header() {
                     <UserPopoverHead />
                   </div>
                 </>
-              ) : (
-                <>
-                  <Link href={routes.register.name}>
-                    <a className="hidden sm:block">
-                      <Button className="bg-primary-500 hover:bg-primary-600 text-white font-bold py-2 px-4 rounded small">
-                        Register
-                      </Button>
-                    </a>
-                  </Link>
-                  <Link href={routes.login.name}>
-                    <a>
-                      <Button className="bg-transparent hover:bg-primary-50 text-primary-700 font-semibold py-2 px-4 border border-primary-500 hover:border-transparent rounded small">
-                        Login
-                      </Button>
-                    </a>
-                  </Link>
-                  <div className="md:hidden ml-1" onClick={openSidebar}>
-                    <HiMenuAlt3 size={28} className="text-gray-600 cursor-pointer" />
-                  </div>
-                </>
-              )}
+              ) : <></>}
             </div>
             {/* User Avatar or hamburger menu --End-- */}
           </div>

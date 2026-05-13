@@ -112,7 +112,7 @@ function DailyLoginBonus({ open, onClose, onClaimed }) {
               return (
                 <div
                   key={day}
-                  className={`dlb-cell flex flex-col p-5  dlb-cell-${cellState}`}
+                  className={`dlb-cell flex flex-col p-5 items-center justify-center  dlb-cell-${cellState}`}
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div className="dlb-cell-day">Day {day}</div>

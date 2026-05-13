@@ -10,6 +10,7 @@ export default (sequelize: Sequelize) => {
         public notice!: string;
         public for_home_modal!: number;
         public template!: string;
+        public type!: string;
         public is_active!: number;
     }
 
@@ -38,6 +39,11 @@ export default (sequelize: Sequelize) => {
         template: {
             type: DataTypes.ENUM('only_image', 'title_detail', 'image_title_detail_grid'),
             allowNull: true,
+        },
+        type: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: 'normal'
         },
         is_active: {
             type: DataTypes.INTEGER,

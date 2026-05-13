@@ -54,12 +54,6 @@ export default [
     auth: true,
   },
   {
-    text: 'Coins',
-    link: routes.coins.name,
-    icon: <span aria-hidden="true">🪙</span>,
-    auth: true,
-  },
-  {
     component: <Devider />,
     auth: true,
     disabled_for_desktop: true,

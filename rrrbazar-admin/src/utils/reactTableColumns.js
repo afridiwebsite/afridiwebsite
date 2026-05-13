@@ -465,6 +465,10 @@ export const noticeTableColumns = [
         Header: 'Notice',
         accessor: 'notice',
     },
+    {
+        Header: 'Type',
+        accessor: 'type',
+    },
     // {
     //     Header: 'Home modal',
     //     accessor: 'for_home_modal',

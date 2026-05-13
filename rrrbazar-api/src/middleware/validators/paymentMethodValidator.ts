@@ -32,6 +32,10 @@ export const noticeSchema = [
     body('notice')
         .exists(checkNullFalse)
         .withMessage('Notice is required'),
+    body('type')
+        .optional()
+        .isString()
+        .withMessage('Type must be a string'),
     // body('template')
     //     .exists(checkNullFalse)
     //     .withMessage('Template is required'),

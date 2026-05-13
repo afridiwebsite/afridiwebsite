@@ -19,6 +19,7 @@ function EditNotice(props) {
     const image = useRef(null);
     const link = useRef(null);
     const notice = useRef(null);
+    const type = useRef(null);
     // const for_home_modal = useRef(null);
     // const template = useRef(null);
     const is_active = useRef(null);
@@ -33,6 +34,7 @@ function EditNotice(props) {
             image: path || data?.image,
             link: link.current.value,
             notice: notice.current.value,
+            type: type.current.value,
             for_home_modal: 1,
             template: '',
             is_active: is_active.current.checked ? 1 : 0,
@@ -85,6 +87,14 @@ function EditNotice(props) {
                                             <textarea required ref={notice} id="notice" className="form_input" type="number" placeholder="Notice" cols="30" rows="10" defaultValue={data?.notice}>
 
                                             </textarea>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="type">Notice Type</label>
+                                            <select ref={type} id="type" className="form_input" defaultValue={data?.type} required>
+                                                <option value="normal">Normal</option>
+                                                <option value="marquee">Marquee</option>
+                                            </select>
                                         </div>
 
                                         {/* <div className="mb-4" >

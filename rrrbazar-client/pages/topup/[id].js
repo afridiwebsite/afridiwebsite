@@ -509,26 +509,22 @@ function TopupOrderPage() {
                           </div>
 
                           <div className="order_box_body">
-                            {productInfo?.is_offer == 1 && 
-                              <p style={{
-                                textAlign: 'center',
-                                fontSize: '1.3rem',
-                                fontWeight: 'bold',
-                                color: 'green',
-                                border: '1px solid',
-                                borderRadius: '3px',
-                                padding: '5px'
-                              }}>
-                                Available Stock: {productInfo?.offer_items}
-                              </p>
-                            }
+                            {productInfo?.is_offer == 1 && (
+                              <div className="topup-stock-badge animate-fade-in">
+                                <span className="topup-stock-dot" aria-hidden="true" />
+                                Available Stock: <strong>{productInfo?.offer_items}</strong>
+                              </div>
+                            )}
 
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                               {/* Single Recharge --Start-- */}
-                              {packages.map((pack, index) => {
-                                return (
+                              {packages.map((pack, index) => (
+                                <div
+                                  key={index}
+                                  className="topup-pack-wrap animate-fade-in-up"
+                                  style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                                >
                                   <SelectedRadio
-                                    key={index}
                                     outOfStock={parseInt(pack?.in_stock) === 0}
                                     onClick={() => {
                                       setSelectedPackage(index);
@@ -548,8 +544,8 @@ function TopupOrderPage() {
                                     }
                                     bottomComponent={`৳ ${pack?.price}`}
                                   />
-                                );
-                              })}
+                                </div>
+                              ))}
                               {/* Single Recharge --End-- */}
                             </div>
                             <FormikErrorMessage name="selectedpackage" />

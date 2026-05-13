@@ -69,7 +69,7 @@ class NoticeController {
 
     async createNotice(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const { title, image, link, notice, for_home_modal, template, is_active } = req.body
+        const { title, image, link, notice, for_home_modal, template, is_active, type } = req.body
 
         const checkExist = await Notice.findAll({
             where: {
@@ -93,7 +93,7 @@ class NoticeController {
 
 
         const data = await Notice.create({
-            title, image, link, notice, for_home_modal, template: 'image_title_detail_grid', is_active
+            title, image, link, notice, for_home_modal, template: 'image_title_detail_grid', is_active, type
         })
         response.data = data
         res.send(response.response)
@@ -102,7 +102,7 @@ class NoticeController {
     async updateNotice(req: express.Request, res: express.Response) {
         const response = new responseUtils()
         const id = (req.params.id as any);
-        const { title, image, link, notice, for_home_modal, template, is_active } = req.body
+        const { title, image, link, notice, for_home_modal, template, is_active, type } = req.body
 
         const findNotice = await Notice.findByPk(id)
 
@@ -140,6 +140,7 @@ class NoticeController {
         findNotice.for_home_modal = for_home_modal;
         findNotice.template = 'image_title_detail_grid';
         findNotice.is_active = is_active;
+        findNotice.type = type;
 
         await findNotice.save();
 
