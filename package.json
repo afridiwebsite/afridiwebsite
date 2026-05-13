@@ -1,0 +1,11 @@
+{
+  "name": "rrrbazar-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "bash scripts/install.sh",
+    "build:all": "bash scripts/build.sh",
+    "start:all": "bash scripts/start.sh",
+    "deploy": "bash deploy.sh"
+  }
+}
