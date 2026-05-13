@@ -1,54 +1,36 @@
-import { Formik } from 'formik';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { useContext, useState } from 'react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { GoogleLogin } from '@react-oauth/google';
-import * as Yup from 'yup';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { FaShieldAlt, FaBolt, FaLock } from 'react-icons/fa';
 import api from '../api/api';
 import Alert from '../components/Alert';
-import Button from '../components/Button';
 import CircularProgress from '../components/CircularProgress';
-import FlashMessage from '../components/FlashMessage';
-import FormikCheckBox from '../components/formik/FormikCheckBox';
-import FormikInput from '../components/formik/FormikInput';
-import { __page_title_end, __redirect_url_key } from '../config/globalConfig';
-import routes from '../config/routes';
-import { bindRedirectQuery, getErrors } from '../helpers/helpers';
+import { __page_title_end } from '../config/globalConfig';
+import { getErrors } from '../helpers/helpers';
 import { globalContext } from './_app';
 
-const initialValues = {
-  email: '',
-  password: '',
-  rememberMe: ['rememberMe'],
-};
-
-const validationSchema = Yup.object().shape({
-  email: Yup.string().required().email().trim().lowercase().label('Email'),
-  password: Yup.string().required().label('Password'),
-});
+const FEATURES = [
+  { Icon: FaShieldAlt, label: 'Secure',  tint: 'emerald' },
+  { Icon: FaBolt,      label: 'Fast',    tint: 'blue'    },
+  { Icon: FaLock,      label: 'Private', tint: 'purple'  },
+];
 
 function LoginPage() {
-  
   const { saveAuthUser } = useContext(globalContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isError, setIsError] = useState(false);
 
-  const router = useRouter();
-  const hasRedirectUrl = router?.query?.[__redirect_url_key];
-
-  const failedGoogleLogin = (e) => {
+  const failedGoogleLogin = () => {
     setIsError('Something went wrong. Try again');
     setIsSubmitting(false);
-    return;
   };
 
   const responseGoogle = (authResponse) => {
+    setIsSubmitting(true);
+    setIsError(false);
     api
-      .post('/google-signup', {
-        idToken: authResponse?.credential,
-      })
+      .post('/google-signup', { idToken: authResponse?.credential })
       .then((res) => {
         const { user, token } = res?.data?.data;
         saveAuthUser(user, token, true);
@@ -64,113 +46,86 @@ function LoginPage() {
       <Head>
         <title>Login {__page_title_end}</title>
       </Head>
-      <div className="container">
-        <div className="w-full sm:w-[380px] relative _form_wrapper">
-          {isSubmitting && <div className="_absolute_full"></div>}
-          <h3 className="_h3">Login</h3>
-          <div className="relative !mt-7 _flex_center">
-            {isSubmitting && (
-              <div className="_absolute_full _flex_center bg-white/75">
-                <CircularProgress size={20} className="text-primary-500" />
+
+      <div className="login-page ">
+        <header className="login-logo-bar">
+          <Link href="/">
+            <a aria-label="Go to home">
+              <img src="/logo.png" alt="Logo" className="login-logo" />
+            </a>
+          </Link>
+        </header>
+
+        <main className="login-main flex items-center justify-center flex-col">
+   
+
+          <div className="login-card">
+                 
+            <h2 className="login-card-title">Login With Google</h2>
+            <p className="login-card-sub">
+              One-click sign in with your Google account
+            </p>
+
+            {isError && (
+              <div className="login-error animate-fade-in">
+                <Alert type="error" title={isError} />
               </div>
             )}
-            <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
-              <GoogleLogin
-                onSuccess={responseGoogle}
-                onError={failedGoogleLogin}
-                size="large"
-                theme="filled_blue"
-                shape="circle"
-                auto_select
-              />
-            </GoogleOAuthProvider>
-          </div>
 
-          <div className="mt-5">
-            <Formik
-              initialValues={initialValues}
-              validationSchema={validationSchema}
-              onSubmit={(values, actions) => {
-                const { setSubmitting } = actions;
-                setSubmitting(false);
-                setIsSubmitting(true);
-                setIsError(false);
-
-                const remember = values.rememberMe.length === 1 ? 1 : 0;
-
-                api
-                  .post('/login', {
-                    ...values,
-                    remember,
-                  })
-                  .then((res) => {
-                    const { user, token } = res?.data?.data;
-                    saveAuthUser(user, token, remember, hasRedirectUrl);
-                  })
-                  .catch((err) => {
-                    setIsError(getErrors(err));
-                  })
-                  .finally(() => {
-                    setIsSubmitting(false);
-                    setSubmitting(true);
-                  });
-              }}
-            >
-              {({ handleSubmit }) => (
-                <form className="flex flex-col gap-4">
-                  <FlashMessage
-                    type="success"
-                    disabledCloseButton
-                    messageKey="_changed_password_success"
-                  />
-                  <FlashMessage type="error" disabledCloseButton />
-                  {isError && <Alert type="error" title={isError} />}
-                  <FormikInput
-                    name="email"
-                    type="email"
-                    label="Email"
-                    placeholder="Email"
-                  />
-                  <FormikInput
-                    name="password"
-                    type="password"
-                    label="Password"
-                    placeholder="Password"
-                  />
-                  <FormikCheckBox
-                    name="rememberMe"
-                    value="rememberMe"
-                    label="Remember me"
-                  />
-                  <Button
-                    loading={isSubmitting}
-                    onClick={handleSubmit}
-                    type="submit"
-                    className="w-full"
-                  >
-                    Login
-                  </Button>
-                </form>
+            <div className="login-google">
+              {isSubmitting && (
+                <div className="login-google-loader">
+                  <CircularProgress size={20} className="text-primary-500" />
+                </div>
               )}
-            </Formik>
-            <div className="flex flex-col gap-2 mt-3.5">
-              <Link href={routes.forgotPassword.name}>
-                <a className="_subtitle2 _link">Forgot password?</a>
-              </Link>
-              <p className="_subtitle2">
-                {"Don't have any account?"}
-                <Link
-                  href={`${routes.register.name}${bindRedirectQuery(router)}`}
-                >
-                  <a className="_subtitle2 _link ml-1.5">Create One</a>
-                </Link>
-              </p>
+              <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
+                <GoogleLogin
+                  onSuccess={responseGoogle}
+                  onError={failedGoogleLogin}
+                  size="large"
+                  theme="outline"
+                  shape="pill"
+                  width="300"
+                />
+              </GoogleOAuthProvider>
+            </div>
+
+            <div className="login-divider" aria-hidden="true">
+              <span>Security Guaranteed</span>
+            </div>
+
+            <div className="login-features">
+              {FEATURES.map(({ Icon, label, tint }) => (
+                <div key={label} className={`login-feature login-feature-${tint}`}>
+                  <div className="login-feature-icon">
+                    <Icon />
+                  </div>
+                  <span className="login-feature-label">{label}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+
+          <p className="login-hint">
+            By continuing you agree to our{' '}
+            <Link href="/terms-condition">
+              <a className="login-hint-link">Terms</a>
+            </Link>
+            {' '}and{' '}
+            <Link href="/privacy-policy">
+              <a className="login-hint-link">Privacy Policy</a>
+            </Link>
+            .
+          </p>
+        </main>
       </div>
     </>
   );
 }
+
+// Tells the global Layout in _app.js to hide the site header AND footer on
+// this page — the login screen has its own logo bar and no chrome.
+LoginPage.disabledHeader = true;
+LoginPage.disabledFooter = true;
 
 export default LoginPage;

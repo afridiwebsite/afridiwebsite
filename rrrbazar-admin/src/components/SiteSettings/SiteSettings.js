@@ -15,8 +15,6 @@ function SiteSettings() {
     const secondary_color = useRef(null)
     const accent_color = useRef(null)
     const coin_to_money_rate = useRef(null)
-    const daily_claim_amount = useRef(null)
-    const daily_claim_interval_hours = useRef(null)
     const dayRewardRefs = [
         useRef(null), useRef(null), useRef(null), useRef(null),
         useRef(null), useRef(null), useRef(null),
@@ -28,9 +26,27 @@ function SiteSettings() {
 
     const [busy, setBusy] = useState(false)
 
+    // State for local color values to allow syncing text input and color picker
+    const [colors, setColors] = useState({
+        primary: '',
+        secondary: '',
+        accent: ''
+    })
+
     useEffect(() => {
-        if (data) setSavedLogo(data.logo || '')
+        if (data) {
+            setSavedLogo(data.logo || '')
+            setColors({
+                primary: data.primary_color || '#2563eb',
+                secondary: data.secondary_color || '#1e40af',
+                accent: data.accent_color || '#f59e0b'
+            })
+        }
     }, [data])
+
+    const handleColorChange = (key, val) => {
+        setColors(prev => ({ ...prev, [key]: val }))
+    }
 
     const submit = (e) => {
         e.preventDefault()
@@ -39,12 +55,10 @@ function SiteSettings() {
         const payload = {
             site_name: site_name.current.value,
             logo: uploadedLogo || savedLogo,
-            primary_color: primary_color.current.value,
-            secondary_color: secondary_color.current.value,
-            accent_color: accent_color.current.value,
+            primary_color: colors.primary,
+            secondary_color: colors.secondary,
+            accent_color: colors.accent,
             coin_to_money_rate: parseFloat(coin_to_money_rate.current.value || 0),
-            daily_claim_amount: parseInt(daily_claim_amount.current.value || 0, 10),
-            daily_claim_interval_hours: parseInt(daily_claim_interval_hours.current.value || 24, 10),
             day_1_reward: parseInt(dayRewardRefs[0].current?.value || 0, 10),
             day_2_reward: parseInt(dayRewardRefs[1].current?.value || 0, 10),
             day_3_reward: parseInt(dayRewardRefs[2].current?.value || 0, 10),
@@ -100,17 +114,56 @@ function SiteSettings() {
                                 <div className="form_grid">
                                     <div>
                                         <label>Primary</label>
-                                        <input ref={primary_color} defaultValue={data.primary_color} type="color" className="form_input h-12" />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                value={colors.primary} 
+                                                onChange={(e) => handleColorChange('primary', e.target.value)} 
+                                                type="color" 
+                                                className="w-12 h-10 p-0 border-0 cursor-pointer" 
+                                            />
+                                            <input 
+                                                value={colors.primary} 
+                                                onChange={(e) => handleColorChange('primary', e.target.value)} 
+                                                className="form_input flex-1" 
+                                                placeholder="#000000"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <label>Secondary</label>
-                                        <input ref={secondary_color} defaultValue={data.secondary_color} type="color" className="form_input h-12" />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                value={colors.secondary} 
+                                                onChange={(e) => handleColorChange('secondary', e.target.value)} 
+                                                type="color" 
+                                                className="w-12 h-10 p-0 border-0 cursor-pointer" 
+                                            />
+                                            <input 
+                                                value={colors.secondary} 
+                                                onChange={(e) => handleColorChange('secondary', e.target.value)} 
+                                                className="form_input flex-1" 
+                                                placeholder="#000000"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="form_grid">
                                     <div>
                                         <label>Accent</label>
-                                        <input ref={accent_color} defaultValue={data.accent_color} type="color" className="form_input h-12" />
+                                        <div className="flex gap-2">
+                                            <input 
+                                                value={colors.accent} 
+                                                onChange={(e) => handleColorChange('accent', e.target.value)} 
+                                                type="color" 
+                                                className="w-12 h-10 p-0 border-0 cursor-pointer" 
+                                            />
+                                            <input 
+                                                value={colors.accent} 
+                                                onChange={(e) => handleColorChange('accent', e.target.value)} 
+                                                className="form_input flex-1" 
+                                                placeholder="#000000"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -119,16 +172,6 @@ function SiteSettings() {
                                     <div>
                                         <label>Coin to money rate (1 coin = X BDT)</label>
                                         <input ref={coin_to_money_rate} defaultValue={data.coin_to_money_rate} type="number" step="0.0001" min="0" className="form_input" required />
-                                    </div>
-                                    <div>
-                                        <label>Daily claim amount</label>
-                                        <input ref={daily_claim_amount} defaultValue={data.daily_claim_amount} type="number" min="0" className="form_input" required />
-                                    </div>
-                                </div>
-                                <div className="form_grid">
-                                    <div>
-                                        <label>Claim interval (hours)</label>
-                                        <input ref={daily_claim_interval_hours} defaultValue={data.daily_claim_interval_hours} type="number" min="1" className="form_input" required />
                                     </div>
                                 </div>
 

@@ -94,6 +94,7 @@ function EditNotice(props) {
                                             <select ref={type} id="type" className="form_input" defaultValue={data?.type} required>
                                                 <option value="normal">Normal</option>
                                                 <option value="marquee">Marquee</option>
+                                                <option value="navbar_bottom">Below Navbar (Closable)</option>
                                             </select>
                                         </div>
 

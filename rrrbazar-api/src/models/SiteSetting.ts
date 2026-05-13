@@ -10,8 +10,6 @@ export default (sequelize: Sequelize) => {
         public secondary_color!: string;
         public accent_color!: string;
         public coin_to_money_rate!: number;
-        public daily_claim_amount!: number;
-        public daily_claim_interval_hours!: number;
         public day_1_reward!: number;
         public day_2_reward!: number;
         public day_3_reward!: number;
@@ -51,16 +49,6 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.DOUBLE,
             allowNull: true,
             defaultValue: 0.01
-        },
-        daily_claim_amount: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            defaultValue: 10
-        },
-        daily_claim_interval_hours: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            defaultValue: 24
         },
         day_1_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 2 },
         day_2_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 4 },

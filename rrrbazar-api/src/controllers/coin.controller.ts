@@ -31,7 +31,8 @@ function rewardsArray(settings: any): number[] {
 //   - Claim more than 2 × interval since last claim → user broke the streak,
 //     reset to day 1.
 function streakState(user: any, settings: any) {
-    const intervalMs = settings.daily_claim_interval_hours * 3600 * 1000;
+    const daily_claim_interval_hours = 24; // Hardcoded to 24 hours since it was removed from settings
+    const intervalMs = daily_claim_interval_hours * 3600 * 1000;
     const last = user.last_coin_claim_at ? new Date(user.last_coin_claim_at).getTime() : 0;
     const now = Date.now();
     const prevStreak = Number(user.claim_streak) || 0;

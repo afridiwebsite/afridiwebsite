@@ -358,16 +358,18 @@ class UserController {
     const response = new responseUtils;
     try {
 
-      const notices = await Notice.findOne({
+      const notices = await Notice.findAll({
         where: {
-          for_home_modal: 2,
+          type: {
+            [Op.in]: ['normal', 'marquee', 'navbar_bottom']
+          },
           is_active: 1
         },
         order: [
           ['id', 'ASC'],
         ]
       });
-      response.data = notices || {}
+      response.data = notices || []
       res.send(response.response);
 
     } catch (error) {

@@ -1,7 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Autoplay, Pagination } from 'swiper';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { BrowserView, MobileView } from 'react-device-detect';
-import { FaTelegramPlane } from 'react-icons/fa';
+import { FaTelegramPlane, FaTimes } from 'react-icons/fa';
 import api from '../api/api';
 import ActivityIndicator from '../components/ActivityIndicator';
 import Game from '../components/game';
@@ -74,19 +75,71 @@ function Home({
     Array.isArray(products_by_category) && products_by_category.length > 0;
   const looseProducts = Array.isArray(uncategorized) ? uncategorized : [];
 
+  const [closedNoticeIds, setClosedNoticeIds] = useState([]);
+
+  useEffect(() => {
+    const closed = JSON.parse(localStorage.getItem('closed_notices') || '[]');
+    setClosedNoticeIds(closed);
+  }, []);
+
+  const handleCloseNotice = (id) => {
+    const updated = [...closedNoticeIds, id];
+    setClosedNoticeIds(updated);
+    localStorage.setItem('closed_notices', JSON.stringify(updated));
+  };
+
+  const renderNotice = () => {
+    if (!Array.isArray(header_notice) || header_notice.length === 0) return null;
+
+    const visibleNotices = header_notice.filter((n) => !closedNoticeIds.includes(n.id));
+    if (visibleNotices.length === 0) return null;
+
+    const marquees = visibleNotices.filter((n) => n.type === 'marquee');
+    const others = visibleNotices.filter((n) => n.type !== 'marquee');
+
+    return (
+      <>
+        {marquees.length > 0 && (
+          <section className="mb-2 md:my-3 home_slider_wrapper">
+            <div className="container">
+              <div className="header_notice_home marquee-wrapper">
+                <strong className="header_notice_strong">Notice:</strong>
+                <div className="marquee-content">
+                  <marquee scrollamount="5">
+                    {marquees.map((m) => m.notice).join(' | ')}
+                  </marquee>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+        {others.map((n) => (
+          <section key={n.id} className="mb-2 md:my-3 home_slider_wrapper animate-fade-in">
+            <div className="container">
+              <div className="header_notice_home relative flex items-start justify-between">
+                <div className="flex-1">
+                  <strong className="header_notice_strong">Notice:</strong>
+                  <br />
+                  <p className="header_notice_p">{n.notice}</p>
+                </div>
+                <button
+                  onClick={() => handleCloseNotice(n.id)}
+                  className="ml-3 hover:text-gray-200 transition-colors p-1"
+                  aria-label="Close notice"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            </div>
+          </section>
+        ))}
+      </>
+    );
+  };
+
   return (
     <>
-      {hasData(header_notice) && (
-        <section className="mb-2 md:my-3 home_slider_wrapper">
-          <div className="container">
-            <div className="header_notice_home">
-              <strong className="header_notice_strong">Notice:</strong>
-              <br />
-              <p className="header_notice_p">{header_notice.notice}</p>
-            </div>
-          </div>
-        </section>
-      )}
+      {renderNotice()}
 
       {hasData(banners) && (
         <section className="my-3 home_slider_wrapper">
@@ -240,7 +293,9 @@ export async function getServerSideProps(ctx) {
 
   try {
     const headerNotice = await api.get('/notice-header');
+
     header_notice = headerNotice?.data?.data;
+    console.log(header_notice,'dsd')
   } catch (error) {
     header_notice = null;
   }

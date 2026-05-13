@@ -824,6 +824,281 @@ body {
 }
 .topup-pack-wrap:hover { transform: translateY(-2px); }
 
+// --- Login page (pages/login.js) ---
+// Light, airy variant — see /login.png reference. No extra borders/chrome,
+// just a soft page tint, a centered logo, "Welcome Back" headline, and one
+// white card with the Google button plus three security-feature pills.
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-bg, #EEF1F8);
+  color: #0f172a;
+}
+
+.login-logo-bar {
+  padding: 28px 24px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.45s ease-out both;
+}
+.login-logo {
+  height: 56px;
+  width: auto;
+  filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08));
+}
+
+.login-main {
+  flex: 1;
+  padding: 16px 16px 48px;
+  gap: 16px;
+}
+
+.login-welcome {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  margin: 4px 0 14px;
+  animation: fade-in-up 0.5s ease-out both;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 28px 26px;
+  text-align: center;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 18px 40px rgba(15, 23, 42, 0.08);
+  animation: pop-in 0.5s cubic-bezier(0.2, 0.9, 0.35, 1.15) both;
+}
+
+.login-card-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+.login-card-sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 18px;
+}
+
+.login-error { margin-bottom: 14px; }
+
+.login-google {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin-bottom: 6px;
+  animation: fade-in-up 0.6s 0.15s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.login-google-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 9999px;
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+}
+
+// Divider — thin lines on either side of a small uppercase label.
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0 16px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+}
+.login-divider span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+// Three feature pills (Secure / Fast / Private).
+.login-features {
+  display: flex;
+  justify-content: space-between;
+  padding: 0px 20px;
+  
+}
+.login-feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: fade-in-up 0.5s 0.25s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  transition: transform 0.2s ease;
+}
+.login-feature:hover { transform: translateY(-2px); }
+.login-feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.login-feature:hover .login-feature-icon {
+  transform: scale(1.05);
+}
+.login-feature-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+// Three tints — mirrored after the reference screenshot.
+.login-feature-emerald .login-feature-icon {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.18);
+}
+.login-feature-blue .login-feature-icon {
+  background: rgba(56, 189, 248, 0.14);
+  color: #0284c7;
+  box-shadow: 0 6px 14px rgba(56, 189, 248, 0.18);
+}
+.login-feature-purple .login-feature-icon {
+  background: rgba(168, 85, 247, 0.14);
+  color: #7e22ce;
+  box-shadow: 0 6px 14px rgba(168, 85, 247, 0.18);
+}
+
+.login-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 4px 0 0;
+}
+.login-hint-link {
+  color: var(--theme-primary, #2563eb);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.login-hint-link:hover { text-decoration: underline; }
+
+// --- Generic legal page (terms / privacy / refund) ---
+.legal-page {
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04);
+  line-height: 1.65;
+  color: #374151;
+}
+.legal-page-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  background: linear-gradient(
+    90deg,
+    var(--theme-primary, #2563eb),
+    var(--theme-accent, #4D67D8)
+  );
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.legal-page-updated {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 18px;
+}
+.legal-page h2 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f2937;
+  margin: 22px 0 6px;
+}
+.legal-page p { margin: 0 0 10px; font-size: 14px; }
+.legal-page-note {
+  margin-top: 22px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 12px;
+}
+
+// Floating decorative icon layer
+.login-icons {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+.login-icon {
+  position: absolute;
+  opacity: 0.55;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45));
+  animation: login-float 6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes login-float {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg);   opacity: 0.4; }
+  25%  { transform: translate3d(8px, -14px, 0) rotate(8deg); opacity: 0.7; }
+  50%  { transform: translate3d(-4px, -22px, 0) rotate(-6deg); opacity: 0.55; }
+  75%  { transform: translate3d(-10px, -12px, 0) rotate(4deg); opacity: 0.65; }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg);   opacity: 0.4; }
+}
+
+.login-blob {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  pointer-events: none;
+  animation: login-blob-drift 14s ease-in-out infinite alternate;
+}
+.login-blob-a {
+  top: -120px;
+  left: -120px;
+  background: radial-gradient(circle, #6366f1 0%, transparent 70%);
+}
+.login-blob-b {
+  bottom: -140px;
+  right: -120px;
+  background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
+  animation-duration: 18s;
+}
+@keyframes login-blob-drift {
+  from { transform: translate(0, 0)   scale(1); }
+  to   { transform: translate(40px, 30px) scale(1.08); }
+}
+
+@media (max-width: 420px) {
+  .login-card { padding: 28px 20px 24px; }
+  .login-icon { opacity: 0.4; }
+}
+
 @layer base {
   body {
     font-family: 'Inter', sans-serif;
@@ -912,7 +1187,8 @@ body {
       ._order_header_step_circle {
         @apply w-8 h-8 rounded-full overflow-hidden _flex_center border-2 border-white text-lg font-bold text-white;
         background: rgba(255, 255, 255, 0.18);
-        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+                backdrop-filter: blur(6px);
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
       }
 
@@ -1415,6 +1691,28 @@ body {
   padding: 10px 20px;
   border-radius: 3px;
   box-shadow: 3px 2px 3px 2px #6ab8d4;
+
+  &.marquee-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 15px;
+
+    .marquee-content {
+      flex: 1;
+      overflow: hidden;
+      
+      marquee {
+        display: block;
+        margin-top: 4px;
+      }
+    }
+  }
+}
+
+.fixed-notice-bar {
+  z-index: 50;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .header_notice_strong {

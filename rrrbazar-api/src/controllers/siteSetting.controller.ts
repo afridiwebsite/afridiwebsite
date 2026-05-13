@@ -32,8 +32,6 @@ class SiteSettingController {
             secondary_color,
             accent_color,
             coin_to_money_rate,
-            daily_claim_amount,
-            daily_claim_interval_hours,
             day_1_reward,
             day_2_reward,
             day_3_reward,
@@ -51,9 +49,6 @@ class SiteSettingController {
         if (secondary_color !== undefined) settings.secondary_color = secondary_color;
         if (accent_color !== undefined) settings.accent_color = accent_color;
         if (coin_to_money_rate !== undefined) settings.coin_to_money_rate = coin_to_money_rate;
-        if (daily_claim_amount !== undefined) settings.daily_claim_amount = daily_claim_amount;
-        if (daily_claim_interval_hours !== undefined)
-            settings.daily_claim_interval_hours = daily_claim_interval_hours;
         if (day_1_reward !== undefined) settings.day_1_reward = Number(day_1_reward) || 0;
         if (day_2_reward !== undefined) settings.day_2_reward = Number(day_2_reward) || 0;
         if (day_3_reward !== undefined) settings.day_3_reward = Number(day_3_reward) || 0;

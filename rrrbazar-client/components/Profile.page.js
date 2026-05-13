@@ -112,8 +112,10 @@ function ProfilePage() {
     <>
       <section className="mb-7">
         {/* Hero banner */}
+
+        <div className='relative md:container animate-fade-in h-[200px] md:h-[140px] mt-2' > 
         <div
-          className="profile-hero md:container animate-fade-in"
+          className="profile-hero lg:rounded-lg h-full"
           style={{
             backgroundImage: `
               linear-gradient(0deg, rgba(0,0,0,0.65), rgba(0,0,0,0.15)),
@@ -121,8 +123,10 @@ function ProfilePage() {
             `,
           }}
         >
-          <div className="flex flex-col md:flex-row justify-center items-center md:items-end md:justify-between pt-20 pb-5">
-            <div className="flex flex-col items-center sm:flex-row md:items-end gap-4 md:gap-5 mb-6 md:mb-0 animate-fade-in-up">
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-center items-center md:items-end md:justify-between  pb-5 absolute md:left-10 md:-bottom-10 left-0 right-0 m-auto top-1">
+            <div className="flex flex-col items-center md:flex-row md:items-end gap-4 md:gap-5 mb-6 md:mb-0 animate-fade-in-up">
               <div className="rounded-full p-1 md:-mb-8 bg-white inline-block shadow-xl ring-2 ring-white/40">
                 <Avatar
                   size={120}
@@ -146,7 +150,7 @@ function ProfilePage() {
           </div>
         </div>
 
-        <div className="container md:!px-0 mt-5 md:mt-7">
+        <div className="container mt-14">
           {/* Stats — full width now that User Info block is gone */}
           <div className="grid grid-cols-1 xxs:grid-cols-2 lg:!grid-cols-4 gap-5 md:gap-7">
             {[

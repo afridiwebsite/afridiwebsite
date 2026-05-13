@@ -96,7 +96,7 @@ function SettingsPage() {
                 <span className={boxTitleClass}>Email:</span>
                 <span>{authUser?.email}</span>
               </div>
-              <div className={`${boxClass} relative !overflow-visible`}>
+              {/* <div className={`${boxClass} relative !overflow-visible`}>
                 <span className={boxTitleClass}>Phone:</span>
                 <div className="flex items-center gap-2">
                   {hasData(phone) && (
@@ -237,7 +237,7 @@ function SettingsPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </div> */}
               <div className={`${boxClass} !flex-col !items-start`}>
                 <span className={boxTitleClass}>Change Password</span>
                 <div className="mt-5 w-full">
@@ -314,11 +314,11 @@ function SettingsPage() {
                       </form>
                     )}
                   </Formik>
-                  <div className="flex justify-end mt-4">
+                  {/* <div className="flex justify-end mt-4">
                     <Link href={routes.forgotPassword.name}>
                       <a className="_subtitle2 _link">Forgot password?</a>
                     </Link>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>

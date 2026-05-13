@@ -91,6 +91,7 @@ function MyApp({ Component, pageProps }) {
   const signOut = () => {
     removeBoth(__user_key);
     removeBoth(__access_token_key);
+    localStorage.removeItem('closed_notices');
     googleLogout();
     router.push(routes.login.name).then(() => {
       setIsAuth(false);
@@ -102,6 +103,7 @@ function MyApp({ Component, pageProps }) {
   const saveAuthUser = (userObj, accessToken, rememberMe, redirectUrl) => {
     removeBoth(__user_key);
     removeBoth(__access_token_key);
+    localStorage.removeItem('closed_notices');
 
     if (rememberMe) {
       setLocal(__user_key, userObj);
@@ -141,6 +143,7 @@ function MyApp({ Component, pageProps }) {
   };
 
   const isDisabledHeader = Component?.disabledHeader;
+  const isDisabledFooter = Component?.disabledFooter;
 
   return (
     <>
@@ -155,7 +158,7 @@ function MyApp({ Component, pageProps }) {
       </Head>
       <globalContext.Provider value={glovalContextData}>
         <QueryClientProvider client={queryClient}>
-          <Layout disabledHeader={isDisabledHeader}>
+          <Layout disabledHeader={isDisabledHeader} disabledFooter={isDisabledFooter}>
             <ToastContainer />
             <GoogleReCaptchaProvider
               reCaptchaKey="6Ldv3ZoiAAAAAL4uWffvaER-f4IQ02z3yuuIoMyh"
