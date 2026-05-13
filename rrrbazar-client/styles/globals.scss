@@ -441,7 +441,6 @@ body {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  border-radius: 14px;
   overflow: hidden;
   position: relative;
 }
@@ -750,14 +749,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin: 4px 0 14px;
-  background: linear-gradient(
-    90deg,
-    var(--theme-primary, #2563eb),
-    var(--theme-accent, #4D67D8)
-  );
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+
 }
 .home-section-title-bar {
   display: inline-block;

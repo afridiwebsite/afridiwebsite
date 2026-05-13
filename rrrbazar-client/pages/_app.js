@@ -161,7 +161,7 @@ function MyApp({ Component, pageProps }) {
           <Layout disabledHeader={isDisabledHeader} disabledFooter={isDisabledFooter}>
             <ToastContainer />
             <GoogleReCaptchaProvider
-              reCaptchaKey="6Ldv3ZoiAAAAAL4uWffvaER-f4IQ02z3yuuIoMyh"
+              reCaptchaKey="6Ld66-csAAAAAJ0nSzak_ac7BkquGys_sv5k0ZPi"
               scriptProps={{
                 async: false,
                 defer: false,

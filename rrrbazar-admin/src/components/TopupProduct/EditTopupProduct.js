@@ -57,7 +57,7 @@ function EditTopupProduct(props) {
         axiosInstance.post(`/admin/topup-product/update/${productId}`, {
             name: name.current.value,
             logo: path || data?.logo,
-            price: price.current.value,
+            price: 0,
             serial: serial.current.value,
             rules: convertToHTML(editorState.getCurrentContent()),
             isactivefortopup: isactivefortopup.current.checked ? 1 : 0,
@@ -102,16 +102,15 @@ function EditTopupProduct(props) {
                                                 <label htmlFor="name">Name</label>
                                                 <input ref={name} id="name" defaultValue={data?.name} className="form_input" type="text" placeholder="Name" required />
                                             </div>
-                                            <div>
-                                                <label htmlFor="price">Price</label>
-                                                <input ref={price} defaultValue={data?.price} id="price" className="form_input" type="number" placeholder="Price" required />
-                                            </div>
-                                        </div>
-                                        <div className="form_grid">
-                                            <div>
+
+                                              <div>
                                                 <label htmlFor="logo">Logo</label>
                                                 <input ref={logo} id="logo" className="form_input" type="file" onChange={e => setProductLogo(e.target.files[0])} />
                                             </div>
+                                            
+                                        </div>
+                                        <div className="form_grid">
+                                          
                                             <div>
                                                 <label htmlFor="serial">Serial</label>
                                                 <input ref={serial} defaultValue={data?.serial} id="serial" className="form_input" type="number" placeholder="serial" required />

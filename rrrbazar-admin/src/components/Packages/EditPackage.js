@@ -6,6 +6,7 @@ import useUpload from '../../hooks/useUpload';
 import useGet from '../../hooks/useGet';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
+
 function EditPackage(props) {
     const history = useHistory()
     const packageId = props.match.params.id;

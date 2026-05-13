@@ -60,7 +60,7 @@ const auth = async (req: express.Request, res: express.Response, next: express.N
         next();
 
     } catch (e) {
-
+        console.log("Admin Auth Error:", e);
         response.status = 403;
         response.success = false;
         response.message = 'Access Denied'

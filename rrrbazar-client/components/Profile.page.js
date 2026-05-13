@@ -8,6 +8,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
 import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
+import { FaIdBadge, FaWallet, FaShoppingCart, FaClipboardList } from 'react-icons/fa';
 import {
   claimCoins,
   convertCoins,
@@ -113,9 +114,9 @@ function ProfilePage() {
       <section className="mb-7">
         {/* Hero banner */}
 
-        <div className='relative md:container animate-fade-in h-[200px] md:h-[140px] mt-2' > 
+        <div className='relative md:container animate-fade-in h-[200px] md:h-[140px] md:mt-2' > 
         <div
-          className="profile-hero lg:rounded-lg h-full"
+          className="profile-hero md:rounded-lg h-full"
           style={{
             backgroundImage: `
               linear-gradient(0deg, rgba(0,0,0,0.65), rgba(0,0,0,0.15)),
@@ -154,8 +155,8 @@ function ProfilePage() {
           {/* Stats — full width now that User Info block is gone */}
           <div className="grid grid-cols-1 xxs:grid-cols-2 lg:!grid-cols-4 gap-5 md:gap-7">
             {[
-              { label: 'User Id',     value: authUser?.id,           delay: 60 },
-              { label: 'Total Wallet', value: `৳ ${wallet || 0}`,     delay: 120 },
+              { label: 'User Id',     value: authUser?.id,           delay: 60, icon: <FaIdBadge /> },
+              { label: 'Total Wallet', value: `৳ ${wallet || 0}`,     delay: 120, icon: <FaWallet />, path: routes.addMoney.name },
               {
                 label: 'Total Spent',
                 value: (
@@ -165,10 +166,12 @@ function ProfilePage() {
                       loading={isLoading}
                       error={isError && error}
                     />
-                    {ordersData?.totalSpent && '৳ ' + ordersData?.totalSpent}
+                    {ordersData?.totalSpent !== undefined && '৳ ' + ordersData?.totalSpent}
                   </>
                 ),
                 delay: 180,
+                icon: <FaShoppingCart />,
+                path: routes.myOrder.name
               },
               {
                 label: 'Total Order',
@@ -183,15 +186,23 @@ function ProfilePage() {
                   </>
                 ),
                 delay: 240,
+                icon: <FaClipboardList />,
+                path: routes.myOrder.name
               },
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="profile-stat-card animate-fade-in-up"
+                className={`profile-stat-card animate-fade-in-up ${stat.path ? 'cursor-pointer hover:border-primary-500' : ''}`}
                 style={{ animationDelay: `${stat.delay}ms` }}
+                onClick={() => stat.path && router.push(stat.path)}
               >
-                <p className="profile-stat-value">{stat.value}</p>
-                <p className="profile-stat-label">{stat.label}</p>
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <div className="text-3xl text-primary-500 mb-1 opacity-80">
+                    {stat.icon}
+                  </div>
+                  <p className="profile-stat-value !text-2xl !mb-1">{stat.value}</p>
+                  <p className="profile-stat-label !text-sm">{stat.label}</p>
+                </div>
               </div>
             ))}
           </div>

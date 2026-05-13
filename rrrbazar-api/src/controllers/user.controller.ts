@@ -361,7 +361,7 @@ class UserController {
       const notices = await Notice.findAll({
         where: {
           type: {
-            [Op.in]: ['normal', 'marquee', 'navbar_bottom']
+            [Op.in]: ['marquee', 'navbar_bottom']
           },
           is_active: 1
         },

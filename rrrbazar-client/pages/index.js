@@ -293,6 +293,7 @@ export async function getServerSideProps(ctx) {
 
   try {
     const headerNotice = await api.get('/notice-header');
+    
 
     header_notice = headerNotice?.data?.data;
     console.log(header_notice,'dsd')
