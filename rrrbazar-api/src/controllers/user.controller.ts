@@ -489,7 +489,7 @@ class UserController {
           "user_id",
           "product_id",
           [
-            Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
+            Sequelize.literal("TIMESTAMPDIFF(SECOND, Order.created_at, Order.updated_at)"),
             "diff_in_seconds",
           ],
         ],
@@ -508,7 +508,7 @@ class UserController {
         where: {
           product_id: product_id,
         },
-        order: [["created_at", "DESC"]],
+        order: [["Order", "created_at", "DESC"]],
         limit: product_id == "16" ? 500 : 20,
       });
 
@@ -535,7 +535,7 @@ class UserController {
           "user_id",
           "product_id",
           [
-            Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
+            Sequelize.literal("TIMESTAMPDIFF(SECOND, Order.created_at, Order.updated_at)"),
             "diff_in_seconds",
           ],
         ],
@@ -551,7 +551,7 @@ class UserController {
             required: false,
           },
         ],
-        order: [["created_at", "DESC"]],
+        order: [["Order", "created_at", "DESC"]],
         limit: 20,
       });
 
@@ -736,20 +736,24 @@ class UserController {
         const meta_data = {
           token: process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f",
           id: user.id,
-          phone: user.phone,
-          wallet: user.wallet,
-          city: user.city,
-          address: user.address,
-          zip_code: user.zip_code,
-          paymentmethod:
-            payment_mathod === "auto_payment"
-              ? 1
-              : payment_mathod === "pay"
-                ? 4
-                : payment_mathod,
-          seller_id: user.phone,
+          paymentmethod: 1, // UddoktaPay method ID
           unipin_id: hold_unipin_id,
-          order: user_order_data,
+          order: {
+            topuppackage_id,
+            product_id,
+            accounttype,
+            ingameid,
+            ingamepassword,
+            playerid,
+            phone,
+            securitycode,
+            status: order_status,
+            payment_mathod: "wallet",
+            brief_note: unipin_code == "" ? "" : "UniPin: " + unipin_code,
+            user_id,
+            amount,
+            bprice,
+          },
         };
 
         const fastPayData = await fastPay({
@@ -764,7 +768,7 @@ class UserController {
 
         console.log(fastPayData,'data')
         response.data = fastPayData;
-        return res.send(response.response);
+        return res.send(response.data);
       } else {
         response.message = "Invalid payment method";
         return res.status(400).send(response.internalError);
@@ -1594,6 +1598,8 @@ class UserController {
         paymentmethod,
       } = req.body;
 
+      console.log("UddoktaPay Webhook Received:", JSON.stringify(req.body));
+
       //const uak = req.headers['RT_UDDOKTAPAY_API_KEY'];
 
       let metadataObj = metadata;
@@ -1606,6 +1612,7 @@ class UserController {
       }
 
       if (!metadataObj || !metadataObj.id) {
+        console.error("Webhook Error: User metadata not found or invalid", metadataObj);
         return res.send({
           status: "failure",
           statusCode: 400,
@@ -1615,6 +1622,7 @@ class UserController {
 
       const user = await User.findByPk(metadataObj.id);
       if (!user) {
+        console.error("Webhook Error: User not found for ID", metadataObj.id);
         return res.send({
           status: "failure",
           statusCode: 400,
@@ -1622,11 +1630,13 @@ class UserController {
         });
       }
 
+      const envToken = process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f";
       if (
         metadataObj.token == null ||
         metadataObj.token == "" ||
         typeof metadataObj.token === "undefined"
       ) {
+        console.error("Webhook Error: Token missing in metadata");
         return res.send({
           status: "failure",
           statusCode: 403,
@@ -1634,7 +1644,8 @@ class UserController {
         });
       }
 
-      if (metadataObj.token != (process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f")) {
+      if (metadataObj.token != envToken) {
+        console.error("Webhook Error: Unauthorized Action! Token mismatch.", { received: metadataObj.token, expected: envToken });
         return res.send({
           status: "failure",
           statusCode: 403,
@@ -1644,7 +1655,7 @@ class UserController {
 
       const pm = await PaymentMethod.findByPk(metadataObj.paymentmethod);
       if (pm) {
-        metadataObj.seller_id = pm.info != "" ? pm.info : 13;
+        metadataObj.seller_id = (pm.info && !isNaN(Number(pm.info))) ? parseInt(pm.info) : 13;
       } else {
         metadataObj.seller_id = 13;
       }
@@ -1652,7 +1663,7 @@ class UserController {
       const createTransaction = await Transaction.create({
         user_id: metadataObj.id,
         purpose: "fastPay",
-        amount,
+        amount: Math.round(parseFloat(amount)),
         number: sender_number,
         paymentmethod_id: metadataObj.paymentmethod,
         action_by: metadataObj.seller_id,
@@ -1674,55 +1685,69 @@ class UserController {
         }
 
         if (metadataObj?.order) {
-          const order = await Order.create(metadataObj?.order);
-
-          // Award coins for purchase
-          try {
-            const topupPackage = await TopupPackage.findByPk(order.topuppackage_id);
-            if (topupPackage) {
-              const coinReward = Number(topupPackage.coin_value || 0);
-              if (coinReward > 0) {
-                user.coins = (user.coins || 0) + coinReward;
-                await user.save();
-                await CoinTransaction.create({
-                  user_id: user.id,
-                  amount: coinReward,
-                  type: 'purchase',
-                  note: `Order #${order.id} (${topupPackage.name})`,
-                  reference_id: order.id,
-                });
-              }
-
-              // AUTO BOT SET IN CODE START
-              if (order.status == "pending" && topupPackage.uc > 0) {
-                const store_unipin_auto = await StoreUnipin.findOne({
-                  where: {
-                    status: 1,
-                    uc: topupPackage.uc,
-                  },
-                  order: Sequelize.literal("RAND()"),
-                });
-                if (store_unipin_auto) {
-                  const myunipincode = store_unipin_auto.code;
-                  store_unipin_auto.status = order.id;
-                  await store_unipin_auto.save();
-
-                  const botStatus = await autoOrder(
-                    order.id,
-                    order.playerid,
-                    topupPackage.uc,
-                    myunipincode,
-                  );
-                  order.status = botStatus ? "In Progress" : "pending";
-                  order.uc = myunipincode;
-                  order.ingamepassword = botStatus;
-                  await order.save();
-                }
-              }
-              // AUTO BOT SET IN CODE END
+          let orderData = metadataObj.order;
+          if (typeof orderData === "string") {
+            try {
+              orderData = JSON.parse(orderData);
+            } catch (e) {
+              console.error("Failed to parse nested order data", e);
             }
-          } catch (e) {
-            console.error("Error in webhook order processing", e);
+          }
+
+          if (typeof orderData === "object" && orderData !== null) {
+            const order = await Order.create(orderData);
+            console.log("Order created from webhook:", order.id);
+
+            // Award coins for purchase
+            try {
+              const topupPackage = await TopupPackage.findByPk(order.topuppackage_id);
+              if (topupPackage) {
+                const coinReward = Number(topupPackage.coin_value || 0);
+                if (coinReward > 0) {
+                  user.coins = (user.coins || 0) + coinReward;
+                  await user.save();
+                  await CoinTransaction.create({
+                    user_id: user.id,
+                    amount: coinReward,
+                    type: 'purchase',
+                    note: `Order #${order.id} (${topupPackage.name})`,
+                    reference_id: order.id,
+                  });
+                }
+
+                // AUTO BOT SET IN CODE START
+                if (order.status == "pending" && topupPackage.uc > 0) {
+                  const store_unipin_auto = await StoreUnipin.findOne({
+                    where: {
+                      status: 1,
+                      uc: topupPackage.uc,
+                    },
+                    order: Sequelize.literal("RAND()"),
+                  });
+                  if (store_unipin_auto) {
+                    const myunipincode = store_unipin_auto.code;
+                    store_unipin_auto.status = order.id;
+                    await store_unipin_auto.save();
+
+                    const botStatus = await autoOrder(
+                      order.id,
+                      order.playerid,
+                      topupPackage.uc,
+                      myunipincode,
+                    );
+                    order.status = botStatus ? "In Progress" : "pending";
+                    order.uc = myunipincode;
+                    order.ingamepassword = botStatus;
+                    await order.save();
+                  }
+                }
+                // AUTO BOT SET IN CODE END
+              }
+            } catch (e) {
+              console.error("Error in webhook order processing (coins/bot)", e);
+            }
+          } else {
+            console.error("Webhook Error: order data is invalid", orderData);
           }
         }
 

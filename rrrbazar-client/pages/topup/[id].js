@@ -337,11 +337,11 @@ function TopupOrderPage() {
                             payment_mathod,
                           })
                           .then((order_res) => {
-                            if (order_res.data?.data?.message == 'Payment Url') {
+                            if (order_res.data?.message == 'Payment Initiated' || order_res.data?.message == 'Payment Url') {
                               setFlashMessage(
                                 'Redirect Payment Gateway'
                               );
-                              window.location.assign(order_res.data?.data?.payment_url)
+                              window.location.assign(order_res.data?.payment_url)
                             } else {
                               setFlashMessage(
                                 'Your order has been placed successfully.'

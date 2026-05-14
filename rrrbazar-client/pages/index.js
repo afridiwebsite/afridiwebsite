@@ -25,7 +25,7 @@ function CategorySection({ title, products }) {
     <section className="container mb-14 mt-20 animate-fade-in">
       <div className="">
         <SectionTitle>{title}</SectionTitle>
-        <div className="grid grid-cols-3 xs:grid-cols-4 md:grid-cols-6 gap-4 md:gap-8">
+        <div className="grid grid-cols-3 xs:grid-cols-3 md:grid-cols-6 gap-4 md:gap-8">
           {products.map((p, i) => (
             <div
               key={p.id || i}

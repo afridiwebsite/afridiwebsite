@@ -73,16 +73,6 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-plus-circle",
     },
     {
-      text: "Admin Wallet",
-      path: "/admin-wallet",
-      icon: "fas fa-wallet",
-    },
-    {
-      text: "Withdraw Earn Wallet",
-      path: "/withdraw-earn-wallet",
-      icon: "fas fa-plus-circle",
-    },
-    {
       text: "Topup Order",
       path: "/tables",
       icon: "fas fa-table",
@@ -111,11 +101,6 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-shield-alt",
     },
     {
-      text: "BOT SERVER",
-      path: "/bots",
-      icon: "fas fa-plus-circle",
-    },
-    {
       text: "Banner",
       path: "/banner",
       icon: "fas fa-map-marker-alt",
@@ -126,28 +111,6 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-flag-checkered",
     },
     {
-      text: "Admin Transaction",
-      path: "/admin-wallet-request",
-      icon: "fas fa-wallet",
-      submenu: [
-        {
-          text: "Create Transaction",
-          path: "/admin-wallet-request",
-          icon: "fab fa-product-hunt",
-        },
-        {
-          text: "My Request",
-          path: "/my-wallet-request",
-          icon: "fas fa-cubes",
-        }
-      ]
-    },
-    {
-      text: "landing Page",
-      path: "/landing",
-      icon: "fas fa-newspaper",
-    },
-    {
       text: "Site Settings",
       path: "/site-settings",
       icon: "fas fa-cog",
@@ -156,11 +119,6 @@ export default function Sidebar({ isOpenSidebar }) {
       text: "Profile",
       path: "/profile",
       icon: "fas fa-user-circle",
-    },
-    {
-      text: "Send Sms",
-      path: "/send-sms",
-      icon: "fas fa-envelope",
     },
   ];
   const [collapseShow, setCollapseShow] = useState(false);
