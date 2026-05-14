@@ -5,7 +5,8 @@ import { Op, fn, col } from 'sequelize';
 
 const {
     TopupProduct,
-    Category
+    Category,
+    TopupProductInput
 } = Schema;
 
 class TopupProductController {
@@ -55,7 +56,10 @@ class TopupProductController {
                     ],
                 ],
             },
-            include: [{ model: Category, as: 'categories', through: { attributes: [] }, required: false }]
+            include: [
+                { model: Category, as: 'categories', through: { attributes: [] }, required: false },
+                { model: TopupProductInput, as: 'inputs', required: false },
+            ]
         })
 
         if (!data) {

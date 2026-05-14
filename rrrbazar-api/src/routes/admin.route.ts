@@ -119,6 +119,10 @@ router.post('/category/delete/:id', auth, categoryController.deleteCategory)
 router.post('/topup-product/:id/categories', auth, categoryController.assignProductCategories)
 // Category apis ----END----
 
+// Topup product dynamic inputs ----START----
+router.post('/topup-product/:id/inputs', auth, adminController.assignProductInputs)
+// Topup product dynamic inputs ----END----
+
 // Site settings apis ----START----
 router.get('/site-settings', auth, siteSettingController.get)
 router.post('/site-settings/update', auth, siteSettingController.update)

@@ -1768,6 +1768,33 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
+// Verify-button used next to a dynamic input that has verify_player_name on.
+.topup-verify-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--theme-primary, #3856B5) 0%,
+    var(--theme-accent, #4D67D8) 100%
+  );
+  border: none;
+  box-shadow: 0 6px 14px rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+.topup-verify-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+.topup-verify-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 // --- Recharge package picker (replaces SelectedRadio on this page) ---
 .topup-pack-grid {
   display: grid;

@@ -14,6 +14,7 @@ const {
   Notice,
   Admin,
   TopupProduct,
+  TopupProductInput,
   Product,
   TopupPackage,
   PaymentMethod,
@@ -389,7 +390,25 @@ class UserController {
     try {
       const product_id = req.params.id as any;
 
-      const product = await TopupProduct.findByPk(product_id);
+      const product = await TopupProduct.findByPk(product_id, {
+        include: [
+          {
+            model: TopupProductInput,
+            as: "inputs",
+            required: false,
+            // Don't leak the verify URL to the client — the verify endpoint
+            // looks it up server-side by input id.
+            attributes: [
+              "id",
+              "title",
+              "is_player_id",
+              "verify_player_name",
+              "serial",
+            ],
+          },
+        ],
+        order: [[{ model: TopupProductInput, as: "inputs" }, "serial", "ASC"]],
+      });
 
       if (!product) {
         response.message = "TopupProduct not found";
@@ -407,6 +426,55 @@ class UserController {
       res.send(response.response);
     } catch (error) {
       console.log(error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
+  // Verify a player ID against the admin-configured verify_url for a given
+  // input. The verify_url may contain a "{value}" placeholder; if it's
+  // missing we just append the value. Response is whatever the upstream
+  // service returns (proxied so the client doesn't see the URL or hit CORS).
+  verifyPlayerInput = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const input_id = req.params.input_id as any;
+      const value = String(req.query.value || "").trim();
+
+      if (!value) {
+        response.message = "Missing value";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      const input = await TopupProductInput.findByPk(input_id);
+      if (!input) {
+        response.message = "Input not found";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      if (!input.verify_player_name || !input.verify_url) {
+        response.message = "Verification is not configured for this input";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      const encoded = encodeURIComponent(value);
+      const url = input.verify_url.includes("{value}")
+        ? input.verify_url.replace(/\{value\}/g, encoded)
+        : input.verify_url + encoded;
+
+      // Lazy require axios so we don't pull it into the top of the file just
+      // for this one branch.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const axios = require("axios");
+      const upstream = await axios.get(url, { timeout: 8000 });
+      response.data = upstream.data;
+      return res.send(response.data);
+    } catch (error) {
+      console.log("verifyPlayerInput error", (error as any)?.message || error);
       res.status(400).send(response.internalError);
     }
   };

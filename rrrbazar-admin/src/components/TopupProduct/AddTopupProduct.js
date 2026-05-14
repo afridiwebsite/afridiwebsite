@@ -14,7 +14,8 @@ import { convertToHTML } from "draft-convert";
 function AddTopupProduct() {
   const name = useRef(null);
   const logo = useRef(null);
-  const isactivefortopup = useRef(null);
+  // isactivefortopup is no longer surfaced as a checkbox — it's auto-derived
+  // from whether a "Player ID" dynamic input is defined.
   const is_active_product = useRef(null);
 
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
@@ -70,6 +71,30 @@ function AddTopupProduct() {
     }
   };
 
+  // Dynamic input definitions. Each row: { _key, title, verify_player_name, verify_url }.
+  // "Player ID" is reserved: it auto-flags isactivefortopup on the server and
+  // can be used at most once per product.
+  const PLAYER_ID_TITLE = "Player ID";
+  const isPlayerIdTitle = (t) =>
+    String(t || "").trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
+  const newInputRow = () => ({
+    _key: Math.random().toString(36).slice(2),
+    title: "",
+    verify_player_name: false,
+    verify_url: "",
+  });
+  const [productInputs, setProductInputs] = useState([]);
+
+  const updateInputAt = (idx, patch) => {
+    setProductInputs((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
+    );
+  };
+  const addInputRow = () =>
+    setProductInputs((prev) => [...prev, newInputRow()]);
+  const removeInputAt = (idx) =>
+    setProductInputs((prev) => prev.filter((_, i) => i !== idx));
+
   const [loading, setLoading] = useState(null);
   const history = useHistory();
 
@@ -77,13 +102,33 @@ function AddTopupProduct() {
     e.preventDefault();
 
     if (!uploading) {
+      // Validate: at most one "Player ID" input, all inputs must have a title.
+      const playerIdRows = productInputs.filter((it) => isPlayerIdTitle(it.title));
+      if (playerIdRows.length > 1) {
+        toast.error(
+          `Only one input can use the reserved title "${PLAYER_ID_TITLE}".`,
+          toastDefault,
+        );
+        return;
+      }
+      const hasEmptyTitle = productInputs.some((it) => !String(it.title || "").trim());
+      if (hasEmptyTitle) {
+        toast.error("Every dynamic input needs a title.", toastDefault);
+        return;
+      }
+
+      // isactivefortopup is fully derived from the dynamic inputs now — it's
+      // on iff a Player ID input is defined. (The server enforces this too.)
+      const playerIdPresent = playerIdRows.length === 1;
+      const isactivefortopupValue = playerIdPresent ? 1 : 0;
+
       setLoading(true);
       axiosInstance
         .post("/admin/topup-product/create", {
           name: name.current.value,
           logo: path,
           price: 1,
-          isactivefortopup: isactivefortopup.current.checked ? 1 : 0,
+          isactivefortopup: isactivefortopupValue,
           is_active: is_active_product.current.checked ? 1 : 0,
           is_offer: 0,
           offer_items:  0,
@@ -103,6 +148,24 @@ function AddTopupProduct() {
               );
             } catch (e) {
               /* ignore */
+            }
+
+            // Persist dynamic inputs. Send title/verify flags/url + serial so
+            // the order is stable across reloads.
+            try {
+              await axiosInstance.post(
+                `/admin/topup-product/${newId}/inputs`,
+                {
+                  inputs: productInputs.map((it, idx) => ({
+                    title: it.title,
+                    verify_player_name: it.verify_player_name ? 1 : 0,
+                    verify_url: it.verify_url || "",
+                    serial: idx,
+                  })),
+                },
+              );
+            } catch (e) {
+              /* ignore — product is already saved */
             }
           }
           toast.success("Product created successfully", toastDefault);
@@ -240,16 +303,114 @@ function AddTopupProduct() {
                   onEditorStateChange={(e) => setEditorState(e)}
                 />
 
-                <div className="my-2">
-                  <label className="py-2 inline-block cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      ref={isactivefortopup}
-                      className="mr-2"
-                    />
-                    Is active for Id Code
-                  </label>
+                {/* Dynamic Inputs ---- */}
+                <div className="my-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="font-semibold">Order form inputs</label>
+                    <button
+                      type="button"
+                      onClick={addInputRow}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                    >
+                      + Add input
+                    </button>
+                  </div>
+                  <div className="mb-2 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded p-2">
+                    <strong>Reserved keyword:</strong> "{PLAYER_ID_TITLE}". Using
+                    it as a title auto-enables <em>Is active for Id Code</em>,
+                    and only one input per product may use it.
+                  </div>
+                  {productInputs.length === 0 && (
+                    <p className="text-sm text-gray-500 italic">
+                      No inputs yet. Click "Add input" to define one.
+                    </p>
+                  )}
+                  {productInputs.map((row, idx) => {
+                    const reserved = isPlayerIdTitle(row.title);
+                    return (
+                      <div
+                        key={row._key}
+                        className="border border-gray-200 rounded p-3 mb-2 bg-white"
+                      >
+                        <div className="form_grid items-end">
+                          <div>
+                            <label className="text-xs text-gray-600 block mb-1">
+                              Title
+                            </label>
+                            <input
+                              type="text"
+                              className="form_input"
+                              placeholder='e.g. "Player ID", "Server", "Username"'
+                              value={row.title}
+                              onChange={(e) =>
+                                updateInputAt(idx, { title: e.target.value })
+                              }
+                            />
+                            {reserved && (
+                              <p className="text-[11px] text-amber-700 mt-1">
+                                Reserved title — sets <em>Is active for Id Code</em>{" "}
+                                automatically.
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-end justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => removeInputAt(idx)}
+                              className="px-3 py-2 bg-red-100 text-red-700 rounded text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Verify settings only make sense for the reserved
+                            Player ID input — gate them on the title match. */}
+                        {reserved && (
+                          <div className="mt-2">
+                            <label className="py-1 inline-flex items-center cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                className="mr-2"
+                                checked={!!row.verify_player_name}
+                                onChange={(e) =>
+                                  updateInputAt(idx, {
+                                    verify_player_name: e.target.checked,
+                                  })
+                                }
+                              />
+                              <span className="text-sm">Verify player name</span>
+                            </label>
+                            {row.verify_player_name && (
+                              <div className="mt-2">
+                                <label className="text-xs text-gray-600 block mb-1">
+                                  Verify URL{" "}
+                                  <span className="text-gray-400">
+                                    (use <code>&#123;value&#125;</code> as the
+                                    placeholder for the entered value)
+                                  </span>
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form_input"
+                                  placeholder="https://api.example.com/player?id={value}"
+                                  value={row.verify_url}
+                                  onChange={(e) =>
+                                    updateInputAt(idx, {
+                                      verify_url: e.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+                {/* End Dynamic Inputs ---- */}
+
                 <div className="my-2">
                   <label className="py-2 inline-block cursor-pointer select-none">
                     <input

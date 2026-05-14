@@ -21,11 +21,18 @@ const {
   AdminTransaction,
   PaymentMethod,
   TopupProduct,
+  TopupProductInput,
   WithdrawEarnWallet,
   EarnWallet,
   StoreUnipin,
   AutoServer
 } = Schema;
+
+// Reserved keyword for the Player ID input. Only one input per product is
+// allowed to have this title; assigning it also auto-enables isactivefortopup.
+const PLAYER_ID_TITLE = 'Player ID';
+const isPlayerIdTitle = (t: any) =>
+  String(t || '').trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -1818,6 +1825,77 @@ class AdminController {
       response.message = 'Internal error! Try again';
       response.success = true
       return res.status(400).send(response.getResponse())
+    }
+  }
+
+  // Replace the dynamic input definitions for a topup product. The admin form
+  // posts the full desired list — this destroys old rows and inserts new ones.
+  //
+  // Rules:
+  //  - Title "Player ID" is reserved. At most one input per product may use it.
+  //  - When a Player ID input exists, the parent product's isactivefortopup is
+  //    forced to 1 (the legacy flag that drove the simple Player-ID-only UX).
+  //  - verify_url is only stored when verify_player_name is checked.
+  assignProductInputs = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const product_id = Number((req.params.id as any))
+      const rawInputs: any[] = Array.isArray(req.body.inputs) ? req.body.inputs : []
+
+      const product = await TopupProduct.findByPk(product_id)
+      if (!product) {
+        response.message = 'TopupProduct not found'
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+
+      // Normalize, drop empties (title is required), and tag is_player_id.
+      const cleaned = rawInputs
+        .map((it: any, idx: number) => {
+          const title = String(it?.title || '').trim()
+          if (!title) return null
+          const playerIdMatch = isPlayerIdTitle(title)
+          const verify = playerIdMatch && it?.verify_player_name ? 1 : 0
+          return {
+            topup_product_id: product_id,
+            title: playerIdMatch ? PLAYER_ID_TITLE : title, // normalize casing
+            is_player_id: playerIdMatch ? 1 : 0,
+            verify_player_name: verify,
+            verify_url: verify ? String(it?.verify_url || '').trim() : '',
+            serial: typeof it?.serial === 'number' ? it.serial : idx,
+          }
+        })
+        .filter(Boolean) as any[]
+
+      // Enforce: at most one Player ID input.
+      const playerIdCount = cleaned.filter((it) => it.is_player_id === 1).length
+      if (playerIdCount > 1) {
+        response.message = `Only one input can use the reserved title "${PLAYER_ID_TITLE}"`
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+
+      await TopupProductInput.destroy({ where: { topup_product_id: product_id } })
+      if (cleaned.length) {
+        await TopupProductInput.bulkCreate(cleaned)
+      }
+
+      // If the product now has a Player ID input, force isactivefortopup = 1.
+      // (We don't auto-unset it when the input is removed — that's a separate
+      // explicit choice the admin can make in the product form.)
+      if (playerIdCount === 1 && product.isactivefortopup !== 1) {
+        product.isactivefortopup = 1
+        await product.save()
+      }
+
+      response.message = 'Inputs saved'
+      response.data = { count: cleaned.length }
+      res.send(response.response)
+    } catch (error) {
+      console.log(error)
+      res.status(400).send(response.internalError)
     }
   }
 

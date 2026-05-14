@@ -20,12 +20,17 @@ export default (sequelize: Sequelize) => {
         public is_offer!: number;
         public offer_items!: number;
 
-        static associate({ Category, ProductCategory }: typeof Schema) {
+        static associate({ Category, ProductCategory, TopupProductInput }: typeof Schema) {
             this.belongsToMany(Category, {
                 through: ProductCategory,
                 foreignKey: 'topup_product_id',
                 otherKey: 'category_id',
                 as: 'categories',
+                constraints: false,
+            });
+            this.hasMany(TopupProductInput, {
+                foreignKey: 'topup_product_id',
+                as: 'inputs',
                 constraints: false,
             });
         }

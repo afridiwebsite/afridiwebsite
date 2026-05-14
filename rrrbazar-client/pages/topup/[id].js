@@ -12,7 +12,7 @@ import { useQuery } from 'react-query';
 //import ShowMoreText from 'react-show-more-text';
 import Swal from 'sweetalert2';
 import * as Yup from 'yup';
-import api, { getTopupPackage, getUserProfile, getProductOrders, getPlayerName } from '../../api/api';
+import api, { getTopupPackage, getUserProfile, getProductOrders, verifyPlayerInput } from '../../api/api';
 import ActivityIndicator from '../../components/ActivityIndicator';
 import Alert from '../../components/Alert';
 import Button from '../../components/Button';
@@ -38,11 +38,8 @@ import {
 import { globalContext } from '../_app';
 
 function TopupOrderPage() {
-  const [playerData, setPlayerData] = useState(null);
-  const [selectedAccountType, setSelectedAccountType] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  // const [isSubmitting, setisSubmitting] = useState(false);
   const [serverError, setServerError] = useState(null);
   const { isAuth, updateAuthUserInfo, authUser } = useContext(globalContext);
   const router = useRouter();
@@ -74,29 +71,46 @@ function TopupOrderPage() {
 
   const {
     data: productOrder,
-    isLoading1,
-    error1,
-    isError1,
   } = useQuery('get-product-order', () => getProductOrders(product_id), {
     ...reactQueryConfig,
     enabled: !!product_id,
   });
 
-  const {
-    data: playerInfo,
-    isLoading: isLoading2,
-    error: error2,
-    isError: isError2
-  } = useQuery(
-    ['get-player-info', playerData],
-    () => getPlayerName(playerData),
-    {
-      enabled: !!playerData,
-    }
-  );
-
   const productInfo = productData?.product;
   const packages = productData?.packages;
+
+  // Admin-defined dynamic inputs (title + optional verify config). When the
+  // product has any, they replace the legacy hardcoded Player-ID branch in
+  // the order form.
+  const dynamicInputs = Array.isArray(productInfo?.inputs)
+    ? [...productInfo.inputs].sort((a, b) => (a.serial || 0) - (b.serial || 0))
+    : [];
+  const hasDynamicInputs = dynamicInputs.length > 0;
+  const playerIdInput = dynamicInputs.find((i) => i.is_player_id === 1);
+
+  // Verify-button state. Keyed by input id so we can disable/show results
+  // per-input independently.
+  const [verifyState, setVerifyState] = useState({}); // { [id]: { loading, data, error } }
+  const runVerify = async (input, value) => {
+    if (!value) {
+      setVerifyState((p) => ({
+        ...p,
+        [input.id]: { error: 'Enter a value first' },
+      }));
+      return;
+    }
+    setVerifyState((p) => ({ ...p, [input.id]: { loading: true } }));
+    try {
+      const res = await verifyPlayerInput(input.id, value);
+      const data = res?.data?.data || res?.data;
+      setVerifyState((p) => ({ ...p, [input.id]: { data } }));
+    } catch (e) {
+      setVerifyState((p) => ({
+        ...p,
+        [input.id]: { error: 'Verification failed' },
+      }));
+    }
+  };
 
   // ReactHtmlParser keeps wrapper tags even for blank input, so strip tags
   // and whitespace before deciding whether to show the description block.
@@ -105,51 +119,33 @@ function TopupOrderPage() {
     .replace(/&nbsp;/gi, '')
     .trim();
 
-  const isGmailSelected = selectedAccountType === 'gmail' ? true : false;
   const isActiveForTopup = productInfo?.isactivefortopup === 1 ? true : false;
   const displayUnipinVoucher = productInfo?.id === 15 ? "none" : "block";
   const isUnipinVoucher = productInfo?.id === 15 ? true : false;
+  const hasPackages = Array.isArray(packages) && packages.length > 0;
 
   // Form Initial values
   const initialValues = {
     playerid: isUnipinVoucher ? 'UNIPIN_VOUCHER' : '',
     selectedpackage: null,
     payment_mathod: '',
-    ...((!isActiveForTopup && productInfo?.is_offer == 0) && {
-      accounttype: 'gmail',
-      ingamepassword: '',
-      securitycode: productInfo?.id == 11 ? "Clash Of Clan" : '',
-    }),
+    // Seed a key for every non-PlayerID dynamic input so Formik tracks them.
+    ...dynamicInputs.reduce((acc, inp) => {
+      if (!inp.is_player_id) acc[`dyn_${inp.id}`] = '';
+      return acc;
+    }, {}),
   };
 
-  // Form Validation Schema
+  // Form Validation Schema — playerid is only required when a Player ID
+  // dynamic input is configured (or the legacy isactivefortopup flag is set).
+  const requirePlayerId = !!playerIdInput || isActiveForTopup;
   const validationSchema = Yup.object().shape({
-    playerid: Yup.string()
-      .required(
-        isActiveForTopup
-          ? 'আপনার আইডি কোড ভুল'
-          : 'Facebook or Gmail is required'
-      )
-      .trim(),
+    playerid: requirePlayerId
+      ? Yup.string().required('Player ID is required').trim()
+      : Yup.string().trim(),
     selectedpackage: Yup.object().nullable().required('Select a package'),
     payment_mathod: Yup.string().required().trim().label('Payment method'),
-    ...((!isActiveForTopup && productInfo?.is_offer == 0) && {
-      accounttype: Yup.string().required().label('Account type').trim(),
-      ingamepassword: Yup.string().required().trim().label('Password'),
-      ...(selectedAccountType === 'gmail' && {
-        securitycode: Yup.string()
-          .required()
-          .trim()
-          .label('Account backup code'),
-      }),
-    }),
   });
-
-  const handlePlayerIdChange = (e, handleChange) => {
-    handleChange(e);
-    const newPlayerID = e.target.value;
-    setPlayerData(newPlayerID);
-  };
 
   return (
     <>
@@ -320,6 +316,14 @@ function TopupOrderPage() {
                       if (e.isConfirmed && !isConfirmed) {
                         isConfirmed = true;
                         setSubmitting(true);
+                        // Bundle non-Player-ID dynamic input values into a
+                        // single ingameid string ("Label: value | …") so they
+                        // get persisted alongside the order without needing
+                        // schema changes on the order endpoint.
+                        const dynExtras = dynamicInputs
+                          .filter((inp) => !inp.is_player_id)
+                          .map((inp) => `${inp.title}: ${values[`dyn_${inp.id}`] || ''}`)
+                          .join(' | ');
                         api
                           .post('/packageorder', {
                             topuppackage_id: selectedpackage.id,
@@ -327,6 +331,7 @@ function TopupOrderPage() {
                             name: selectedpackage.name,
                             accounttype,
                             playerid,
+                            ingameid: dynExtras || undefined,
                             ingamepassword: isActiveForTopup
                               ? 'IDCODE'
                               : ingamepassword,
@@ -489,144 +494,84 @@ function TopupOrderPage() {
                           </div>
 
                           <div className="order_box_body">
-                            {isActiveForTopup ? (
-                                <>
-                                  {isUnipinVoucher && (
-                                    <div className="_grid_2">
-                                      <FormikInput
-                                        label={productInfo.id == 28 ? "Username" : "Player ID"}
-                                        type={productInfo.id == 28 ? "text" : "number"}
-                                        placeholder={productInfo.id == 28 ? "Telegram Username" : "Enter Player ID"}
-                                        className="small"
-                                        name="playerid"
-                                        onChange={(e) => handlePlayerIdChange(e, handleChange)}
-                                      />
+                            {hasDynamicInputs ? (
+                              // Account Info renders strictly from the admin-
+                              // defined dynamic inputs. No more hardcoded
+                              // Player ID / Account Type / Password branches.
+                              <div className="flex flex-col gap-3">
+                                {dynamicInputs.map((inp) => {
+                                  const fieldName = inp.is_player_id
+                                    ? 'playerid'
+                                    : `dyn_${inp.id}`;
+                                  const vState = verifyState[inp.id] || {};
+                                  const showVerify = !!inp.verify_player_name;
+                                  return (
+                                    <div key={inp.id} className="_grid_2">
+                                      <div>
+                                        <FormikInput
+                                          label={inp.title}
+                                          placeholder={`Enter ${inp.title}`}
+                                          className="small"
+                                          name={fieldName}
+                                        />
+                                        {showVerify && (
+                                          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                            <button
+                                              type="button"
+                                              disabled={vState.loading}
+                                              onClick={() =>
+                                                runVerify(inp, values[fieldName])
+                                              }
+                                              className="topup-verify-btn"
+                                            >
+                                              {vState.loading
+                                                ? 'Verifying…'
+                                                : `Verify ${inp.title}`}
+                                            </button>
+                                            {vState.error && (
+                                              <span className="text-xs text-red-600">
+                                                {vState.error}
+                                              </span>
+                                            )}
+                                            {vState.data && !vState.error && (
+                                              <span className="text-xs text-emerald-700">
+                                                {vState.data.nickname && (
+                                                  <>
+                                                    Player:{' '}
+                                                    <strong>{vState.data.nickname}</strong>
+                                                  </>
+                                                )}
+                                                {vState.data.region && (
+                                                  <>
+                                                    {' '}· Region:{' '}
+                                                    <strong>{vState.data.region}</strong>
+                                                  </>
+                                                )}
+                                                {!vState.data.nickname &&
+                                                  !vState.data.region && (
+                                                    <>Verified</>
+                                                  )}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
-
-                                  {!isUnipinVoucher && (
-                                    <div className="_grid_2">
-                                      <FormikInput
-                                        label={productInfo.id == 28 ? "Username" : "Player ID"}
-                                        placeholder={productInfo.id == 28 ? "Telegram Username" : "Enter Player ID"}
-                                        type={productInfo.id == 28 ? "text" : "number"}
-                                        className="small"
-                                        name="playerid"
-                                        onBlur={(e) => handlePlayerIdChange(e, handleChange)}
-                                      />
-                                    </div>
-                                  )}
-
-                                  {isLoading2 && <p style={{ marginTop: '-12px', fontSize: '12px', fontStyle: 'italic', color: 'green' }}>Searching for player name...</p>}
-                                  {isError2 && <p>Error: {error2.message}</p>}
-                                  {playerInfo?.data && (
-                                    <div style={{ marginTop: '-12px', fontSize: '12px', fontStyle: 'italic' }}>
-                                      <span style={{ marginRight: '14px'}}>Player Name: <strong>{playerInfo?.data?.nickname}</strong></span>
-                                      <span>Region: <strong>{playerInfo?.data?.region}</strong></span>
-                                    </div>
-                                  )}
-
-                                </>
+                                  );
+                                })}
+                              </div>
                             ) : (
-                              // Visible If Product is Inactive For Topup --Start--
-                              <>
-                                <div className="_grid_2">
-                                  <div>
-                                    <label
-                                      htmlFor="accounttype"
-                                      className={`_subtitle2 mb-1.5 block ${
-                                        isAccountTypeError ? 'text-red-500' : ''
-                                      }`}
-                                    >
-                                      Account Type
-                                    </label>
-                                    <select
-                                      className={`_input small !py-[7px] ${
-                                        isAccountTypeError
-                                          ? '!border-red-500'
-                                          : ''
-                                      }`}
-                                      name="accounttype"
-                                      onChange={(e) => {
-                                        setSelectedAccountType(e.target.value);
-                                        return handleChange('accounttype')(e);
-                                      }}
-                                      onBlur={() =>
-                                        setFieldTouched('accounttype')
-                                      }
-                                    >
-                                      <option value="">Select an option</option>
-                                      {productInfo?.is_offer == 0 && productInfo?.id != 11 && 
-                                        <option value="facebook">Facebook</option>
-                                      }
-                                      <option value="gmail">Gmail</option>
-                                    </select>
-                                    <FormikErrorMessage name="accounttype" />
-                                  </div>
-
-                                  <FormikInput
-                                    label={
-                                      isGmailSelected
-                                        ? 'Your email'
-                                        : 'Facebook number'
-                                    }
-                                    placeholder={
-                                      isGmailSelected
-                                        ? 'Enter email'
-                                        : 'Enter number'
-                                    }
-                                    className="small"
-                                    name="playerid"
-                                  />
-                                </div>
-                                {productInfo?.is_offer == 0 &&
-                                  <div className="_grid_2">
-                                    <FormikInput
-                                      label={productInfo?.id == 11 ? "WhatsApp Number" : "Password"}
-                                      placeholder={productInfo?.id == 11 ? "Enter Your WhatsApp Number" : "Enter password"}
-                                      className="small"
-                                      name="ingamepassword"
-                                    />
-                                    <div style={{display: (productInfo?.id == 11) ? 'none' : 'block'}}>
-                                      <FormikInput
-                                        label={`${
-                                          isGmailSelected ? 'Gmail' : 'Facebook'
-                                        } backup code`}
-                                        placeholder="Enter backup code"
-                                        className="small"
-                                        name="securitycode"
-                                      />
-                                      <p className="flex justify-end _body2 mt-1.5">
-                                        <a
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          href={
-                                            isGmailSelected
-                                              ? 'https://www.youtube.com/watch?v=Bep21CCIV-M'
-                                              : 'https://www.youtube.com/watch?v=jSt--79opM8'
-                                          }
-                                          className="_link flex gap-2"
-                                        >
-                                          <HiOutlineExternalLink
-                                            size={18}
-                                            className="flex-shrink-0"
-                                          />
-                                          {isGmailSelected
-                                            ? ' কিভাবে জিমেইল অ্যাকাউন্ট এর ব্যাকআপ কোড বের করবেন? '
-                                            : ' কিভাবে ফেসবুক অ্যাকাউন্ট এর ব্যাকআপ কোড বের করবেন? '}
-                                        </a>
-                                      </p>
-                                    </div>
-                                  </div>
-                                }
-                              </>
-                              // Visible If Product is Inactive For Topup --End--
+                              <p className="_body2 text-[13px] text-gray-500 italic">
+                                The admin hasn&apos;t configured order form inputs
+                                for this product yet.
+                              </p>
                             )}
                           </div>
                         </div>
                         {/* Account Info Form --End-- */}
 
                         {/* Select Recharge --Start-- */}
+                        {hasPackages && (
                         <div
                           className="_order_box_wrapper animate-fade-in-up"
                           style={{ animationDelay: '140ms' }}
@@ -744,6 +689,7 @@ function TopupOrderPage() {
                             />
                           </div>
                         </div>
+                        )}
                         {/* Select Recharge --End-- */}
 
                         {/* Select Payment Option --Start-- */}

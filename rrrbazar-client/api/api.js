@@ -44,6 +44,11 @@ export const getMyShopLists = async ({ pageParam = 1 }) =>
 
 export const getProductOrders = async (product_id) => api.get(`/product-orders/${product_id}`);
 export const getPlayerName = async (playerid) => api.get(`/get-player-name/${playerid}`);
+// Hits the admin-configured verify URL for a given dynamic input.
+export const verifyPlayerInput = async (inputId, value) =>
+  api.get(
+    `/verify-player-input/${inputId}?value=${encodeURIComponent(value || '')}`,
+  );
 export const getTopupPackage = async (id) => api.get(`/topuppackage/${id}`);
 export const getTournamentById = async (id) => api.get(`/tournament/${id}`);
 export const getTournamentWinners = async (id) =>

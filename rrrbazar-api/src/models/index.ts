@@ -10,6 +10,7 @@ Schema.ProductOrder.associate(Schema)
 Schema.TopupPackage.associate(Schema)
 Schema.StoreUnipin.associate(Schema)
 Schema.TopupProduct.associate(Schema)
+Schema.TopupProductInput.associate(Schema)
 Schema.Category.associate(Schema)
 //Schema.AutoServer.associate(Schema)
 

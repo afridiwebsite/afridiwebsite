@@ -14,6 +14,8 @@ const router = express.Router();
 router.get('/products', productController.getProducts);
 router.get('/product-orders', userController.getProductOrders);
 router.get('/get-player-name/:playerid', userController.getPlayerName);
+// Generic player-name verify backed by an admin-configured verify_url per input.
+router.get('/verify-player-input/:input_id', userController.verifyPlayerInput);
 router.get('/product-orders/:product_id', userController.orderList);
 router.get('/products/:id', productController.getSingleProduct);
 router.get('/users-search', userController.getUserSearch)
