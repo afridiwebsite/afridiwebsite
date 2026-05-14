@@ -34,19 +34,60 @@ function EditTopupProduct(props) {
   const isactivefortopup = useRef(null);
   const is_active_product = useRef(null);
 
-  const [categories] = useGet("admin/categories");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+  const [catRefresh, setCatRefresh] = useState(0);
+  const [categories] = useGet("admin/categories", undefined, catRefresh);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
+  // Inline-create state — sentinel "__create__" in the select toggles a form.
+  const [isCreatingCat, setIsCreatingCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatEmoji, setNewCatEmoji] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+
+  // If the product already has categories, pick the first as the single
+  // selection (the multi-select is being collapsed to single-select).
   useEffect(() => {
-    if (data && data.categories) {
-      setSelectedCategoryIds(data.categories.map((c) => c.id));
+    if (data && Array.isArray(data.categories) && data.categories.length > 0) {
+      setSelectedCategoryId(String(data.categories[0].id));
     }
   }, [data]);
 
-  const toggleCategory = (id) => {
-    setSelectedCategoryIds((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-    );
+  const handleCategorySelect = (e) => {
+    const value = e.target.value;
+    if (value === "__create__") {
+      setIsCreatingCat(true);
+      return;
+    }
+    setIsCreatingCat(false);
+    setSelectedCategoryId(value);
+  };
+
+  const submitNewCategory = async () => {
+    const name = newCatName.trim();
+    if (!name) {
+      toast.error("Enter a category name", toastDefault);
+      return;
+    }
+    setCreatingCat(true);
+    try {
+      const res = await axiosInstance.post("/admin/category/create", {
+        name,
+        emoji: newCatEmoji.trim(),
+        serial: 0,
+        is_active: 1,
+      });
+      const created = res?.data?.data;
+      setNewCatName("");
+      setNewCatEmoji("");
+      setIsCreatingCat(false);
+      setCatRefresh((n) => n + 1);
+      if (created?.id) setSelectedCategoryId(String(created.id));
+      toast.success("Category created", toastDefault);
+    } catch (err) {
+      toast.error(getErrors(err, false, true), toastDefault);
+    } finally {
+      setCreatingCat(false);
+    }
   };
 
   const editProductHandler = (e) => {
@@ -66,10 +107,12 @@ function EditTopupProduct(props) {
       })
       .then(async () => {
         try {
+          // The endpoint replaces the link rows on every call, so passing a
+          // 1-element array enforces a single-category assignment.
           await axiosInstance.post(
             `/admin/topup-product/${productId}/categories`,
             {
-              category_ids: selectedCategoryIds,
+              category_ids: selectedCategoryId ? [Number(selectedCategoryId)] : [],
             },
           );
         } catch (e) {
@@ -143,31 +186,76 @@ function EditTopupProduct(props) {
                   </div>
 
                   <div className="my-3">
-                    <label className="block mb-2 font-semibold">
-                      Categories
+                    <label htmlFor="category" className="block mb-2 font-semibold">
+                      Category
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <select
+                      id="category"
+                      className="form_input"
+                      value={isCreatingCat ? "__create__" : selectedCategoryId}
+                      onChange={handleCategorySelect}
+                    >
+                      <option value="">-- Select category --</option>
                       {(categories || []).map((c) => (
-                        <label
-                          key={c.id}
-                          className={`px-3 py-1 border rounded cursor-pointer select-none ${selectedCategoryIds.includes(c.id) ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300"}`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="hidden"
-                            checked={selectedCategoryIds.includes(c.id)}
-                            onChange={() => toggleCategory(c.id)}
-                          />
-                          <span className="mr-1">{c.emoji}</span>
+                        <option key={c.id} value={c.id}>
+                          {c.emoji ? `${c.emoji} ` : ""}
                           {c.name}
-                        </label>
+                        </option>
                       ))}
-                      {(!categories || categories.length === 0) && (
-                        <span className="text-sm text-gray-500">
-                          No categories yet
-                        </span>
-                      )}
-                    </div>
+                      <option value="__create__">+ Create new category…</option>
+                    </select>
+
+                    {isCreatingCat && (
+                      <div className="mt-3 p-3 border border-dashed border-gray-300 rounded bg-gray-50">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-600 block mb-1">
+                              Name
+                            </label>
+                            <input
+                              type="text"
+                              className="form_input"
+                              placeholder="e.g. Mobile Games"
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                            />
+                          </div>
+                          <div className="sm:w-24">
+                            <label className="text-xs text-gray-600 block mb-1">
+                              Emoji
+                            </label>
+                            <input
+                              type="text"
+                              className="form_input"
+                              placeholder="🎮"
+                              value={newCatEmoji}
+                              onChange={(e) => setNewCatEmoji(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={creatingCat}
+                              onClick={submitNewCategory}
+                              className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-60"
+                            >
+                              {creatingCat ? "Adding…" : "Add"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCreatingCat(false);
+                                setNewCatName("");
+                                setNewCatEmoji("");
+                              }}
+                              className="px-3 py-2 bg-gray-200 text-gray-700 rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <Editor
