@@ -461,17 +461,51 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
+      // The admin form enforces this, but double-check server-side: the URL
+      // is meaningless without a place to inject the entered ID.
+      if (!input.verify_url.includes("{value}")) {
+        response.message =
+          "Verify URL is misconfigured — missing {value} tag. Ask the admin to fix the product.";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
       const encoded = encodeURIComponent(value);
-      const url = input.verify_url.includes("{value}")
-        ? input.verify_url.replace(/\{value\}/g, encoded)
-        : input.verify_url + encoded;
+      const url = input.verify_url.replace(/\{value\}/g, encoded);
 
       // Lazy require axios so we don't pull it into the top of the file just
       // for this one branch.
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const axios = require("axios");
-      const upstream = await axios.get(url, { timeout: 8000 });
-      response.data = upstream.data;
+      const headers: Record<string, string> = {};
+      if (input.api_token) {
+        headers.Authorization = `Bearer ${input.api_token}`;
+      }
+      const upstream = await axios.get(url, { timeout: 8000, headers });
+      const body = upstream.data;
+
+      // Region lock: if admin pinned a region for this input, the upstream
+      // response is only considered valid when its region matches. Even a
+      // successful upstream hit is rejected on mismatch (account is real, but
+      // not eligible for this product).
+      if (input.region_lock) {
+        const expected = String(input.region_lock).trim().toUpperCase();
+        const actual = String(
+          body?.player_info?.region ?? body?.region ?? '',
+        )
+          .trim()
+          .toUpperCase();
+        if (!actual || actual !== expected) {
+          response.message = actual
+            ? `Region mismatch — this product is only available for ${expected} accounts (got ${actual}).`
+            : `Region check failed — upstream response did not include a region (required: ${expected}).`;
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+      }
+
+      response.data = body;
       return res.send(response.data);
     } catch (error) {
       console.log("verifyPlayerInput error", (error as any)?.message || error);

@@ -10,6 +10,8 @@ export default (sequelize: Sequelize) => {
         public is_player_id!: number;
         public verify_player_name!: number;
         public verify_url!: string;
+        public api_token!: string;
+        public region_lock!: string;
         public serial!: number;
 
         static associate({ TopupProduct }: typeof Schema) {
@@ -41,6 +43,16 @@ export default (sequelize: Sequelize) => {
         },
         verify_url: {
             type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
+        },
+        api_token: {
+            type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
+        },
+        region_lock: {
+            type: DataTypes.STRING(16),
             allowNull: true,
             defaultValue: '',
         },

@@ -82,7 +82,32 @@ function AddTopupProduct() {
     title: "",
     verify_player_name: false,
     verify_url: "",
+    api_token: "",
+    region_lock: "",
   });
+
+  // Region options for the region-lock dropdown. When set, the verify response
+  // is only accepted if its `region` (or `player_info.region`) matches this.
+  // Leave blank to disable region locking.
+  const REGION_OPTIONS = [
+    { value: "", label: "— No region lock —" },
+    { value: "IND", label: "IND — India" },
+    { value: "BD", label: "BD — Bangladesh" },
+    { value: "PK", label: "PK — Pakistan" },
+    { value: "ID", label: "ID — Indonesia" },
+    { value: "BR", label: "BR — Brazil" },
+    { value: "SG", label: "SG — Singapore" },
+    { value: "MY", label: "MY — Malaysia" },
+    { value: "TH", label: "TH — Thailand" },
+    { value: "VN", label: "VN — Vietnam" },
+    { value: "PH", label: "PH — Philippines" },
+    { value: "TW", label: "TW — Taiwan" },
+    { value: "ME", label: "ME — Middle East" },
+    { value: "EU", label: "EU — Europe" },
+    { value: "NA", label: "NA — North America" },
+    { value: "SA", label: "SA — South America" },
+    { value: "CIS", label: "CIS — CIS" },
+  ];
   const [productInputs, setProductInputs] = useState([]);
 
   const updateInputAt = (idx, patch) => {
@@ -114,6 +139,33 @@ function AddTopupProduct() {
       const hasEmptyTitle = productInputs.some((it) => !String(it.title || "").trim());
       if (hasEmptyTitle) {
         toast.error("Every dynamic input needs a title.", toastDefault);
+        return;
+      }
+
+      // Verify URL must contain the {value} placeholder — that's where the
+      // dynamic player ID gets injected. Without it the request would send
+      // an empty/static URL to upstream.
+      const missingTagRow = productInputs.find(
+        (it) =>
+          it.verify_player_name &&
+          String(it.verify_url || "").trim() &&
+          !String(it.verify_url).includes("{value}"),
+      );
+      if (missingTagRow) {
+        toast.error(
+          `Verify URL for "${missingTagRow.title}" must include the {value} tag — that's where the entered ID is inserted.`,
+          toastDefault,
+        );
+        return;
+      }
+      const emptyVerifyUrl = productInputs.find(
+        (it) => it.verify_player_name && !String(it.verify_url || "").trim(),
+      );
+      if (emptyVerifyUrl) {
+        toast.error(
+          `Verify URL is required for "${emptyVerifyUrl.title}" — turn off "Verify player name" if you don't want verification.`,
+          toastDefault,
+        );
         return;
       }
 
@@ -160,6 +212,8 @@ function AddTopupProduct() {
                     title: it.title,
                     verify_player_name: it.verify_player_name ? 1 : 0,
                     verify_url: it.verify_url || "",
+                    api_token: it.api_token || "",
+                    region_lock: it.region_lock || "",
                     serial: idx,
                   })),
                 },
@@ -383,17 +437,29 @@ function AddTopupProduct() {
                             </label>
                             {row.verify_player_name && (
                               <div className="mt-2">
+                                <div className="mb-2 text-xs bg-blue-50 border border-blue-200 rounded p-2">
+                                  <strong className="text-blue-800">
+                                    Required tag:
+                                  </strong>{" "}
+                                  the Verify URL <em>must</em> include{" "}
+                                  <code className="bg-white px-1 rounded border border-blue-200 text-blue-700">
+                                    &#123;value&#125;
+                                  </code>{" "}
+                                  where the entered ID should go. Example:
+                                  <div className="mt-1 font-mono text-[11px] text-gray-700 break-all">
+                                    https://ffapi.ucbot.net/nickname?uid=
+                                    <span className="text-blue-700">
+                                      &#123;value&#125;
+                                    </span>
+                                  </div>
+                                </div>
                                 <label className="text-xs text-gray-600 block mb-1">
-                                  Verify URL{" "}
-                                  <span className="text-gray-400">
-                                    (use <code>&#123;value&#125;</code> as the
-                                    placeholder for the entered value)
-                                  </span>
+                                  Verify URL
                                 </label>
                                 <input
                                   type="text"
                                   className="form_input"
-                                  placeholder="https://api.example.com/player?id={value}"
+                                  placeholder="https://ffapi.ucbot.net/nickname?uid={value}"
                                   value={row.verify_url}
                                   onChange={(e) =>
                                     updateInputAt(idx, {
@@ -401,6 +467,53 @@ function AddTopupProduct() {
                                     })
                                   }
                                 />
+                                {row.verify_url &&
+                                  !row.verify_url.includes("{value}") && (
+                                    <p className="text-[11px] text-red-600 mt-1">
+                                      Missing <code>&#123;value&#125;</code>{" "}
+                                      tag — add it where the entered ID should
+                                      go.
+                                    </p>
+                                  )}
+                                <label className="text-xs text-gray-600 block mb-1 mt-2">
+                                  API Token{" "}
+                                  <span className="text-gray-400">
+                                    (sent as <code>Authorization: Bearer &lt;token&gt;</code>)
+                                  </span>
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form_input"
+                                  placeholder="Optional bearer token for upstream API"
+                                  value={row.api_token}
+                                  onChange={(e) =>
+                                    updateInputAt(idx, {
+                                      api_token: e.target.value,
+                                    })
+                                  }
+                                />
+                                <label className="text-xs text-gray-600 block mb-1 mt-2">
+                                  Region Lock{" "}
+                                  <span className="text-gray-400">
+                                    (verify response is rejected if its{" "}
+                                    <code>region</code> doesn&apos;t match)
+                                  </span>
+                                </label>
+                                <select
+                                  className="form_input"
+                                  value={row.region_lock}
+                                  onChange={(e) =>
+                                    updateInputAt(idx, {
+                                      region_lock: e.target.value,
+                                    })
+                                  }
+                                >
+                                  {REGION_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                             )}
                           </div>

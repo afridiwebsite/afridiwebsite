@@ -105,10 +105,11 @@ function TopupOrderPage() {
       const data = res?.data?.data || res?.data;
       setVerifyState((p) => ({ ...p, [input.id]: { data } }));
     } catch (e) {
-      setVerifyState((p) => ({
-        ...p,
-        [input.id]: { error: 'Verification failed' },
-      }));
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        'Verification failed';
+      setVerifyState((p) => ({ ...p, [input.id]: { error: msg } }));
     }
   };
 
@@ -533,26 +534,40 @@ function TopupOrderPage() {
                                                 {vState.error}
                                               </span>
                                             )}
-                                            {vState.data && !vState.error && (
-                                              <span className="text-xs text-emerald-700">
-                                                {vState.data.nickname && (
-                                                  <>
-                                                    Player:{' '}
-                                                    <strong>{vState.data.nickname}</strong>
-                                                  </>
-                                                )}
-                                                {vState.data.region && (
-                                                  <>
-                                                    {' '}· Region:{' '}
-                                                    <strong>{vState.data.region}</strong>
-                                                  </>
-                                                )}
-                                                {!vState.data.nickname &&
-                                                  !vState.data.region && (
-                                                    <>Verified</>
+                                            {vState.data && !vState.error && (() => {
+                                              const info =
+                                                vState.data.player_info ||
+                                                vState.data;
+                                              const nickname = info?.nickname;
+                                              const level = info?.level;
+                                              if (!nickname && level == null) {
+                                                return (
+                                                  <span className="text-xs text-emerald-700 font-medium">
+                                                    Verified
+                                                  </span>
+                                                );
+                                              }
+                                              return (
+                                                <span className="topup-verify-result">
+                                                  {nickname && (
+                                                    <span className="topup-verify-chip">
+                                                      <span className="topup-verify-chip-label">
+                                                        Nickname
+                                                      </span>
+                                                      <strong>{nickname}</strong>
+                                                    </span>
                                                   )}
-                                              </span>
-                                            )}
+                                                  {level != null && (
+                                                    <span className="topup-verify-chip">
+                                                      <span className="topup-verify-chip-label">
+                                                        Level
+                                                      </span>
+                                                      <strong>{level}</strong>
+                                                    </span>
+                                                  )}
+                                                </span>
+                                              );
+                                            })()}
                                           </div>
                                         )}
                                       </div>

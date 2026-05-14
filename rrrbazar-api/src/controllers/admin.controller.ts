@@ -1863,6 +1863,8 @@ class AdminController {
             is_player_id: playerIdMatch ? 1 : 0,
             verify_player_name: verify,
             verify_url: verify ? String(it?.verify_url || '').trim() : '',
+            api_token: verify ? String(it?.api_token || '').trim() : '',
+            region_lock: verify ? String(it?.region_lock || '').trim().toUpperCase() : '',
             serial: typeof it?.serial === 'number' ? it.serial : idx,
           }
         })
