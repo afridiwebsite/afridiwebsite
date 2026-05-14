@@ -3,8 +3,11 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useContext, useEffect, useState } from 'react';
+import moment from 'moment';
 import ReactHtmlParser from 'react-html-parser';
-import { HiOutlineExternalLink } from 'react-icons/hi';
+import { HiOutlineExternalLink, HiSparkles } from 'react-icons/hi';
+import { FaShieldAlt, FaBolt, FaHeadset, FaCoins, FaUserCircle } from 'react-icons/fa';
+import { GiTwoCoins, GiCoins } from 'react-icons/gi';
 import { useQuery } from 'react-query';
 //import ShowMoreText from 'react-show-more-text';
 import Swal from 'sweetalert2';
@@ -17,6 +20,7 @@ import FormikErrorMessage from '../../components/formik/FormikErrorMessage';
 import FormikInput from '../../components/formik/FormikInput';
 import SelectedRadio from '../../components/SelectedRadio';
 import ShowErrorAfterSubmit from '../../components/ShowErrorAfterSubmit';
+// Note: SelectedRadio is still used for payment methods below.
 import {
   __site_name_1,
   __site_name_2
@@ -94,6 +98,13 @@ function TopupOrderPage() {
   const productInfo = productData?.product;
   const packages = productData?.packages;
 
+  // ReactHtmlParser keeps wrapper tags even for blank input, so strip tags
+  // and whitespace before deciding whether to show the description block.
+  const hasDescription = !!productInfo?.rules
+    ?.replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, '')
+    .trim();
+
   const isGmailSelected = selectedAccountType === 'gmail' ? true : false;
   const isActiveForTopup = productInfo?.isactivefortopup === 1 ? true : false;
   const displayUnipinVoucher = productInfo?.id === 15 ? "none" : "block";
@@ -146,13 +157,18 @@ function TopupOrderPage() {
         <title>{productInfo?.name}</title>
       </Head>
       <section
-        className={`my-7 ${
+        className={`topup-page-section mb-7 ${
           !hasData(productData)
             ? 'flex-grow items-center flex justify-center flex-col'
             : ''
         }`}
       >
-        <div className="container">
+        <div className="topup-page-decor" aria-hidden="true">
+          <span className="topup-page-blob topup-page-blob-a" />
+          <span className="topup-page-blob topup-page-blob-b" />
+          <span className="topup-page-blob topup-page-blob-c" />
+        </div>
+        <div className="container relative">
           <ActivityIndicator
             data={productData}
             loading={isLoading}
@@ -160,32 +176,67 @@ function TopupOrderPage() {
             error={isError ? error : undefined}
           />
           {hasData(productData) && (
-            <div className="grid grid-cols-1 lg:grid-cols-[400px,auto] gap-7">
+            <>
+              <div className="topup-page-hero animate-fade-in-up">
+                <span className="topup-page-hero-eyebrow">
+                  <HiSparkles className="topup-page-hero-eyebrow-icon" />
+                  Instant Top-up
+                </span>
+                <h1 className="topup-page-hero-title">
+                  Power up your <span className="topup-page-hero-accent">{productInfo?.name}</span>
+                </h1>
+                <p className="topup-page-hero-sub">
+                  Pick a package, drop your ID and grab your coins in minutes —
+                  delivered straight to your account.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-[400px,auto] gap-7">
               {/* Topup Product Info And Rules --Start-- */}
               <div className="animate-fade-in-up" style={{ animationDelay: '40ms' }}>
-                <div className="topup-product-card">
+                <div className="topup-product-card topup-product-card--hero">
                   {/* Top up Image */}
                   <div className="topup-product-banner">
                     <img
                       src={imgPath(productInfo?.logo)}
-                      className="w-full h-[160px] object-cover"
+                      className="w-full h-[180px] object-cover"
                       alt=""
                     />
                     <div className="topup-product-banner-overlay" />
+                    <span className="topup-product-banner-badge">
+                      <FaShieldAlt /> Verified Seller
+                    </span>
+                    <span className="topup-product-banner-coin" aria-hidden="true">
+                      <FaCoins />
+                    </span>
                   </div>
-                  <div className="py-3 px-4 mt-[-30px] relative">
+                  <div className="topup-product-meta">
                     {/* Product name */}
-                    <h5 className="_h5 bg-white inline-block rounded-full border border-gray-200 shadow-sm px-4 py-1">
+                    <h5 className="topup-product-name">
                       {productInfo?.name}
                     </h5>
+
+                    <div className="topup-trust-row">
+                      <div className="topup-trust-item topup-trust-item--emerald">
+                        <FaBolt /> <span>Instant</span>
+                      </div>
+                      <div className="topup-trust-item topup-trust-item--blue">
+                        <FaShieldAlt /> <span>Secure</span>
+                      </div>
+                      <div className="topup-trust-item topup-trust-item--violet">
+                        <FaHeadset /> <span>24/7</span>
+                      </div>
+                    </div>
+
                     {/* Product Description */}
-                    {productInfo?.rules && productInfo?.rules !== '<p></p>' && (
-                      <>
-                        <p className="_subtitle2 mt-3 mb-1.5 theme-text-primary">Description</p>
+                    {hasDescription && (
+                      <div className="topup-product-desc">
+                        <p className="topup-product-desc-title">
+                          <HiSparkles /> About this top-up
+                        </p>
                         <div className="_body2 text-[13px] text-gray-700">
                           {ReactHtmlParser(productInfo?.rules)}
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -338,11 +389,90 @@ function TopupOrderPage() {
                     //   isPaymentError && setFieldTouched('payment_mathod');
                     // }, [isPackageIdError, isPaymentError]);
 
+                    const hasSelectedPackage = !!values.selectedpackage;
+                    const selectedCoinValue = Number(
+                      values.selectedpackage?.coin_value || 0
+                    );
+
                     return (
                       <div>
                         {isSubmitting && (
                           <div className="_absolute_full z-50"></div>
                         )}
+
+                        {/* Animated Coin Reward Preview --Start-- */}
+                        <div
+                          className={`topup-coin-preview animate-fade-in-up ${
+                            hasSelectedPackage ? 'is-active' : ''
+                          }`}
+                          style={{ animationDelay: '60ms' }}
+                          aria-live="polite"
+                        >
+                          <div
+                            className="topup-coin-preview-glow"
+                            aria-hidden="true"
+                          />
+                          <div
+                            className="topup-coin-stage"
+                            aria-hidden="true"
+                          >
+                            <span className="topup-coin topup-coin--1">
+                              <FaCoins />
+                            </span>
+                            <span className="topup-coin topup-coin--2">
+                              <GiTwoCoins />
+                            </span>
+                            <span className="topup-coin topup-coin--3">
+                              <GiCoins />
+                            </span>
+                            <span className="topup-coin topup-coin--4">
+                              <FaCoins />
+                            </span>
+                            <span className="topup-coin topup-coin--5">
+                              <GiTwoCoins />
+                            </span>
+                            <span className="topup-coin-sparkle topup-coin-sparkle--a">
+                              <HiSparkles />
+                            </span>
+                            <span className="topup-coin-sparkle topup-coin-sparkle--b">
+                              <HiSparkles />
+                            </span>
+                          </div>
+                          <div className="topup-coin-preview-text">
+                            <span className="topup-coin-preview-label">
+                              {hasSelectedPackage ? 'Your reward' : 'Coin rewards'}
+                            </span>
+                            <h3 className="topup-coin-preview-title">
+                              {hasSelectedPackage
+                                ? values.selectedpackage.name
+                                : 'Pick a package to reveal your bounty'}
+                            </h3>
+                            <div className="topup-coin-preview-row">
+                              {hasSelectedPackage ? (
+                                <>
+                                  <span className="topup-coin-preview-amount">
+                                    ৳ {values.selectedpackage.price}
+                                  </span>
+                                  {selectedCoinValue > 0 && (
+                                    <span className="topup-coin-preview-reward">
+                                      <FaCoins />
+                                      +{selectedCoinValue} coins
+                                    </span>
+                                  )}
+                                  <span className="topup-coin-preview-tag">
+                                    delivered instantly
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="topup-coin-preview-hint">
+                                  Each package awards bonus coins — pick one to see how many.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Animated Coin Reward Preview --End-- */}
+
                         {/* Account Info Form --Start-- */}
                         <div
                           className="_order_box_wrapper animate-fade-in-up"
@@ -516,36 +646,79 @@ function TopupOrderPage() {
                               </div>
                             )}
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                            <div className="topup-pack-grid">
                               {/* Single Recharge --Start-- */}
-                              {packages.map((pack, index) => (
-                                <div
-                                  key={index}
-                                  className="topup-pack-wrap animate-fade-in-up"
-                                  style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-                                >
-                                  <SelectedRadio
-                                    outOfStock={parseInt(pack?.in_stock) === 0}
+                              {packages.map((pack, index) => {
+                                const outOfStock =
+                                  parseInt(pack?.in_stock) === 0;
+                                const isSelected =
+                                  parseInt(selectedPackage) === index;
+                                const packCoin = Number(pack?.coin_value || 0);
+                                // Cycle through theme-driven tints (primary,
+                                // accent) plus gold for the coin theme.
+                                const tint = [
+                                  'gold',
+                                  'primary',
+                                  'accent',
+                                ][index % 3];
+                                return (
+                                  <button
+                                    type="button"
+                                    key={index}
                                     onClick={() => {
+                                      if (outOfStock) return;
                                       setSelectedPackage(index);
                                       setFieldValue('selectedpackage', pack);
-
                                       setSelectedPaymentMethod('pay');
                                       setFieldValue('payment_mathod', 'pay');
                                     }}
-                                    isError={isPackageIdError}
-                                    isSelected={
-                                      parseInt(selectedPackage) === index
-                                    }
-                                    topComponent={
-                                      <span className="px-1 py-2 inline-block">
-                                        {pack?.name}
+                                    disabled={outOfStock}
+                                    className={`topup-pack-card topup-pack-card--${tint} animate-fade-in-up ${
+                                      isSelected ? 'is-selected' : ''
+                                    } ${outOfStock ? 'is-out' : ''} ${
+                                      isPackageIdError && !isSelected
+                                        ? 'is-error'
+                                        : ''
+                                    }`}
+                                    style={{
+                                      animationDelay: `${
+                                        Math.min(index, 10) * 50
+                                      }ms`,
+                                    }}
+                                  >
+                                    {outOfStock && (
+                                      <span className="topup-pack-card-stock">
+                                        Out of stock
                                       </span>
-                                    }
-                                    bottomComponent={`৳ ${pack?.price}`}
-                                  />
-                                </div>
-                              ))}
+                                    )}
+                                    {isSelected && (
+                                      <span
+                                        className="topup-pack-card-check"
+                                        aria-hidden="true"
+                                      >
+                                        ✓
+                                      </span>
+                                    )}
+                                    <span
+                                      className="topup-pack-card-coin"
+                                      aria-hidden="true"
+                                    >
+                                      <FaCoins />
+                                    </span>
+                                    <span className="topup-pack-card-name">
+                                      {pack?.name}
+                                    </span>
+                                    <span className="topup-pack-card-price">
+                                      ৳ {pack?.price}
+                                    </span>
+                                    {packCoin > 0 && (
+                                      <span className="topup-pack-card-reward">
+                                        <GiTwoCoins /> +{packCoin}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
                               {/* Single Recharge --End-- */}
                             </div>
                             <FormikErrorMessage name="selectedpackage" />
@@ -707,30 +880,26 @@ function TopupOrderPage() {
 
                         <br /><br /><br />
 
-                        {/* Last Order Form --Start-- */}
-                        <div
-                          className="_order_box_wrapper animate-fade-in-up"
-                          style={{ animationDelay: '320ms' }}
-                        >
-                          <div className="_order_box_header">
-                            <div className="_order_header_step_circle">i</div>
-                            <h5 className="_order_header_title">
-                              Description
-                            </h5>
+                        {/* Description Section --Start-- */}
+                        {hasDescription && (
+                          <div
+                            className="_order_box_wrapper animate-fade-in-up"
+                            style={{ animationDelay: '320ms' }}
+                          >
+                            <div className="_order_box_header">
+                              <div className="_order_header_step_circle">i</div>
+                              <h5 className="_order_header_title">
+                                Description
+                              </h5>
+                            </div>
+                            <div className="order_box_body">
+                              <div className="_body2 text-[13px]">
+                                {ReactHtmlParser(productInfo?.rules)}
+                              </div>
+                            </div>
                           </div>
-                          <div className="order_box_body">
-                            {/* Product Description */}
-                            {productInfo?.rules && productInfo?.rules !== '<p></p>' && (
-                              <>
-                                <p className="_subtitle2 mt-2.5 mb-2">Description: </p>
-                                <div className="_body2 text-[13px]">
-                                  {ReactHtmlParser(productInfo?.rules)}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {/* Last Order Form --End-- */}
+                        )}
+                        {/* Description Section --End-- */}
 
 
                         {/* Last Order Form --Start-- */}
@@ -745,32 +914,126 @@ function TopupOrderPage() {
                             </h5>
                           </div>
 
-                          <div className="order_box_body" style={{
-                            overflow: 'scroll'
-                          }}>
-                            <table className="table">
-                              <thead>
-                                <tr>
-                                  <th>Order ID</th>
-                                  <th>Package Name</th>
-                                  <th>Player ID</th>
-                                  <th>Status</th>
-                                  <th>DateTime</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                              {productOrder && productOrder.length > 0 &&
-                                productOrder.map((po) => 
-                                <tr key={po.id}>
-                                  <td>{po.id}</td>
-                                  <td>{po.name}</td>
-                                  <td>{po.playerid}</td>
-                                  <td>{po.status}</td>
-                                  <td>{po.created_at}</td>
-                                </tr>
-                              )}
-                              </tbody>
-                            </table>
+                          <div className="order_box_body topup-orders-body">
+                            {productOrder && productOrder.length > 0 ? (
+                              <ul className="topup-orders-list">
+                                {productOrder.map((po, idx) => {
+                                  const statusKey = String(po.status || '')
+                                    .toLowerCase()
+                                    .trim();
+                                  const orderUser = po.User || po.user;
+                                  const orderProduct =
+                                    po.TopupProduct || po.product || productInfo;
+                                  const displayName =
+                                    orderUser?.username ||
+                                    (orderUser?.email
+                                      ? orderUser.email.split('@')[0]
+                                      : 'Anonymous Player');
+                                  const initial = (
+                                    displayName?.[0] || '?'
+                                  ).toUpperCase();
+                                  // created_at is pre-formatted by API moment getter;
+                                  // moment can parse most formats — fall back to raw
+                                  // string if it can't.
+                                  const m = moment(po.created_at);
+                                  const timeLabel = m.isValid()
+                                    ? m.fromNow()
+                                    : po.created_at;
+                                  const timeAbs = m.isValid()
+                                    ? m.format('MMM D, YYYY · h:mm A')
+                                    : po.created_at;
+                                  return (
+                                    <li
+                                      key={po.id}
+                                      className="topup-order-row animate-fade-in-up"
+                                      style={{
+                                        animationDelay: `${
+                                          Math.min(idx, 8) * 40
+                                        }ms`,
+                                      }}
+                                    >
+                                      <div className="topup-order-row-avatar">
+                                        {orderUser?.avatar ? (
+                                          <img
+                                            src={orderUser.avatar}
+                                            alt=""
+                                            referrerPolicy="no-referrer"
+                                            onError={(e) => {
+                                              e.currentTarget.style.display =
+                                                'none';
+                                              e.currentTarget.parentElement.classList.add(
+                                                'is-fallback',
+                                              );
+                                            }}
+                                          />
+                                        ) : null}
+                                        <span className="topup-order-row-avatar-fallback">
+                                          {initial}
+                                        </span>
+                                      </div>
+
+                                      <div className="topup-order-row-main">
+                                        <div className="topup-order-row-line">
+                                          <span className="topup-order-row-user">
+                                            {displayName}
+                                          </span>
+                                          <span className="topup-order-row-id">
+                                            #{po.id}
+                                          </span>
+                                        </div>
+                                        <div className="topup-order-row-meta">
+                                          {orderProduct?.logo && (
+                                            <img
+                                              className="topup-order-row-product-logo"
+                                              src={imgPath(orderProduct.logo)}
+                                              alt=""
+                                            />
+                                          )}
+                                          <span className="topup-order-row-product">
+                                            {orderProduct?.name || 'Top-up'}
+                                          </span>
+                                          <span className="topup-order-row-dot" />
+                                          <span className="topup-order-row-pack">
+                                            {po.name}
+                                          </span>
+                                          {po.playerid && (
+                                            <>
+                                              <span className="topup-order-row-dot" />
+                                              <span className="topup-order-row-player">
+                                                ID: {po.playerid}
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="topup-order-row-side">
+                                        <span
+                                          className={`topup-status-badge topup-status-badge--${statusKey}`}
+                                        >
+                                          <span
+                                            className="topup-status-dot"
+                                            aria-hidden="true"
+                                          />
+                                          {po.status}
+                                        </span>
+                                        <span
+                                          className="topup-order-row-time"
+                                          title={timeAbs}
+                                        >
+                                          {timeLabel}
+                                        </span>
+                                      </div>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            ) : (
+                              <div className="topup-orders-empty">
+                                <FaCoins className="topup-orders-empty-icon" />
+                                <p>No orders yet — your first reward is one click away.</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {/* Last Order Form --End-- */}
@@ -782,6 +1045,7 @@ function TopupOrderPage() {
                 {/* Topup Order Form --End-- */}
               </div>
             </div>
+            </>
           )}
         </div>
       </section>

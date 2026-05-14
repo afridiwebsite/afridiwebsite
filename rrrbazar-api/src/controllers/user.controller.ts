@@ -484,11 +484,26 @@ class UserController {
           "playerid",
           "status",
           "created_at",
+          "updated_at",
           "amount",
+          "user_id",
+          "product_id",
           [
             Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
             "diff_in_seconds",
           ],
+        ],
+        include: [
+          {
+            model: User,
+            attributes: ["id", "username", "email", "avatar"],
+            required: false,
+          },
+          {
+            model: TopupProduct,
+            attributes: ["id", "name", "logo"],
+            required: false,
+          },
         ],
         where: {
           product_id: product_id,
@@ -517,10 +532,24 @@ class UserController {
           "status",
           "created_at",
           "updated_at",
+          "user_id",
+          "product_id",
           [
             Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
             "diff_in_seconds",
           ],
+        ],
+        include: [
+          {
+            model: User,
+            attributes: ["id", "username", "email", "avatar"],
+            required: false,
+          },
+          {
+            model: TopupProduct,
+            attributes: ["id", "name", "logo"],
+            required: false,
+          },
         ],
         order: [["created_at", "DESC"]],
         limit: 20,
@@ -732,6 +761,8 @@ class UserController {
           cancel_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/order`,
           webhook_url: `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`,
         });
+
+        console.log(fastPayData,'data')
         response.data = fastPayData;
         return res.send(response.response);
       } else {
@@ -922,7 +953,7 @@ class UserController {
       }
 
       const meta_data = {
-        token: process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f",
+        token: process.env.UDDOKTAPAY_API_KEY ,
         id: user.id,
         phone: user.phone,
         wallet: user.wallet,

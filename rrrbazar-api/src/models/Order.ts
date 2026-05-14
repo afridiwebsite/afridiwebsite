@@ -28,9 +28,17 @@ export default (sequelize: Sequelize) => {
         public completed_by!: number;
 
 
-        static associate({ Admin }: typeof Schema) {
+        static associate({ Admin, User, TopupProduct }: typeof Schema) {
             this.belongsTo(Admin, {
                 foreignKey: "completed_by",
+                constraints: false,
+            });
+            this.belongsTo(User, {
+                foreignKey: "user_id",
+                constraints: false,
+            });
+            this.belongsTo(TopupProduct, {
+                foreignKey: "product_id",
                 constraints: false,
             });
         }

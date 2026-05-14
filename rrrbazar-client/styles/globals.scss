@@ -1335,6 +1335,863 @@ body {
 }
 .topup-pack-wrap:hover { transform: translateY(-2px); }
 
+// --- Topup page redesign (pages/topup/[id].js) ---
+
+.topup-page-section {
+  position: relative;
+  isolation: isolate;
+}
+
+// Soft animated decoration blobs behind the whole page.
+.topup-page-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.topup-page-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.32;
+  pointer-events: none;
+  will-change: transform;
+}
+.topup-page-blob-a {
+  top: -120px;
+  left: -60px;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, var(--theme-primary, #3856B5) 0%, transparent 70%);
+  animation: topup-blob-drift 18s ease-in-out infinite alternate;
+}
+.topup-page-blob-b {
+  top: 30%;
+  right: -120px;
+  width: 360px;
+  height: 360px;
+  // Gold blob — kept as the one off-theme accent (coin theme).
+  background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
+  animation: topup-blob-drift 22s ease-in-out infinite alternate-reverse;
+}
+.topup-page-blob-c {
+  bottom: -120px;
+  left: 40%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, var(--theme-accent, #4D67D8) 0%, transparent 70%);
+  opacity: 0.22;
+  animation: topup-blob-drift 26s ease-in-out infinite alternate;
+}
+@keyframes topup-blob-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(40px, 30px) scale(1.12); }
+}
+
+// Page hero — short tagline above the grid.
+.topup-page-hero {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 22px;
+  padding: 8px 12px 0;
+}
+.topup-page-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.1);
+  color: var(--theme-primary, #3856B5);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.22);
+}
+.topup-page-hero-eyebrow-icon { color: #f59e0b; font-size: 13px; }
+.topup-page-hero-title {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--theme-secondary, #1B2A4A);
+  margin: 12px 0 6px;
+}
+.topup-page-hero-accent {
+  background: linear-gradient(
+    90deg,
+    var(--theme-primary, #3856B5),
+    var(--theme-accent, #4D67D8)
+  );
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.topup-page-hero-sub {
+  font-size: 13px;
+  color: #4b5563;
+  margin: 0 auto;
+  max-width: 480px;
+}
+
+// --- Left card upgrade ---
+.topup-product-card--hero {
+  border-radius: 18px;
+  border-color: rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 36px rgba(15, 23, 42, 0.08);
+}
+.topup-product-banner-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
+  z-index: 2;
+}
+.topup-product-banner-coin {
+  position: absolute;
+  right: 14px;
+  bottom: -18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);
+  color: #78350f;
+  font-size: 26px;
+  box-shadow:
+    0 6px 16px rgba(245, 158, 11, 0.45),
+    inset 0 -3px 0 rgba(120, 53, 15, 0.25);
+  z-index: 3;
+  animation: topup-coin-bob 3.6s ease-in-out infinite;
+}
+@keyframes topup-coin-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-6px) rotate(4deg); }
+}
+.topup-product-meta {
+  padding: 22px 18px 18px;
+}
+.topup-product-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--theme-secondary, #1B2A4A);
+  margin: 0 0 14px;
+}
+.topup-trust-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.topup-trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 0.2s ease;
+}
+.topup-trust-item:hover { transform: translateY(-1px); }
+// Trust badges: primary / accent / gold (gold being the one off-theme accent).
+.topup-trust-item--emerald {
+  background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.1);
+  color: var(--theme-primary, #3856B5);
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.22);
+}
+.topup-trust-item--blue {
+  background: rgba(var(--theme-accent-rgb, 77 103 216) / 0.12);
+  color: var(--theme-accent, #4D67D8);
+  border: 1px solid rgba(var(--theme-accent-rgb, 77 103 216) / 0.25);
+}
+.topup-trust-item--violet {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+.topup-product-desc {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+}
+.topup-product-desc-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--theme-primary, #2563eb);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.topup-product-desc-title svg { color: #f59e0b; }
+
+// --- Animated coin reward preview (top of right column) ---
+.topup-coin-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  border-radius: 18px;
+  overflow: hidden;
+  // Theme-driven dark panel: subtle primary tint on top-left, soft gold
+  // wash on bottom-right (gold is the one off-theme accent we keep), over
+  // a secondary→primary gradient.
+  background:
+    radial-gradient(140% 100% at 0% 0%, rgba(var(--theme-primary-rgb, 56 86 181) / 0.22) 0%, transparent 60%),
+    radial-gradient(140% 100% at 100% 100%, rgba(245, 158, 11, 0.14) 0%, transparent 55%),
+    linear-gradient(135deg, var(--theme-secondary, #1B2A4A) 0%, var(--theme-primary, #3856B5) 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 20px 40px rgba(var(--theme-secondary-rgb, 27 42 74) / 0.35);
+  transition: box-shadow 0.4s ease, transform 0.4s ease;
+}
+.topup-coin-preview.is-active {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 26px 50px rgba(245, 158, 11, 0.25);
+  transform: translateY(-1px);
+}
+.topup-coin-preview-glow {
+  position: absolute;
+  inset: -40% -10% auto auto;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.45) 0%, transparent 60%);
+  filter: blur(20px);
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.4s ease;
+}
+.topup-coin-preview.is-active .topup-coin-preview-glow { opacity: 1; }
+
+.topup-coin-stage {
+  position: relative;
+  flex-shrink: 0;
+  width: 120px;
+  height: 96px;
+}
+.topup-coin {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 60%, #b45309 100%);
+  color: #78350f;
+  box-shadow:
+    0 6px 14px rgba(245, 158, 11, 0.45),
+    inset 0 -3px 0 rgba(120, 53, 15, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  will-change: transform, opacity;
+}
+.topup-coin--1 {
+  left: 4px;  bottom: 0;
+  width: 38px; height: 38px; font-size: 20px;
+  animation: topup-coin-float 5s ease-in-out infinite;
+}
+.topup-coin--2 {
+  left: 32px; bottom: 26px;
+  width: 46px; height: 46px; font-size: 24px;
+  animation: topup-coin-float 4.6s ease-in-out 0.4s infinite;
+  z-index: 2;
+}
+.topup-coin--3 {
+  left: 64px; bottom: 4px;
+  width: 42px; height: 42px; font-size: 22px;
+  animation: topup-coin-float 5.4s ease-in-out 0.8s infinite;
+}
+.topup-coin--4 {
+  left: 20px; bottom: 56px;
+  width: 26px; height: 26px; font-size: 14px;
+  opacity: 0.9;
+  animation: topup-coin-float 4s ease-in-out 1.2s infinite;
+}
+.topup-coin--5 {
+  left: 78px; bottom: 48px;
+  width: 30px; height: 30px; font-size: 16px;
+  opacity: 0.95;
+  animation: topup-coin-float 4.4s ease-in-out 1.6s infinite;
+}
+@keyframes topup-coin-float {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50%      { transform: translateY(-8px) rotate(6deg); }
+}
+.topup-coin-preview.is-active .topup-coin {
+  animation-duration: 2.4s, 2.4s, 2.4s;
+}
+.topup-coin-preview.is-active .topup-coin--1 { animation: topup-coin-burst-1 2.4s ease-in-out infinite; }
+.topup-coin-preview.is-active .topup-coin--2 { animation: topup-coin-burst-2 2.6s ease-in-out infinite; }
+.topup-coin-preview.is-active .topup-coin--3 { animation: topup-coin-burst-3 2.2s ease-in-out infinite; }
+.topup-coin-preview.is-active .topup-coin--4 { animation: topup-coin-burst-4 2s   ease-in-out infinite; }
+.topup-coin-preview.is-active .topup-coin--5 { animation: topup-coin-burst-5 2.8s ease-in-out infinite; }
+@keyframes topup-coin-burst-1 {
+  0%,100% { transform: translate(0, 0) rotate(-8deg); }
+  50%     { transform: translate(-4px, -14px) rotate(8deg); }
+}
+@keyframes topup-coin-burst-2 {
+  0%,100% { transform: translate(0, 0) rotate(6deg) scale(1); }
+  50%     { transform: translate(2px, -18px) rotate(-10deg) scale(1.08); }
+}
+@keyframes topup-coin-burst-3 {
+  0%,100% { transform: translate(0, 0) rotate(-4deg); }
+  50%     { transform: translate(6px, -12px) rotate(12deg); }
+}
+@keyframes topup-coin-burst-4 {
+  0%,100% { transform: translate(0, 0)  scale(1)    rotate(0deg); }
+  50%     { transform: translate(-6px, -10px) scale(1.15) rotate(20deg); }
+}
+@keyframes topup-coin-burst-5 {
+  0%,100% { transform: translate(0, 0)  scale(1) rotate(0deg); }
+  50%     { transform: translate(8px, -8px) scale(1.1) rotate(-18deg); }
+}
+.topup-coin-sparkle {
+  position: absolute;
+  color: #fde047;
+  filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.7));
+  opacity: 0;
+  pointer-events: none;
+}
+.topup-coin-sparkle--a {
+  top: 4px;
+  left: 0;
+  font-size: 18px;
+  animation: topup-sparkle 3s ease-in-out infinite;
+}
+.topup-coin-sparkle--b {
+  top: 18px;
+  right: 0;
+  font-size: 14px;
+  animation: topup-sparkle 3.4s ease-in-out 1.2s infinite;
+}
+.topup-coin-preview.is-active .topup-coin-sparkle--a { animation-duration: 1.4s; }
+.topup-coin-preview.is-active .topup-coin-sparkle--b { animation-duration: 1.8s; }
+@keyframes topup-sparkle {
+  0%, 100% { opacity: 0;   transform: scale(0.6) rotate(0deg); }
+  40%      { opacity: 1;   transform: scale(1.1) rotate(20deg); }
+  60%      { opacity: 0.6; transform: scale(1)   rotate(-10deg); }
+}
+
+.topup-coin-preview-text {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+.topup-coin-preview-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fde68a;
+  margin-bottom: 4px;
+}
+.topup-coin-preview-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: #fff;
+  line-height: 1.2;
+  transition: color 0.3s ease;
+}
+.topup-coin-preview-row {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.topup-coin-preview-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fde047;
+  text-shadow: 0 2px 10px rgba(253, 224, 71, 0.35);
+}
+.topup-coin-preview-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(253, 224, 71, 0.22), rgba(245, 158, 11, 0.22));
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(253, 224, 71, 0.35);
+  text-shadow: 0 1px 6px rgba(253, 224, 71, 0.35);
+}
+.topup-coin-preview-reward svg { font-size: 14px; color: #fde047; }
+.topup-coin-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.topup-coin-preview-hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+// --- Recharge package picker (replaces SelectedRadio on this page) ---
+.topup-pack-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  @media (min-width: 640px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (min-width: 900px) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.topup-pack-card {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  border-radius: 16px;
+  padding: 16px 14px 14px;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.25s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.topup-pack-card::before {
+  // tinted gradient corner blob — sits behind content
+  content: '';
+  position: absolute;
+  inset: -30% -30% auto auto;
+  width: 160px;
+  height: 160px;
+  background: var(--pack-blob, radial-gradient(circle, #fde68a 0%, transparent 70%));
+  filter: blur(20px);
+  opacity: 0.7;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 0;
+}
+.topup-pack-card > * { position: relative; z-index: 1; }
+.topup-pack-card:hover:not(.is-out):not(:disabled) {
+  transform: translateY(-3px);
+  border-color: var(--pack-border, #d1d5db);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+}
+.topup-pack-card:hover::before { opacity: 0.95; }
+
+.topup-pack-card.is-selected {
+  border-color: transparent;
+  color: #fff;
+  background: var(--pack-bg, linear-gradient(135deg, #f59e0b 0%, #b45309 100%));
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 30px var(--pack-shadow, rgba(245, 158, 11, 0.35));
+  transform: translateY(-3px);
+}
+.topup-pack-card.is-selected::before { opacity: 0; }
+.topup-pack-card.is-selected .topup-pack-card-name,
+.topup-pack-card.is-selected .topup-pack-card-price { color: #fff; }
+.topup-pack-card.is-selected .topup-pack-card-reward {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.topup-pack-card.is-selected .topup-pack-card-coin {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.topup-pack-card.is-error { border-color: #ef4444; }
+.topup-pack-card.is-out { opacity: 0.55; cursor: not-allowed; }
+.topup-pack-card:disabled { cursor: not-allowed; }
+
+.topup-pack-card-coin {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: var(--pack-coin-bg, rgba(245, 158, 11, 0.12));
+  color: var(--pack-coin-color, #b45309);
+  border: 1px solid var(--pack-coin-border, rgba(245, 158, 11, 0.25));
+  margin-bottom: 2px;
+  transition: transform 0.2s ease;
+}
+.topup-pack-card:hover .topup-pack-card-coin {
+  transform: rotate(-8deg) scale(1.05);
+}
+.topup-pack-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--theme-secondary, #1B2A4A);
+  line-height: 1.25;
+  word-break: break-word;
+}
+.topup-pack-card-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--pack-price, #b45309);
+  letter-spacing: -0.01em;
+}
+.topup-pack-card-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: rgba(var(--theme-secondary-rgb, 27 42 74) / 0.06);
+  color: var(--theme-secondary, #1B2A4A);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(var(--theme-secondary-rgb, 27 42 74) / 0.1);
+}
+.topup-pack-card-reward svg { font-size: 13px; color: #f59e0b; }
+.topup-pack-card.is-selected .topup-pack-card-reward svg { color: #fde68a; }
+
+.topup-pack-card-stock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.95);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  z-index: 2;
+}
+.topup-pack-card-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--theme-secondary, #1B2A4A);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
+
+// Three tints — gold (coin-themed) plus two theme-driven shades, cycled
+// in JS via index % 3. Gold is the only off-theme accent we keep.
+.topup-pack-card--gold {
+  --pack-blob:        radial-gradient(circle, #fde68a 0%, transparent 70%);
+  --pack-border:      rgba(245, 158, 11, 0.6);
+  --pack-bg:          linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+  --pack-shadow:      rgba(245, 158, 11, 0.35);
+  --pack-coin-bg:     rgba(245, 158, 11, 0.12);
+  --pack-coin-color:  #b45309;
+  --pack-coin-border: rgba(245, 158, 11, 0.25);
+  --pack-price:       #b45309;
+}
+.topup-pack-card--primary {
+  --pack-blob:        radial-gradient(
+                        circle,
+                        rgba(var(--theme-primary-rgb, 56 86 181) / 0.32) 0%,
+                        transparent 70%
+                      );
+  --pack-border:      rgba(var(--theme-primary-rgb, 56 86 181) / 0.55);
+  --pack-bg:          linear-gradient(
+                        135deg,
+                        var(--theme-primary, #3856B5) 0%,
+                        var(--theme-secondary, #1B2A4A) 100%
+                      );
+  --pack-shadow:      rgba(var(--theme-primary-rgb, 56 86 181) / 0.32);
+  --pack-coin-bg:     rgba(var(--theme-primary-rgb, 56 86 181) / 0.12);
+  --pack-coin-color:  var(--theme-primary, #3856B5);
+  --pack-coin-border: rgba(var(--theme-primary-rgb, 56 86 181) / 0.25);
+  --pack-price:       var(--theme-primary, #3856B5);
+}
+.topup-pack-card--accent {
+  --pack-blob:        radial-gradient(
+                        circle,
+                        rgba(var(--theme-accent-rgb, 77 103 216) / 0.3) 0%,
+                        transparent 70%
+                      );
+  --pack-border:      rgba(var(--theme-accent-rgb, 77 103 216) / 0.55);
+  --pack-bg:          linear-gradient(
+                        135deg,
+                        var(--theme-accent, #4D67D8) 0%,
+                        var(--theme-primary, #3856B5) 100%
+                      );
+  --pack-shadow:      rgba(var(--theme-accent-rgb, 77 103 216) / 0.32);
+  --pack-coin-bg:     rgba(var(--theme-accent-rgb, 77 103 216) / 0.12);
+  --pack-coin-color:  var(--theme-accent, #4D67D8);
+  --pack-coin-border: rgba(var(--theme-accent-rgb, 77 103 216) / 0.25);
+  --pack-price:       var(--theme-accent, #4D67D8);
+}
+
+// --- Last orders list (cards, not table) ---
+.topup-orders-body { padding-top: 8px !important; }
+.topup-orders-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.topup-order-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.topup-order-row:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+.topup-order-row-avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--theme-primary, #3856B5) 0%,
+    var(--theme-accent, #4D67D8) 100%
+  );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.topup-order-row-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 1;
+}
+.topup-order-row-avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  text-transform: uppercase;
+}
+// Hide the avatar img on broken load — the fallback initial stays visible underneath.
+.topup-order-row-avatar.is-fallback img { display: none; }
+
+.topup-order-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.topup-order-row-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.topup-order-row-user {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--theme-secondary, #1B2A4A);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topup-order-row-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+.topup-order-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+.topup-order-row-product-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.topup-order-row-product { font-weight: 700; color: #475569; }
+.topup-order-row-pack    { color: #334155; }
+.topup-order-row-player  { color: #94a3b8; }
+.topup-order-row-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: #cbd5e1;
+}
+.topup-order-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.topup-order-row-time {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+@media (max-width: 540px) {
+  .topup-order-row { flex-wrap: wrap; }
+  .topup-order-row-side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-left: 52px;
+    margin-top: 2px;
+  }
+  .topup-order-row-user { max-width: 160px; }
+}
+
+.topup-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: capitalize;
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.18);
+}
+.topup-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.18);
+}
+.topup-status-badge--completed,
+.topup-status-badge--success,
+.topup-status-badge--delivered {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+.topup-status-badge--completed .topup-status-dot,
+.topup-status-badge--success .topup-status-dot,
+.topup-status-badge--delivered .topup-status-dot {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  animation: pill-pulse 1.8s ease-in-out infinite;
+}
+.topup-status-badge--pending,
+.topup-status-badge--processing {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.topup-status-badge--pending .topup-status-dot,
+.topup-status-badge--processing .topup-status-dot {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+  animation: pill-pulse 1.4s ease-in-out infinite;
+}
+.topup-status-badge--failed,
+.topup-status-badge--cancelled,
+.topup-status-badge--rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.topup-orders-empty {
+  padding: 26px 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+.topup-orders-empty-icon {
+  font-size: 32px;
+  color: #f59e0b;
+  margin-bottom: 8px;
+  display: inline-block;
+  animation: topup-coin-bob 3s ease-in-out infinite;
+}
+
+@media (max-width: 640px) {
+  .topup-coin-preview {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 6px;
+  }
+  .topup-coin-stage {
+    margin: 0 auto;
+  }
+  .topup-coin-preview-row {
+    justify-content: center;
+  }
+  .topup-page-hero-title { font-size: 22px; }
+}
+
 // --- Login page (pages/login.js) ---
 // Light, airy variant — see /login.png reference. No extra borders/chrome,
 // just a soft page tint, a centered logo, "Welcome Back" headline, and one
@@ -1346,7 +2203,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: var(--theme-bg, #EEF1F8);
-  color: #0f172a;
+  color: var(--theme-secondary, #1B2A4A);
 }
 
 // Decoration layer — sits behind everything, doesn't intercept clicks.
@@ -1385,19 +2242,234 @@ body {
 .login-blob-a {
   top: -160px;
   left: -120px;
-  background: radial-gradient(circle, var(--theme-primary, #6366f1) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--theme-primary, #3856B5) 0%, transparent 70%);
   animation: login-blob-drift 16s ease-in-out infinite alternate;
 }
 .login-blob-b {
   bottom: -180px;
   right: -140px;
+  // Gold blob — the only off-theme accent (coin theme).
   background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
   animation: login-blob-drift 22s ease-in-out infinite alternate-reverse;
+}
+.login-blob-c {
+  top: 40%;
+  left: 55%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, var(--theme-accent, #4D67D8) 0%, transparent 70%);
+  opacity: 0.22;
+  animation: login-blob-drift 26s ease-in-out infinite alternate;
+}
+.login-blob-d {
+  top: 60%;
+  left: -120px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, var(--theme-primary, #3856B5) 0%, transparent 70%);
+  opacity: 0.25;
+  animation: login-blob-drift 19s ease-in-out infinite alternate-reverse;
 }
 @keyframes login-blob-drift {
   from { transform: translate(0, 0)    scale(1);    }
   to   { transform: translate(50px, 40px) scale(1.12); }
 }
+
+// Small solid-tinted bubbles — crisper than the blurred blobs, scattered
+// around the card to make the background feel busier without being noisy.
+.login-bubble {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: login-bubble-float 10s ease-in-out infinite;
+  will-change: transform;
+}
+// Bubbles use theme primary/accent plus gold (one off-theme accent for coins).
+.login-bubble-1 {
+  top: 18%;
+  left: 22%;
+  width: 70px;
+  height: 70px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(var(--theme-primary-rgb, 56 86 181) / 0.45),
+    rgba(var(--theme-primary-rgb, 56 86 181) / 0.08) 70%
+  );
+  animation-duration: 11s;
+}
+.login-bubble-2 {
+  top: 26%;
+  right: 18%;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(var(--theme-accent-rgb, 77 103 216) / 0.4),
+    rgba(var(--theme-accent-rgb, 77 103 216) / 0.06) 70%
+  );
+  animation-duration: 13s;
+  animation-delay: 1.4s;
+}
+.login-bubble-3 {
+  bottom: 22%;
+  left: 16%;
+  width: 110px;
+  height: 110px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(var(--theme-primary-rgb, 56 86 181) / 0.38),
+    rgba(var(--theme-primary-rgb, 56 86 181) / 0.06) 70%
+  );
+  animation-duration: 14s;
+  animation-delay: 0.6s;
+}
+.login-bubble-4 {
+  bottom: 14%;
+  right: 12%;
+  width: 60px;
+  height: 60px;
+  // Gold bubble — coin accent.
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(245, 158, 11, 0.5),
+    rgba(245, 158, 11, 0.08) 70%
+  );
+  animation-duration: 9s;
+  animation-delay: 2.2s;
+}
+.login-bubble-5 {
+  top: 48%;
+  right: 6%;
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(var(--theme-accent-rgb, 77 103 216) / 0.45),
+    rgba(var(--theme-accent-rgb, 77 103 216) / 0.06) 70%
+  );
+  animation-duration: 12s;
+  animation-delay: 3s;
+}
+@keyframes login-bubble-float {
+  0%, 100% { transform: translate3d(0, 0, 0)     scale(1);    opacity: 0.85; }
+  50%      { transform: translate3d(6px, -18px, 0) scale(1.08); opacity: 1;    }
+}
+
+// Welcome block — sits above the card, sets the tone of the page.
+.login-welcome {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+  margin-bottom: 6px;
+  animation: fade-in-up 0.55s 0.05s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.login-welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.1);
+  color: var(--theme-primary, #3856B5);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.22);
+}
+.login-welcome-badge-icon { font-size: 13px; color: #f59e0b; }
+.login-welcome-title {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--theme-secondary, #1B2A4A);
+  margin: 10px 0 6px;
+}
+.login-welcome-accent {
+  background: linear-gradient(
+    90deg,
+    var(--theme-primary, #3856B5),
+    var(--theme-accent, #4D67D8)
+  );
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.login-welcome-sub {
+  font-size: 13px;
+  color: #4b5563;
+  margin: 0 auto;
+  max-width: 380px;
+}
+
+// Variant when the welcome block lives inside the card — tighten spacing
+// and shrink the title so it doesn't tower over the form below.
+.login-welcome--in-card {
+  margin: 0 0 14px;
+  animation: none;
+}
+.login-welcome--in-card .login-welcome-title {
+  font-size: 22px;
+  margin: 8px 0 4px;
+}
+.login-welcome--in-card .login-welcome-sub { font-size: 12.5px; }
+
+// Hairline divider between the welcome block and the Google form.
+.login-card-divider {
+  height: 1px;
+  margin: 14px -28px 18px;
+  background: linear-gradient(90deg, transparent, #e5e7eb 30%, #e5e7eb 70%, transparent);
+}
+
+// Stats row below the card — three soft tinted pills with a stat + label.
+.login-stats {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 460px;
+  margin: 4px 0 2px;
+  animation: fade-in-up 0.55s 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.login-stat {
+  flex: 1;
+  border-radius: 14px;
+  padding: 12px 8px;
+  text-align: center;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 24px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.login-stat:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 14px 30px rgba(15, 23, 42, 0.1);
+}
+.login-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.login-stat-label {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.login-stat-amber   .login-stat-value { color: #d97706; }
+.login-stat-emerald .login-stat-value { color: #059669; }
+.login-stat-violet  .login-stat-value { color: #7c3aed; }
+.login-stat-amber   { background: linear-gradient(180deg, #fffbeb 0%, #ffffff 70%); }
+.login-stat-emerald { background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 70%); }
+.login-stat-violet  { background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 70%); }
 
 .login-logo-bar {
   position: relative;
@@ -1447,7 +2519,7 @@ body {
 .login-card-title {
   font-size: 20px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--theme-secondary, #1B2A4A);
   margin: 0 0 4px;
 }
 .login-card-sub {
@@ -1462,9 +2534,17 @@ body {
   position: relative;
   display: flex;
   justify-content: center;
+  align-items: center;
   min-height: 44px;
   margin-bottom: 6px;
+  overflow: hidden; // belt-and-braces against tiny-viewport iframe overflow
   animation: fade-in-up 0.6s 0.15s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+// The Google iframe renders at a fixed pixel width — scale it down on
+// very narrow phones so it doesn't overflow the card padding.
+.login-google > div { max-width: 100%; }
+@media (max-width: 360px) {
+  .login-google { transform: scale(0.9); transform-origin: center; }
 }
 .login-google-loader {
   position: absolute;
@@ -1941,8 +3021,289 @@ body {
 }
 
 @media (max-width: 420px) {
-  .login-card { padding: 28px 20px 24px; }
+  .login-card { padding: 22px 18px 20px; }
   .login-icon { opacity: 0.4; }
+  // The bubbles I added near the card (positions 22%, 18%, 16%, 12%, 6% from
+  // edges) overlap the card on narrow phones — drop them on small screens.
+  .login-bubble-1,
+  .login-bubble-2,
+  .login-bubble-3,
+  .login-bubble-4,
+  .login-bubble-5 { display: none; }
+  .login-blob-c,
+  .login-blob-d { display: none; }
+  .login-welcome--in-card .login-welcome-title { font-size: 20px; }
+  .login-card-divider { margin-left: -18px; margin-right: -18px; }
+}
+
+// --- Footer (components/Footer.js) ---
+.footer-root {
+  position: relative;
+  margin-top: auto;
+  color: #fff;
+  isolation: isolate;
+  // Original theme gradient — secondary fading into primary.
+  background: linear-gradient(
+    to bottom,
+    var(--theme-secondary, #1B2A4A) 20%,
+    var(--theme-primary, #3856B5)
+  );
+}
+.footer-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.footer-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.footer-blob-a {
+  top: -120px;
+  right: -80px;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(
+    circle,
+    rgba(var(--theme-accent-rgb, 77 103 216) / 0.32) 0%,
+    transparent 70%
+  );
+}
+.footer-blob-b {
+  bottom: -140px;
+  left: -100px;
+  width: 320px;
+  height: 320px;
+  // Soft gold glow — coins are the only off-theme accent we keep.
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, transparent 70%);
+}
+
+.footer-main {
+  position: relative;
+  z-index: 1;
+  padding-top: 48px;
+  padding-bottom: 40px;
+}
+
+.footer-col-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 0 0 16px;
+}
+.footer-col-title-row { display: inline-flex; align-items: center; gap: 8px; }
+.footer-col-title-icon {
+  color: #fde047;
+  font-size: 14px;
+  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.5));
+}
+.footer-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.footer-support-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.footer-support-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--support-accent, #6366f1);
+  opacity: 0.9;
+  transition: width 0.2s ease;
+}
+.footer-support-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+}
+.footer-support-card:hover::before { width: 6px; }
+.footer-support-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--support-icon-bg, rgba(99, 102, 241, 0.22));
+  color: var(--support-icon-color, #c7d2fe);
+  border: 1px solid var(--support-icon-border, rgba(99, 102, 241, 0.4));
+  box-shadow: 0 4px 14px var(--support-icon-shadow, rgba(99, 102, 241, 0.3));
+}
+.footer-support-text { flex: 1; min-width: 0; }
+.footer-support-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+.footer-support-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.footer-support-arrow {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s ease, color 0.2s ease;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.footer-support-card:hover .footer-support-arrow {
+  transform: translateX(3px);
+  color: #fff;
+}
+
+// Tints derived from the theme. Phone uses primary, WhatsApp uses accent,
+// email uses gold (the one off-theme color we keep, since coins/highlight).
+.footer-support-card--phone {
+  --support-accent:       var(--theme-primary, #3856B5);
+  --support-icon-bg:      rgba(var(--theme-primary-rgb, 56 86 181) / 0.22);
+  --support-icon-color:   #fff;
+  --support-icon-border:  rgba(var(--theme-primary-rgb, 56 86 181) / 0.45);
+  --support-icon-shadow:  rgba(var(--theme-primary-rgb, 56 86 181) / 0.35);
+}
+.footer-support-card--whatsapp {
+  --support-accent:       var(--theme-accent, #4D67D8);
+  --support-icon-bg:      rgba(var(--theme-accent-rgb, 77 103 216) / 0.22);
+  --support-icon-color:   #fff;
+  --support-icon-border:  rgba(var(--theme-accent-rgb, 77 103 216) / 0.45);
+  --support-icon-shadow:  rgba(var(--theme-accent-rgb, 77 103 216) / 0.35);
+}
+.footer-support-card--mail {
+  --support-accent:       #f59e0b;
+  --support-icon-bg:      rgba(245, 158, 11, 0.18);
+  --support-icon-color:   #fde68a;
+  --support-icon-border:  rgba(245, 158, 11, 0.4);
+  --support-icon-shadow:  rgba(245, 158, 11, 0.3);
+}
+
+.footer-link {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 14px;
+  text-decoration: none;
+  position: relative;
+  width: -moz-fit-content;
+  width: fit-content;
+  padding: 2px 0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.footer-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.footer-link:hover {
+  color: #fff;
+  transform: translateX(3px);
+}
+.footer-link:hover::after { opacity: 0.6; transform: translateY(0); }
+
+.footer-brand {
+  font-size: 18px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #fde047, #fb923c);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.footer-brand-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 4px 0 10px;
+  line-height: 1.5;
+}
+.footer-socials {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.footer-social {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.footer-social:hover {
+  transform: translateY(-2px) rotate(-4deg);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+}
+.footer-social--facebook:hover { background: #1877f2; border-color: #1877f2; }
+.footer-social--youtube:hover  { background: #ff0000; border-color: #ff0000; }
+.footer-social--telegram:hover { background: #229ed9; border-color: #229ed9; }
+
+.footer-bottom {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.18);
+}
+.footer-bottom-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0;
+}
+.footer-bottom-link {
+  color: #fde047;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(253, 224, 71, 0.55);
+}
+.footer-bottom-link:hover { color: #fff; border-bottom-color: #fff; }
+
+@media (max-width: 720px) {
+  .footer-main { padding-top: 36px; padding-bottom: 28px; }
+  .footer-col-title { font-size: 11px; }
 }
 
 @layer base {
@@ -2534,23 +3895,27 @@ body {
 .header_notice_home {
   background: var(--theme-primary);
   color: #fff;
-  padding: 10px 20px;
-  border-radius: 3px;
-  box-shadow: 3px 2px 3px 2px #6ab8d4;
+  padding: 12px 18px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(var(--theme-primary-rgb), 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 
   &.marquee-wrapper {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0;
     padding: 8px 15px;
 
     .marquee-content {
       flex: 1;
       overflow: hidden;
+      display: flex;
+      align-items: center;
       
       marquee {
-        display: block;
-        margin-top: 4px;
+        vertical-align: middle;
+        font-size: 14px;
+        font-weight: 500;
       }
     }
   }
@@ -2659,4 +4024,9 @@ body {
 .table tbody tr td{
   padding: 6px;
   border-bottom: 1px solid;
+}
+
+// Hide reCAPTCHA badge globally
+.grecaptcha-badge { 
+  visibility: hidden !important; 
 }

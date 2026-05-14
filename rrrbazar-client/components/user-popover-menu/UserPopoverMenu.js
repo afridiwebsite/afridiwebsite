@@ -66,8 +66,8 @@ function UserPopoverMenu() {
             />
             <UserMenuList
               icon={<GiShoppingCart size={18} />}
-              text="My Shop"
-              link={routes.myShop.name}
+              text="Spin"
+              link={'/spin'}
             />
             <UserMenuList
               icon={<AiOutlinePoweroff size={18} />}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import moment from 'moment';
 import { Autoplay, Pagination } from 'swiper';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { BrowserView, MobileView } from 'react-device-detect';
@@ -10,7 +11,7 @@ import { hasData, imgPath } from '../helpers/helpers';
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="home-section-title">
+    <h3 className="home-section-title !text-3xl !mb-10">
       <span className="home-section-title-bar" aria-hidden="true" />
       <span>{children}</span>
       <span className="home-section-title-bar" aria-hidden="true" />
@@ -21,10 +22,10 @@ function SectionTitle({ children }) {
 function CategorySection({ title, products }) {
   if (!products || products.length === 0) return null;
   return (
-    <section className="container mt-3 mb-3 animate-fade-in">
+    <section className="container mb-14 mt-20 animate-fade-in">
       <div className="">
         <SectionTitle>{title}</SectionTitle>
-        <div className="grid grid-cols-3 xs:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
+        <div className="grid grid-cols-3 xs:grid-cols-4 md:grid-cols-6 gap-4 md:gap-8">
           {products.map((p, i) => (
             <div
               key={p.id || i}
@@ -41,24 +42,74 @@ function CategorySection({ title, products }) {
 }
 
 function OrderRow({ order }) {
-  const status = String(order.status || '').toLowerCase();
-  const initial = (order.name || '?').slice(0, 1).toUpperCase();
+  const status = String(order.status || '').toLowerCase().trim();
+  // API now returns the order's User and TopupProduct as nested includes.
+  const orderUser = order.User || order.user;
+  const orderProduct = order.TopupProduct || order.product;
+  const displayName =
+    orderUser?.username ||
+    (orderUser?.email ? orderUser.email.split('@')[0] : 'Anonymous Player');
+  const initial = (displayName?.[0] || '?').toUpperCase();
+  const m = moment(order.created_at);
+  const timeLabel = m.isValid() ? m.fromNow() : order.created_at;
+  const timeAbs = m.isValid()
+    ? m.format('MMM D, YYYY · h:mm A')
+    : order.created_at;
   return (
-    <div className="order-row-card animate-fade-in-up">
-      <div className="order-row-avatar">
-        {order.logo ? (
-          <img src={imgPath(order.logo)} alt={order.name} />
-        ) : (
-          <span>{initial}</span>
-        )}
+    <div className="topup-order-row animate-fade-in-up">
+      <div className="topup-order-row-avatar">
+        {orderUser?.avatar ? (
+          <img
+            src={orderUser.avatar}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.parentElement.classList.add('is-fallback');
+            }}
+          />
+        ) : null}
+        <span className="topup-order-row-avatar-fallback">{initial}</span>
       </div>
-      <div className="min-w-0">
-        <div className="font-semibold text-gray-800 truncate">{order.name}</div>
-        <div className="text-xs text-gray-500 truncate">
-          ID: {order.playerid} · #{order.id} · {order.diff_in_seconds}s ago
+
+      <div className="topup-order-row-main">
+        <div className="topup-order-row-line">
+          <span className="topup-order-row-user">{displayName}</span>
+          <span className="topup-order-row-id">#{order.id}</span>
+        </div>
+        <div className="topup-order-row-meta">
+          {orderProduct?.logo && (
+            <img
+              className="topup-order-row-product-logo"
+              src={imgPath(orderProduct.logo)}
+              alt=""
+            />
+          )}
+          {orderProduct?.name && (
+            <>
+              <span className="topup-order-row-product">{orderProduct.name}</span>
+              <span className="topup-order-row-dot" />
+            </>
+          )}
+          <span className="topup-order-row-pack">{order.name}</span>
+          {order.playerid && (
+            <>
+              <span className="topup-order-row-dot" />
+              <span className="topup-order-row-player">ID: {order.playerid}</span>
+            </>
+          )}
         </div>
       </div>
-      <span className={`status-pill ${status}`}>{status || 'unknown'}</span>
+
+      <div className="topup-order-row-side">
+        <span className={`topup-status-badge topup-status-badge--${status}`}>
+          <span className="topup-status-dot" aria-hidden="true" />
+          {order.status || 'unknown'}
+        </span>
+        <span className="topup-order-row-time" title={timeAbs}>
+          {timeLabel}
+        </span>
+      </div>
     </div>
   );
 }
@@ -100,15 +151,39 @@ function Home({
     return (
       <>
         {marquees.length > 0 && (
-          <section className="mb-2 md:my-3 home_slider_wrapper">
+          <section className="mb-2 md:my-3 home_slider_wrapper animate-fade-in">
             <div className="container">
-              <div className="header_notice_home marquee-wrapper">
-                <strong className="header_notice_strong">Notice:</strong>
-                <div className="marquee-content">
-                  <marquee scrollamount="5">
-                    {marquees.map((m) => m.notice).join(' | ')}
-                  </marquee>
+              <div className="header_notice_home marquee-wrapper relative flex items-center justify-between overflow-hidden">
+                <div className="flex items-center flex-1 overflow-hidden">
+                  <strong className="header_notice_strong whitespace-nowrap mr-3 flex items-center">
+                    <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
+                    Notice:
+                  </strong>
+                  <div className="marquee-content flex-1 overflow-hidden">
+                    <marquee
+                      scrollamount="5"
+                      onMouseOver={(e) => e.target.stop()}
+                      onMouseOut={(e) => e.target.start()}
+                      className="cursor-pointer"
+                    >
+                      {marquees.map((m, idx) => (
+                        <span key={m.id}>
+                          {m.notice}
+                          {idx < marquees.length - 1 && (
+                            <span className="mx-4 text-white/50">|</span>
+                          )}
+                        </span>
+                      ))}
+                    </marquee>
+                  </div>
                 </div>
+                <button
+                  onClick={() => marquees.forEach((m) => handleCloseNotice(m.id))}
+                  className="ml-3 hover:bg-white/10 rounded-full p-1.5 transition-colors flex-shrink-0"
+                  aria-label="Close marquee"
+                >
+                  <FaTimes size={14} />
+                </button>
               </div>
             </div>
           </section>
@@ -149,38 +224,39 @@ function Home({
               autoplay={{ delay: 3000 }}
               loop={true}
               modules={[Pagination, Autoplay]}
-              pagination={{ clickable: true }}
+              pagination={{
+                el: '.home-banner-dots',
+                clickable: true,
+                bulletClass: 'home-banner-dot',
+                bulletActiveClass: 'is-active',
+              }}
               slidesPerView={1}
               className="home-banner shadow-md"
             >
               {banners.map((banner, index) => (
-                <span key={index}>
-                  {banner.note == 'mobile' && (
+                <SwiperSlide key={index}>
+                  {banner.note === 'mobile' ? (
                     <MobileView>
-                      <SwiperSlide>
-                        <a href={banner.link} target="_blank" rel="noreferrer">
-                          <img
-                            src={imgPath(banner.banner)}
-                            alt={banner.note}
-                            className="w-full h-auto object-cover"
-                          />
-                        </a>
-                      </SwiperSlide>
+                      <a href={banner.link} target="_blank" rel="noreferrer">
+                        <img
+                          src={imgPath(banner.banner)}
+                          alt={banner.note}
+                          className="w-full h-auto object-cover"
+                        />
+                      </a>
                     </MobileView>
-                  ) || (
+                  ) : (
                     <BrowserView>
-                      <SwiperSlide>
-                        <a href={banner.link} target="_blank" rel="noreferrer">
-                          <img
-                            src={imgPath(banner.banner)}
-                            alt={banner.note}
-                            className="w-full h-auto object-cover"
-                          />
-                        </a>
-                      </SwiperSlide>
+                      <a href={banner.link} target="_blank" rel="noreferrer">
+                        <img
+                          src={imgPath(banner.banner)}
+                          alt={banner.note}
+                          className="w-full h-auto object-cover"
+                        />
+                      </a>
                     </BrowserView>
                   )}
-                </span>
+                </SwiperSlide>
               ))}
             </Swiper>
               <div className="home-banner-dots" />
@@ -229,20 +305,19 @@ function Home({
 
       {/* Latest Orders */}
       {product_order && product_order.length > 0 && (
-        <section className="container my-4 animate-fade-in">
+        <section className="container my-4 animate-fade-in mt-20">
           <div className="section-card home-section-card">
             <SectionTitle>Latest Orders</SectionTitle>
-            <div className="flex flex-col gap-2">
+            <ul className="topup-orders-list">
               {product_order.slice(0, 12).map((po, i) => (
-                <div
+                <li
                   key={po.id}
-                  className="animate-fade-in-up"
                   style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
                 >
                   <OrderRow order={po} />
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
       )}

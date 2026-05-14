@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useContext, useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GoogleLogin } from '@react-oauth/google';
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { useGoogleReCaptcha, GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 import * as Yup from 'yup';
 import api from '../api/api';
 import Alert from '../components/Alert';
@@ -224,4 +224,20 @@ function RegisterPage() {
   );
 }
 
-export default RegisterPage;
+function RegisterPageWithRecaptcha() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="6Ld66-csAAAAAJ0nSzak_ac7BkquGys_sv5k0ZPi"
+      scriptProps={{
+        async: false,
+        defer: false,
+        appendTo: "head",
+        nonce: undefined,
+      }}
+    >
+      <RegisterPage />
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default RegisterPageWithRecaptcha;

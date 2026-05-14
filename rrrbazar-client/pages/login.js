@@ -1,43 +1,149 @@
-import Head from 'next/head';
-import Link from 'next/link';
-import { useContext, useState } from 'react';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import Head from "next/head";
+import Link from "next/link";
+import { useContext, useState } from "react";
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import {
-  FaShieldAlt, FaBolt, FaLock,
-  FaCoins, FaGamepad, FaRocket, FaTrophy, FaGem, FaStar,
-} from 'react-icons/fa';
+  FaShieldAlt,
+  FaBolt,
+  FaLock,
+  FaCoins,
+  FaGamepad,
+  FaRocket,
+  FaTrophy,
+  FaGem,
+  FaStar,
+} from "react-icons/fa";
 import {
-  GiTwoCoins, GiConsoleController, GiCardJoker, GiDiamonds,
-} from 'react-icons/gi';
-import { HiSparkles } from 'react-icons/hi';
-import api from '../api/api';
-import Alert from '../components/Alert';
-import CircularProgress from '../components/CircularProgress';
-import { __page_title_end } from '../config/globalConfig';
-import { getErrors } from '../helpers/helpers';
-import { globalContext } from './_app';
+  GiTwoCoins,
+  GiConsoleController,
+  GiCardJoker,
+  GiDiamonds,
+} from "react-icons/gi";
+import { HiSparkles } from "react-icons/hi";
+import api from "../api/api";
+import Alert from "../components/Alert";
+import CircularProgress from "../components/CircularProgress";
+import { __page_title_end } from "../config/globalConfig";
+import { getErrors } from "../helpers/helpers";
+import { globalContext } from "./_app";
 
 const FEATURES = [
-  { Icon: FaShieldAlt, label: 'Secure',  tint: 'emerald' },
-  { Icon: FaBolt,      label: 'Fast',    tint: 'blue'    },
-  { Icon: FaLock,      label: 'Private', tint: 'purple'  },
+  { Icon: FaShieldAlt, label: "Secure", tint: "emerald" },
+  { Icon: FaBolt, label: "Fast", tint: "blue" },
+  { Icon: FaLock, label: "Private", tint: "purple" },
 ];
 
 // Background decoration — hand-tuned scatter so we don't fight the card.
 // Kept static (not Math.random) so SSR markup matches the client render.
 const FLOATING_ICONS = [
-  { Icon: FaCoins,             top: '6%',  left: '7%',  size: 30, delay: 0,   duration: 7, color: '#f59e0b' },
-  { Icon: FaGamepad,           top: '12%', left: '86%', size: 34, delay: 1.2, duration: 8, color: '#6366f1' },
-  { Icon: GiTwoCoins,          top: '22%', left: '14%', size: 38, delay: 2.4, duration: 6, color: '#f97316' },
-  { Icon: GiConsoleController, top: '28%', left: '80%', size: 32, delay: 0.6, duration: 9, color: '#10b981' },
-  { Icon: HiSparkles,          top: '36%', left: '4%',  size: 22, delay: 3.0, duration: 6, color: '#fbbf24' },
-  { Icon: FaGem,               top: '42%', left: '90%', size: 26, delay: 1.8, duration: 7, color: '#06b6d4' },
-  { Icon: FaRocket,            top: '54%', left: '8%',  size: 30, delay: 0.9, duration: 8, color: '#ef4444' },
-  { Icon: GiDiamonds,          top: '58%', left: '88%', size: 28, delay: 2.1, duration: 6, color: '#a855f7' },
-  { Icon: FaTrophy,            top: '70%', left: '5%',  size: 28, delay: 1.5, duration: 7, color: '#eab308' },
-  { Icon: FaStar,              top: '74%', left: '92%', size: 22, delay: 0.3, duration: 8, color: '#facc15' },
-  { Icon: GiCardJoker,         top: '86%', left: '18%', size: 26, delay: 2.7, duration: 6, color: '#ec4899' },
-  { Icon: FaCoins,             top: '88%', left: '78%', size: 24, delay: 3.3, duration: 7, color: '#f59e0b' },
+  {
+    Icon: FaCoins,
+    top: "6%",
+    left: "7%",
+    size: 30,
+    delay: 0,
+    duration: 7,
+    color: "#f59e0b",
+  },
+  {
+    Icon: FaGamepad,
+    top: "12%",
+    left: "86%",
+    size: 34,
+    delay: 1.2,
+    duration: 8,
+    color: "#6366f1",
+  },
+  {
+    Icon: GiTwoCoins,
+    top: "22%",
+    left: "14%",
+    size: 38,
+    delay: 2.4,
+    duration: 6,
+    color: "#f97316",
+  },
+  {
+    Icon: GiConsoleController,
+    top: "28%",
+    left: "80%",
+    size: 32,
+    delay: 0.6,
+    duration: 9,
+    color: "#10b981",
+  },
+  {
+    Icon: HiSparkles,
+    top: "36%",
+    left: "4%",
+    size: 22,
+    delay: 3.0,
+    duration: 6,
+    color: "#fbbf24",
+  },
+  {
+    Icon: FaGem,
+    top: "42%",
+    left: "90%",
+    size: 26,
+    delay: 1.8,
+    duration: 7,
+    color: "#06b6d4",
+  },
+  {
+    Icon: FaRocket,
+    top: "54%",
+    left: "8%",
+    size: 30,
+    delay: 0.9,
+    duration: 8,
+    color: "#ef4444",
+  },
+  {
+    Icon: GiDiamonds,
+    top: "58%",
+    left: "88%",
+    size: 28,
+    delay: 2.1,
+    duration: 6,
+    color: "#a855f7",
+  },
+  {
+    Icon: FaTrophy,
+    top: "70%",
+    left: "5%",
+    size: 28,
+    delay: 1.5,
+    duration: 7,
+    color: "#eab308",
+  },
+  {
+    Icon: FaStar,
+    top: "74%",
+    left: "92%",
+    size: 22,
+    delay: 0.3,
+    duration: 8,
+    color: "#facc15",
+  },
+  {
+    Icon: GiCardJoker,
+    top: "86%",
+    left: "18%",
+    size: 26,
+    delay: 2.7,
+    duration: 6,
+    color: "#ec4899",
+  },
+  {
+    Icon: FaCoins,
+    top: "88%",
+    left: "78%",
+    size: 24,
+    delay: 3.3,
+    duration: 7,
+    color: "#f59e0b",
+  },
 ];
 
 function LoginPage() {
@@ -46,7 +152,7 @@ function LoginPage() {
   const [isError, setIsError] = useState(false);
 
   const failedGoogleLogin = () => {
-    setIsError('Something went wrong. Try again');
+    setIsError("Something went wrong. Try again");
     setIsSubmitting(false);
   };
 
@@ -54,7 +160,7 @@ function LoginPage() {
     setIsSubmitting(true);
     setIsError(false);
     api
-      .post('/google-signup', { idToken: authResponse?.credential })
+      .post("/google-signup", { idToken: authResponse?.credential })
       .then((res) => {
         const { user, token } = res?.data?.data;
         saveAuthUser(user, token, true);
@@ -77,6 +183,13 @@ function LoginPage() {
         <div className="login-icons" aria-hidden="true">
           <span className="login-blob login-blob-a" />
           <span className="login-blob login-blob-b" />
+          <span className="login-blob login-blob-c" />
+          <span className="login-blob login-blob-d" />
+          <span className="login-bubble login-bubble-1" />
+          <span className="login-bubble login-bubble-2" />
+          <span className="login-bubble login-bubble-3" />
+          <span className="login-bubble login-bubble-4" />
+          <span className="login-bubble login-bubble-5" />
           {FLOATING_ICONS.map((item, i) => {
             const Icon = item.Icon;
             return (
@@ -107,10 +220,26 @@ function LoginPage() {
         </header>
 
         <main className="login-main flex items-center justify-center flex-col">
-   
-
           <div className="login-card">
-                 
+            {/* Welcome block — moved inside the card so the copy reads on
+                white instead of competing with the floating icons behind. */}
+            <div className="login-welcome login-welcome--in-card">
+              <span className="login-welcome-badge">
+                <HiSparkles className="login-welcome-badge-icon" />
+                Welcome to RRR Bazar
+              </span>
+              <h1 className="login-welcome-title">
+                Play, Win &amp;{" "}
+                <span className="login-welcome-accent">Cash Out</span>
+              </h1>
+              <p className="login-welcome-sub">
+                Join thousands of players in the most trusted gaming arena.
+                Fast payouts, fair play, and 24&times;7 support.
+              </p>
+            </div>
+
+            <div className="login-card-divider" aria-hidden="true" />
+
             <h2 className="login-card-title">Login With Google</h2>
             <p className="login-card-sub">
               One-click sign in with your Google account
@@ -128,14 +257,16 @@ function LoginPage() {
                   <CircularProgress size={20} className="text-primary-500" />
                 </div>
               )}
-              <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
+              <GoogleOAuthProvider
+                clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+              >
                 <GoogleLogin
                   onSuccess={responseGoogle}
                   onError={failedGoogleLogin}
                   size="large"
                   theme="outline"
                   shape="pill"
-                  width="300"
+                  width="280"
                 />
               </GoogleOAuthProvider>
             </div>
@@ -146,7 +277,10 @@ function LoginPage() {
 
             <div className="login-features">
               {FEATURES.map(({ Icon, label, tint }) => (
-                <div key={label} className={`login-feature login-feature-${tint}`}>
+                <div
+                  key={label}
+                  className={`login-feature login-feature-${tint}`}
+                >
                   <div className="login-feature-icon">
                     <Icon />
                   </div>
@@ -156,12 +290,27 @@ function LoginPage() {
             </div>
           </div>
 
+          {/* <div className="login-stats" aria-label="Platform stats">
+            <div className="login-stat login-stat-amber">
+              <div className="login-stat-value">50K+</div>
+              <div className="login-stat-label">Active Players</div>
+            </div>
+            <div className="login-stat login-stat-emerald">
+              <div className="login-stat-value">₹2 Cr+</div>
+              <div className="login-stat-label">Paid Out</div>
+            </div>
+            <div className="login-stat login-stat-violet">
+              <div className="login-stat-value">4.8&#9733;</div>
+              <div className="login-stat-label">User Rating</div>
+            </div>
+          </div> */}
+
           <p className="login-hint">
-            By continuing you agree to our{' '}
+            By continuing you agree to our{" "}
             <Link href="/terms-condition">
               <a className="login-hint-link">Terms</a>
-            </Link>
-            {' '}and{' '}
+            </Link>{" "}
+            and{" "}
             <Link href="/privacy-policy">
               <a className="login-hint-link">Privacy Policy</a>
             </Link>

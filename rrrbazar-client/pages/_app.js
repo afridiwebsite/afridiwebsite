@@ -8,9 +8,9 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'swiper/css';
 import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 import api, { getSiteSettings } from '../api/api';
 import { googleLogout } from '@react-oauth/google';
-import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 import AuthGuard from '../components/AuthGuard';
 import Layout from '../components/layout/Layout';
 import { __access_token_key, __user_key, __site_name_2, __site_name_label } from '../config/globalConfig';
@@ -160,23 +160,13 @@ function MyApp({ Component, pageProps }) {
         <QueryClientProvider client={queryClient}>
           <Layout disabledHeader={isDisabledHeader} disabledFooter={isDisabledFooter}>
             <ToastContainer />
-            <GoogleReCaptchaProvider
-              reCaptchaKey="6Ld66-csAAAAAJ0nSzak_ac7BkquGys_sv5k0ZPi"
-              scriptProps={{
-                async: false,
-                defer: false,
-                appendTo: "head",
-                nonce: undefined,
-              }}
-              >
-              {Component.auth ? (
-                <AuthGuard>
-                  <Component {...pageProps} />
-                </AuthGuard>
-              ) : (
+            {Component.auth ? (
+              <AuthGuard>
                 <Component {...pageProps} />
-              )}
-            </GoogleReCaptchaProvider>
+              </AuthGuard>
+            ) : (
+              <Component {...pageProps} />
+            )}
           </Layout>
         </QueryClientProvider>
       </globalContext.Provider>

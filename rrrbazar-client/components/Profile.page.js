@@ -107,7 +107,7 @@ function ProfilePage() {
       </div>
 
       {/* Stats — five cards in a 5-col grid on lg, wrapping on smaller. */}
-      <div className="container mt-14">
+      <div className="container mt-20">
         <div className="grid grid-cols-1 xxs:grid-cols-2 lg:!grid-cols-5 gap-5 md:gap-7">
           {[
             { label: 'User Id',     value: authUser?.id,           delay: 60,  icon: <FaIdBadge /> },
