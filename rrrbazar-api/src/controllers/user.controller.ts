@@ -890,42 +890,70 @@ class UserController {
 
         await user.save();
       } else if (payment_mathod === "auto_payment") {
+        // The order itself is not yet persisted — the webhook creates it once
+        // payment is confirmed. To keep UddoktaPay's metadata flat (some
+        // providers truncate or mishandle nested objects on the callback) we
+        // JSON-stringify the order payload into a single `order` field.
+        const orderPayload = {
+          topuppackage_id,
+          product_id,
+          accounttype,
+          ingameid,
+          ingamepassword,
+          playerid,
+          phone,
+          securitycode,
+          status: order_status,
+          payment_mathod: "wallet",
+          brief_note: unipin_code == "" ? "" : "UniPin: " + unipin_code,
+          user_id,
+          amount,
+          bprice,
+        };
+
         const meta_data = {
           token: process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f",
           id: user.id,
           paymentmethod: 1, // UddoktaPay method ID
           unipin_id: hold_unipin_id,
-          order: {
-            topuppackage_id,
-            product_id,
-            accounttype,
-            ingameid,
-            ingamepassword,
-            playerid,
-            phone,
-            securitycode,
-            status: order_status,
-            payment_mathod: "wallet",
-            brief_note: unipin_code == "" ? "" : "UniPin: " + unipin_code,
-            user_id,
-            amount,
-            bprice,
-          },
+          order: JSON.stringify(orderPayload),
         };
 
-        const fastPayData = await fastPay({
-          full_name: user.email,
-          email: user.email,
-          amount: amount,
-          metadata: meta_data,
-          redirect_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/order`,
-          cancel_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/order`,
-          webhook_url: `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`,
+        const webhookUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`;
+        const redirectUrl = `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/order`;
+        console.log("[topupPackageOrder] auto_payment requested", {
+          user_id: user.id,
+          amount,
+          webhookUrl,
+          redirectUrl,
         });
 
-        console.log(fastPayData,'data')
-        response.data = fastPayData;
-        return res.send(response.data);
+        try {
+          const fastPayData = await fastPay({
+            full_name: user.email,
+            email: user.email,
+            amount: amount,
+            metadata: meta_data,
+            redirect_url: redirectUrl,
+            cancel_url: redirectUrl,
+            webhook_url: webhookUrl,
+          });
+
+          console.log("[topupPackageOrder] fastPay ok:", fastPayData);
+          response.data = fastPayData;
+          return res.send(response.data);
+        } catch (err: any) {
+          console.error(
+            "[topupPackageOrder] fastPay failed:",
+            err?.message,
+            err?.body,
+          );
+          response.message =
+            "Could not start payment session. Please try again or contact support.";
+          response.status = 502;
+          response.success = false;
+          return res.status(502).send(response.response);
+        }
       } else {
         response.message = "Invalid payment method";
         return res.status(400).send(response.internalError);
@@ -1126,17 +1154,37 @@ class UserController {
       };
 
       if (paymentmethod == 4) {
-        const fastPayData = await fastPay({
-          full_name: user.email,
-          email: user.email,
-          amount: amount,
-          metadata: meta_data,
-          redirect_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/transaction`,
-          cancel_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/add-money`,
-          webhook_url: `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`,
+        const webhookUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`;
+        console.log("[addWallet] fastPay requested", {
+          user_id: user.id,
+          amount,
+          webhookUrl,
         });
-        response.data = fastPayData;
-        return res.send(response.data);
+        try {
+          const fastPayData = await fastPay({
+            full_name: user.email,
+            email: user.email,
+            amount: amount,
+            metadata: meta_data,
+            redirect_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/transaction`,
+            cancel_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/add-money`,
+            webhook_url: webhookUrl,
+          });
+          console.log("[addWallet] fastPay ok:", fastPayData);
+          response.data = fastPayData;
+          return res.send(response.data);
+        } catch (err: any) {
+          console.error(
+            "[addWallet] fastPay failed:",
+            err?.message,
+            err?.body,
+          );
+          response.message =
+            "Could not start payment session. Please try again or contact support.";
+          response.status = 502;
+          response.success = false;
+          return res.status(502).send(response.response);
+        }
       } else {
         const createTransaction = await Transaction.create({
           user_id,
@@ -1755,7 +1803,10 @@ class UserController {
         paymentmethod,
       } = req.body;
 
-      console.log("UddoktaPay Webhook Received:", JSON.stringify(req.body));
+      console.log("UddoktaPay Webhook Received");
+      console.log("[webhook] content-type:", req.headers["content-type"]);
+      console.log("[webhook] body keys:", Object.keys(req.body || {}));
+      console.log("[webhook] body:", JSON.stringify(req.body));
 
       //const uak = req.headers['RT_UDDOKTAPAY_API_KEY'];
 

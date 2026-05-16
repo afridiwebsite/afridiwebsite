@@ -48,25 +48,7 @@ class AdminController {
     const response = new responseUtils()
     try {
       const { user_id, order_id, status } = req.query;
-      const token = req.headers.authorization;
-      const admin = jwt.decode(token)
       const filter: any = {};
-
-      const packagesForAdmin = await TopupPackagePermission.findAll({
-        where: {
-          admin_id: admin.user_id,
-        },
-        raw: true,
-        attributes: ['topup_package_id'],
-      })
-      const bindPackageIdInArray = packagesForAdmin.map(pack => pack.topup_package_id.toString())
-
-      if (bindPackageIdInArray.length <= 0) {
-        response.message = 'No order found';
-        response.status = 400;
-        response.success = true;
-        return res.status(400).send(response.response);
-      }
 
       filter.payment_status = 1
 
@@ -81,29 +63,23 @@ class AdminController {
         filter.status = status
       }
 
-      let order_by_str = sequelize.literal("CASE status WHEN 'pending' THEN 1 WHEN 'completed' THEN 2 WHEN 'Failed' THEN 3 WHEN 'cancel' THEN 4 END, created_at desc, id desc");
+      // Qualify with `Order` so MySQL doesn't see the joined Admin.status / id
+      // and complain "Column 'status' in order clause is ambiguous".
+      let order_by_str = sequelize.literal("CASE `Order`.`status` WHEN 'pending' THEN 1 WHEN 'completed' THEN 2 WHEN 'Failed' THEN 3 WHEN 'cancel' THEN 4 END, `Order`.`created_at` desc, `Order`.`id` desc");
       if (status == 'cancel' || status == 'completed') {
-        order_by_str = sequelize.literal('id desc');
+        order_by_str = sequelize.literal('`Order`.`id` desc');
       }
 
 
       const limit: any = parseInt(req.query.limit?.toString() || '20')
       const page: any = parseInt(req.query.page?.toString() || '1')
 
-      const orderCount = await Order.count({
-        where: {
-          topuppackage_id: bindPackageIdInArray,
-          ...filter
-        },
-      })
+      const orderCount = await Order.count({ where: filter })
 
       const orders = await Order.findAll({
         offset: (page - 1) * limit,
         limit: limit,
-        where: {
-          topuppackage_id: bindPackageIdInArray,
-          ...filter
-        },
+        where: filter,
         order: order_by_str,
         include: [
           {

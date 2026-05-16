@@ -145,8 +145,11 @@ function TopupOrderPage() {
   const hasPackages = Array.isArray(packages) && packages.length > 0;
 
   // Renumber sections so the step badges count 1, 2, 3… in render order even
-  // when some sections are hidden (no packages, Unipin voucher, etc).
-  const accountInfoVisible = displayUnipinVoucher !== "none";
+  // when some sections are hidden (no packages, Unipin voucher, no admin-
+  // defined inputs, etc). Account Info only shows when there's something to
+  // fill in.
+  const accountInfoVisible =
+    displayUnipinVoucher !== "none" && hasDynamicInputs;
   let _step = 0;
   const rechargeStep = hasPackages ? ++_step : null;
   const accountInfoStep = accountInfoVisible ? ++_step : null;
@@ -556,10 +559,10 @@ function TopupOrderPage() {
                           {/* Select Recharge --End-- */}
 
                           {/* Account Info Form --Start-- */}
+                          {accountInfoVisible && (
                           <div
                             className="_order_box_wrapper animate-fade-in-up"
                             style={{
-                              display: displayUnipinVoucher,
                               animationDelay: "140ms",
                             }}
                           >
@@ -573,10 +576,11 @@ function TopupOrderPage() {
                             </div>
 
                             <div className="order_box_body">
-                              {hasDynamicInputs ? (
+                              {
                                 // Account Info renders strictly from the admin-
                                 // defined dynamic inputs. No more hardcoded
                                 // Player ID / Account Type / Password branches.
+                              }
                                 <div className="flex flex-col gap-3">
                                   {dynamicInputs.map((inp) => {
                                     const fieldName = inp.is_player_id
@@ -666,14 +670,9 @@ function TopupOrderPage() {
                                     );
                                   })}
                                 </div>
-                              ) : (
-                                <p className="_body2 text-[13px] text-gray-500 italic">
-                                  The admin hasn&apos;t configured order form
-                                  inputs for this product yet.
-                                </p>
-                              )}
                             </div>
                           </div>
+                          )}
                           {/* Account Info Form --End-- */}
 
                           {/* Select Payment Option --Start-- */}
