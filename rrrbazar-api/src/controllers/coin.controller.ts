@@ -164,15 +164,15 @@ class CoinController {
             return res.status(400).send(response.response);
         }
         const settings = await getSettings();
-        const money = Math.floor(coinAmount * settings.coin_to_money_rate);
+        const money = Number((coinAmount * settings.coin_to_money_rate).toFixed(2));
         if (money <= 0) {
             response.status = 400;
             response.success = false;
             response.message = 'Conversion amount too small';
             return res.status(400).send(response.response);
         }
-        user.coins = user.coins - coinAmount;
-        user.wallet = (user.wallet || 0) + money;
+        user.coins = Number(user.coins) - coinAmount;
+        user.wallet = Number(user.wallet) + money;
         await user.save();
 
         await CoinTransaction.create({

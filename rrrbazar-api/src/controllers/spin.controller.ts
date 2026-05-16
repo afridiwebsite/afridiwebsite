@@ -163,7 +163,7 @@ class SpinController {
                     note,
                 });
             } else if (reward.type === 'wallet' && appliedAmount > 0) {
-                user.wallet = (user.wallet || 0) + appliedAmount;
+                user.wallet = Number(user.wallet || 0) + appliedAmount;
                 await user.save();
             } else {
                 // Unknown / 'none' / 'try-again' — just log the result.
@@ -190,6 +190,7 @@ class SpinController {
                     icon: reward.icon,
                 },
                 coins: user.coins,
+                wallet: user.wallet,
             };
             response.message = appliedAmount > 0
                 ? `You won ${reward.label}!`

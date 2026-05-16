@@ -11,7 +11,7 @@
  */
 import Head from 'next/head';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FaCoins, FaGift, FaHistory } from 'react-icons/fa';
 import {
@@ -23,6 +23,7 @@ import {
   getSpinOverview,
 } from '../api/api';
 import DailyLoginBonus from '../components/DailyLoginBonus';
+import { globalContext } from './_app';
 
 const DEFAULT_COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#facc15'];
 
@@ -114,33 +115,51 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
 }
 
 function SpinPage() {
+  const { authUser, updateAuthUserInfo } = useContext(globalContext);
   const [overview, setOverview] = useState(null);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [bonusOpen, setBonusOpen] = useState(false);
   const [coinBusy, setCoinBusy] = useState(false);
-  const [convertAmount, setConvertAmount] = useState('');
+  const [convertAmount, setConvertAmount] = useState("");
   const [coinHistory, setCoinHistory] = useState([]);
   const [spinHistory, setSpinHistory] = useState([]);
-  const [tab, setTab] = useState('spin'); // 'spin' | 'coin'
+  const [tab, setTab] = useState("spin"); // 'spin' | 'coin'
   const [lastWin, setLastWin] = useState(null);
   const rotationRef = useRef(0); // tracks the wheel's running rotation across spins
 
-  const load = async () => {
-    try {
-      const res = await getSpinOverview();
-      setOverview(res?.data?.data || null);
-    } catch (e) { /* ignore */ }
+  const load = async (includeOverview = true) => {
+    if (includeOverview) {
+      try {
+        const res = await getSpinOverview();
+        const data = res?.data?.data;
+        setOverview(data || null);
+        // Sync global state if it differs (e.g. on first load)
+        if (data && updateAuthUserInfo && authUser) {
+          if (data.coins !== authUser.coins) {
+            updateAuthUserInfo({ ...authUser, coins: data.coins });
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
     try {
       const h = await getSpinHistory();
       setSpinHistory(h?.data?.data || []);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
     try {
       const ch = await getCoinHistory();
       setCoinHistory(ch?.data?.data || []);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const rewards = useMemo(() => overview?.rewards || [], [overview]);
   const segCount = Math.max(rewards.length, 1);
@@ -149,7 +168,7 @@ function SpinPage() {
   const cost = overview?.cost || 0;
   const dailyLimit = overview?.daily_limit || 0;
   const spinsToday = overview?.spins_today || 0;
-  const coins = overview?.coins || 0;
+  const coins = authUser?.coins ?? overview?.coins ?? 0;
   const rate = Number(overview?.coin_to_money_rate) || 0;
   const overLimit = dailyLimit > 0 && spinsToday >= dailyLimit;
   const cannotAfford = cost > 0 && coins < cost;
@@ -159,14 +178,14 @@ function SpinPage() {
   // = 0.01 instead of being rounded to 0).
   const convertPreview = (() => {
     const n = Number(convertAmount);
-    if (!n || n <= 0) return '';
+    if (!n || n <= 0) return "";
     const money = (n * rate).toFixed(2);
     return ` ${n} → ৳ ${money}`;
   })();
 
   const onSpin = async () => {
     if (spinning || rewards.length === 0) return;
-    if (overLimit) return toast.error('Daily spin limit reached');
+    if (overLimit) return toast.error("Daily spin limit reached");
     if (cannotAfford) return toast.error(`Need ${cost} coins to spin`);
 
     setSpinning(true);
@@ -175,6 +194,15 @@ function SpinPage() {
       const res = await doSpin();
       const data = res?.data?.data;
       const idx = data?.reward_index ?? 0;
+
+      // Update global state immediately for the coin deduction
+      if (updateAuthUserInfo && authUser) {
+        updateAuthUserInfo({
+          ...authUser,
+          coins: data.coins,
+          wallet: data.wallet ?? authUser.wallet,
+        });
+      }
 
       // Compute the rotation. Segment i's centre sits at i*segAngle + segAngle/2
       // measured clockwise from the top, so the wheel must rotate by
@@ -198,12 +226,12 @@ function SpinPage() {
       setTimeout(async () => {
         setSpinning(false);
         setLastWin(data?.reward);
-        toast.success(res?.data?.message || 'Spin complete');
-        await load();
+        toast.success(res?.data?.message || "Spin complete");
+        await load(false); // Only reload history, keep balance from response
       }, 4200);
     } catch (e) {
       setSpinning(false);
-      toast.error(e?.response?.data?.message || 'Spin failed');
+      toast.error(e?.response?.data?.message || "Spin failed");
     }
   };
 
@@ -214,12 +242,25 @@ function SpinPage() {
     setCoinBusy(true);
     try {
       const res = await convertCoins(amt);
-      toast.success(res?.data?.message || 'Converted');
-      setConvertAmount('');
-      await load();
+      const data = res?.data?.data;
+
+      // Immediate wallet and coin update in Header
+      if (data && updateAuthUserInfo && authUser) {
+        updateAuthUserInfo({
+          ...authUser,
+          coins: data.coins,
+          wallet: data.wallet,
+        });
+      }
+
+      toast.success(res?.data?.message || "Converted");
+      setConvertAmount("");
+      await load(false); // Reload history only
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Convert failed');
-    } finally { setCoinBusy(false); }
+      toast.error(err?.response?.data?.message || "Convert failed");
+    } finally {
+      setCoinBusy(false);
+    }
   };
 
   const remaining = dailyLimit > 0 ? Math.max(0, dailyLimit - spinsToday) : null;
