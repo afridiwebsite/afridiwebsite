@@ -66,7 +66,7 @@ export default (sequelize: Sequelize) => {
       defaultValue: 0,
     },
     coins: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0,
     },

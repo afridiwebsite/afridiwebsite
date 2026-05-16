@@ -17,7 +17,7 @@ export default (sequelize: Sequelize) => {
             allowNull: false,
         },
         amount: {
-            type: DataTypes.DECIMAL(10, 2),
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
         type: {
