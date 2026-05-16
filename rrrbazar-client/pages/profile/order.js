@@ -1,9 +1,9 @@
 import Head from 'next/head';
 import { useQuery } from 'react-query';
 import ReactHtmlParser from 'react-html-parser';
+import { BiErrorCircle } from 'react-icons/bi';
 import { getUserOrders } from '../../api/api';
 import ActivityIndicator from '../../components/ActivityIndicator';
-import Alert from '../../components/Alert';
 import Badge from '../../components/Badge';
 import FlashMessage from '../../components/FlashMessage';
 import { __page_title_end } from '../../config/globalConfig';
@@ -67,18 +67,17 @@ function OrderPage() {
                       </p>
                     )}
                     {order?.brief_note && order?.brief_note.substring(0, 6) != 'UniPin' && (
-                      <Alert
-                        type="error"
-                        title={
-                          <span>
-                            <strong>Note:</strong>{' '}
-                            <span className="inline order-note-html">
-                              {ReactHtmlParser(order.brief_note)}
-                            </span>
-                          </span>
-                        }
-                        className="block w-full !mt-2.5"
-                      />
+                      <div className="order-note">
+                        <span className="order-note-icon" aria-hidden="true">
+                          <BiErrorCircle />
+                        </span>
+                        <div className="order-note-body">
+                          <div className="order-note-label">Note</div>
+                          <div className="order-note-html">
+                            {ReactHtmlParser(order.brief_note)}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className="flex-shrink-0">

@@ -155,11 +155,15 @@ function TopupOrderPage() {
   const accountInfoStep = accountInfoVisible ? ++_step : null;
   const paymentStep = ++_step;
 
-  // Form Initial values
+  // Form Initial values. payment_mathod defaults to "pay" because the
+  // Wallet radio is pre-selected visually on mount via `selectedPaymentMethod`;
+  // initializing the Formik field to match avoids a hidden "Payment method
+  // is required" validation failure when the user just selects a package
+  // and hits Buy Now without explicitly clicking the radio.
   const initialValues = {
     playerid: isUnipinVoucher ? "UNIPIN_VOUCHER" : "",
     selectedpackage: null,
-    payment_mathod: "",
+    payment_mathod: "pay",
     // Seed a key for every non-PlayerID dynamic input so Formik tracks them.
     ...dynamicInputs.reduce((acc, inp) => {
       if (!inp.is_player_id) acc[`dyn_${inp.id}`] = "";
@@ -169,13 +173,20 @@ function TopupOrderPage() {
 
   // Form Validation Schema — playerid is only required when a Player ID
   // dynamic input is configured (or the legacy isactivefortopup flag is set).
+  // Likewise, `selectedpackage` is only required when the product actually
+  // has packages to pick from — otherwise the form is in info-only mode and
+  // the submit just records the dynamic input values.
   const requirePlayerId = !!playerIdInput || isActiveForTopup;
   const validationSchema = Yup.object().shape({
     playerid: requirePlayerId
       ? Yup.string().required("Player ID is required").trim()
       : Yup.string().trim(),
-    selectedpackage: Yup.object().nullable().required("Select a package"),
-    payment_mathod: Yup.string().required().trim().label("Payment method"),
+    selectedpackage: hasPackages
+      ? Yup.object().nullable().required("Select a package")
+      : Yup.object().nullable(),
+    payment_mathod: hasPackages
+      ? Yup.string().required().trim().label("Payment method")
+      : Yup.string().trim().nullable(),
   });
 
   return (
@@ -267,14 +278,21 @@ function TopupOrderPage() {
                         payment_mathod,
                       } = values;
 
-                      Swal.fire({
-                        title: false,
-                        html: `
-                            <div class="_confirm_order_body">
+                      // Info-only products (no packages) skip the Swal
+                      // confirmation since there's no price to confirm.
+                      const confirmHtml = selectedpackage
+                        ? `<div class="_confirm_order_body">
                               <h4 class="_h4">Confirm Order</h4>
                               <p className="modal_sub_title">Your current wallet is <span class="_bold_it">৳${userWallet}</span></p>
                               <p className="modal_sub_title">You need <span class="_bold_it">৳${selectedpackage.price}</span> to purchase this product.</p>
-                            </div>`,
+                            </div>`
+                        : `<div class="_confirm_order_body">
+                              <h4 class="_h4">Submit details</h4>
+                              <p className="modal_sub_title">This product has no packages configured — submit your details to record the order.</p>
+                            </div>`;
+                      Swal.fire({
+                        title: false,
+                        html: confirmHtml,
                         customClass: {
                           popup: "_confirm_order_modal_popup",
                           cancelButton: "_cancel_btn",
@@ -301,9 +319,14 @@ function TopupOrderPage() {
                             .join(" | ");
                           api
                             .post("/packageorder", {
-                              topuppackage_id: selectedpackage.id,
-                              product_id: selectedpackage.product_id,
-                              name: selectedpackage.name,
+                              // When the product has no packages, send the
+                              // product_id/name from the route and zero out
+                              // package-specific fields so the server can
+                              // still record the order as info-only.
+                              topuppackage_id: selectedpackage?.id || null,
+                              product_id:
+                                selectedpackage?.product_id || product_id,
+                              name: selectedpackage?.name || productInfo?.name || "",
                               accounttype,
                               playerid,
                               ingameid: dynExtras || undefined,
@@ -313,8 +336,7 @@ function TopupOrderPage() {
                               securitycode: isActiveForTopup
                                 ? "IDCODE"
                                 : securitycode,
-                              // payment_mathod: 1,
-                              payment_mathod,
+                              payment_mathod: payment_mathod || "pay",
                             })
                             .then((order_res) => {
                               if (
@@ -335,8 +357,21 @@ function TopupOrderPage() {
                             })
                             .catch((err) => {
                               setSubmitting(false);
-                              const error = getErrors(err);
-                              setServerError(error);
+                              // Surface the actual server payload so we can
+                              // diagnose 400/500s instead of just seeing a
+                              // generic toast. `getErrors` extracts the user-
+                              // facing message; the console log keeps the
+                              // full response around for devtools.
+                              console.error(
+                                "[packageorder] failed:",
+                                err?.response?.status,
+                                err?.response?.data || err?.message,
+                              );
+                              const message =
+                                err?.response?.data?.message ||
+                                getErrors(err) ||
+                                "Could not place the order. Please try again.";
+                              setServerError(message);
                               scrollTopWindow();
                             });
                         } else {
@@ -437,13 +472,24 @@ function TopupOrderPage() {
                                           isPackageIdError && !isSelected
                                             ? "is-error"
                                             : ""
-                                        } ${pack?.logo ? "has-logo" : ""}`}
+                                        } ${pack?.logo ? "has-bg" : ""}`}
                                         style={{
                                           animationDelay: `${
                                             Math.min(index, 10) * 50
                                           }ms`,
                                         }}
                                       >
+                                        {pack?.logo && (
+                                          <span
+                                            className="topup-pack-card-bg"
+                                            aria-hidden="true"
+                                          >
+                                            <img
+                                              src={imgPath(pack.logo)}
+                                              alt=""
+                                            />
+                                          </span>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -472,24 +518,12 @@ function TopupOrderPage() {
                                               Already claimed
                                             </span>
                                           )}
-                                          {pack?.logo ? (
+                                          {isSelected && (
                                             <span
-                                              className="topup-pack-card-logo"
+                                              className="topup-pack-card-check"
                                               aria-hidden="true"
                                             >
-                                              <img
-                                                src={imgPath(pack.logo)}
-                                                alt=""
-                                              />
-                                            </span>
-                                          ) : (
-                                            <span
-                                              className="topup-pack-card-logo is-placeholder"
-                                              aria-hidden="true"
-                                            >
-                                              {(pack?.name || "?")
-                                                .charAt(0)
-                                                .toUpperCase()}
+                                              ✓
                                             </span>
                                           )}
                                           <span className="topup-pack-card-name">

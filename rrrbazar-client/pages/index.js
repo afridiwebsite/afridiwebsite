@@ -153,33 +153,27 @@ function Home({
         {marquees.length > 0 && (
           <section className="mb-2 md:my-3 home_slider_wrapper animate-fade-in">
             <div className="container">
-              <div className="header_notice_home marquee-wrapper relative flex items-center justify-between overflow-hidden">
-                <div className="flex items-center flex-1 overflow-hidden">
-                  <strong className="header_notice_strong whitespace-nowrap mr-3 flex items-center">
-                    <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
-                    Notice:
-                  </strong>
-                  <div className="marquee-content flex-1 overflow-hidden">
-                    <marquee
-                      scrollamount="5"
-                      onMouseOver={(e) => e.target.stop()}
-                      onMouseOut={(e) => e.target.start()}
-                      className="cursor-pointer"
-                    >
-                      {marquees.map((m, idx) => (
-                        <span key={m.id}>
-                          {m.notice}
-                          {idx < marquees.length - 1 && (
-                            <span className="mx-4 text-white/50">|</span>
-                          )}
-                        </span>
-                      ))}
-                    </marquee>
-                  </div>
+              <div className="home-notice home-notice--marquee">
+                <span className="home-notice-dot" aria-hidden="true" />
+                <div className="home-notice-marquee-wrap">
+                  <marquee
+                    scrollamount="5"
+                    onMouseOver={(e) => e.target.stop()}
+                    onMouseOut={(e) => e.target.start()}
+                  >
+                    {marquees.map((m, idx) => (
+                      <span key={m.id}>
+                        {m.notice}
+                        {idx < marquees.length - 1 && (
+                          <span className="home-notice-sep">|</span>
+                        )}
+                      </span>
+                    ))}
+                  </marquee>
                 </div>
                 <button
                   onClick={() => marquees.forEach((m) => handleCloseNotice(m.id))}
-                  className="ml-3 hover:bg-white/10 rounded-full p-1.5 transition-colors flex-shrink-0"
+                  className="home-notice-close"
                   aria-label="Close marquee"
                 >
                   <FaTimes size={14} />
@@ -191,15 +185,12 @@ function Home({
         {others.map((n) => (
           <section key={n.id} className="mb-2 md:my-3 home_slider_wrapper animate-fade-in">
             <div className="container">
-              <div className="header_notice_home relative flex items-start justify-between">
-                <div className="flex-1">
-                  <strong className="header_notice_strong">Notice:</strong>
-                  <br />
-                  <p className="header_notice_p">{n.notice}</p>
-                </div>
+              <div className="home-notice">
+                <span className="home-notice-dot" aria-hidden="true" />
+                <p className="home-notice-text flex-1">{n.notice}</p>
                 <button
                   onClick={() => handleCloseNotice(n.id)}
-                  className="ml-3 hover:text-gray-200 transition-colors p-1"
+                  className="home-notice-close"
                   aria-label="Close notice"
                 >
                   <FaTimes />
