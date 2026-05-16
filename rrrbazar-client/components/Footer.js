@@ -8,20 +8,28 @@
  */
 import { useContext } from 'react';
 import Link from 'next/link';
-import { AiFillYoutube } from 'react-icons/ai';
-import { BsTelephone, BsWhatsapp } from 'react-icons/bs';
-import { FaFacebookF, FaTelegramPlane, FaEnvelope, FaHeadset } from 'react-icons/fa';
+import { FaTelegramPlane, FaEnvelope, FaHeadset, FaYoutube } from 'react-icons/fa';
 import { globalContext } from '../pages/_app';
 import {
-  __support_number,
   __email_name,
   __site_name_1,
   __site_name_2,
   __site_url,
-  __whatsapp_support_number_link,
   __youtube_link,
-  __facebook_link,
 } from '../config/globalConfig';
+
+// Build a t.me link from an admin-provided value. Phone-like inputs (digits,
+// optional leading +) become https://t.me/+<digits>; anything else is treated
+// as a username (https://t.me/<value>).
+function buildTelegramLink(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const stripped = raw.replace(/^@/, '');
+  const digits = stripped.replace(/[^0-9]/g, '');
+  const looksLikePhone = /^\+?\d[\d\s-]*$/.test(stripped);
+  if (looksLikePhone && digits) return `https://t.me/+${digits}`;
+  return `https://t.me/${stripped}`;
+}
 
 function FooterColumn({ title, children }) {
   return (
@@ -35,6 +43,10 @@ function FooterColumn({ title, children }) {
 function Footer() {
   const { siteSettings } = useContext(globalContext) || {};
   const siteName = siteSettings?.site_name || __site_name_2;
+  const supportEmail = siteSettings?.support_email || __email_name;
+  const telegramRaw = siteSettings?.telegram_number || '';
+  const telegramLink = buildTelegramLink(telegramRaw);
+  const youtubeLink = siteSettings?.youtube_link || __youtube_link || '';
 
   return (
     <footer className="footer-root">
@@ -53,47 +65,38 @@ function Footer() {
               </span>
             }
           >
-            <a
-              href={'tel:' + __support_number}
-              className="footer-support-card footer-support-card--phone"
-            >
-              <div className="footer-support-icon">
-                <BsTelephone size={18} />
-              </div>
-              <div className="footer-support-text">
-                <div className="footer-support-label">Call us anytime</div>
-                <div className="footer-support-value">{__support_number}</div>
-              </div>
-              <span className="footer-support-arrow" aria-hidden="true">→</span>
-            </a>
-            <a
-              href={__whatsapp_support_number_link}
-              target="_blank"
-              rel="noreferrer"
-              className="footer-support-card footer-support-card--whatsapp"
-            >
-              <div className="footer-support-icon">
-                <BsWhatsapp size={18} />
-              </div>
-              <div className="footer-support-text">
-                <div className="footer-support-label">Chat on WhatsApp</div>
-                <div className="footer-support-value">{__support_number}</div>
-              </div>
-              <span className="footer-support-arrow" aria-hidden="true">→</span>
-            </a>
-            <a
-              href={`mailto:${__email_name}`}
-              className="footer-support-card footer-support-card--mail"
-            >
-              <div className="footer-support-icon">
-                <FaEnvelope size={16} />
-              </div>
-              <div className="footer-support-text">
-                <div className="footer-support-label">Email support</div>
-                <div className="footer-support-value">{__email_name}</div>
-              </div>
-              <span className="footer-support-arrow" aria-hidden="true">→</span>
-            </a>
+            {telegramLink && (
+              <a
+                href={telegramLink}
+                target="_blank"
+                rel="noreferrer"
+                className="footer-support-card footer-support-card--telegram"
+              >
+                <div className="footer-support-icon">
+                  <FaTelegramPlane size={18} />
+                </div>
+                <div className="footer-support-text">
+                  <div className="footer-support-label">Message on Telegram</div>
+                  <div className="footer-support-value">{telegramRaw}</div>
+                </div>
+                <span className="footer-support-arrow" aria-hidden="true">→</span>
+              </a>
+            )}
+            {supportEmail && (
+              <a
+                href={`mailto:${supportEmail}`}
+                className="footer-support-card footer-support-card--mail"
+              >
+                <div className="footer-support-icon">
+                  <FaEnvelope size={16} />
+                </div>
+                <div className="footer-support-text">
+                  <div className="footer-support-label">Email support</div>
+                  <div className="footer-support-value">{supportEmail}</div>
+                </div>
+                <span className="footer-support-arrow" aria-hidden="true">→</span>
+              </a>
+            )}
           </FooterColumn>
 
           <FooterColumn title="Information">
@@ -114,37 +117,22 @@ function Footer() {
           <FooterColumn title="Stay Connected">
             <div className="footer-brand">{siteName}</div>
             <p className="footer-brand-sub">
-              Follow us for drops, tournaments and exclusive coin rewards.
+              Reach out on Telegram or drop us an email — we usually reply
+              within minutes.
             </p>
-            <div className="footer-socials">
-              <a
-                href={__facebook_link}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Facebook"
-                className="footer-social footer-social--facebook"
-              >
-                <FaFacebookF size={15} />
-              </a>
-              <a
-                href={__youtube_link}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="YouTube"
-                className="footer-social footer-social--youtube"
-              >
-                <AiFillYoutube size={17} />
-              </a>
-              <a
-                href="https://t.me/"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Telegram"
-                className="footer-social footer-social--telegram"
-              >
-                <FaTelegramPlane size={15} />
-              </a>
-            </div>
+            {youtubeLink && (
+              <div className="footer-socials">
+                <a
+                  href={youtubeLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="YouTube"
+                  className="footer-social footer-social--youtube"
+                >
+                  <FaYoutube size={17} />
+                </a>
+              </div>
+            )}
           </FooterColumn>
         </div>
       </div>
@@ -162,6 +150,20 @@ function Footer() {
           </p>
         </div>
       </div>
+
+      {/* Floating Telegram FAB — always visible on the storefront. */}
+      {telegramLink && (
+        <a
+          href={telegramLink}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Chat on Telegram"
+          className="telegram-fab"
+        >
+          <FaTelegramPlane size={26} />
+          <span className="telegram-fab-pulse" aria-hidden="true" />
+        </a>
+      )}
     </footer>
   );
 }

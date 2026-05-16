@@ -80,6 +80,13 @@ export default function HeaderStats() {
                   statIconColor="bg-blue-500"
                   loading={loading}
                 />
+                <CardStats
+                  statSubtitle="Monthly Profit"
+                  statTitle={stats?.monthlyProfitAmount}
+                  statIconName="fas fa-chart-line"
+                  statIconColor="bg-green-500"
+                  loading={loading}
+                />
               </div>
             ) : (
               <ul className="text-center py-4" >

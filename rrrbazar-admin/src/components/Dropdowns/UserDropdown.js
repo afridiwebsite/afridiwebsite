@@ -1,6 +1,6 @@
 import React from "react";
 import { createPopper } from "@popperjs/core";
-import { logOut } from "../../utils/handler.utils";
+import { imgPath, logOut } from "../../utils/handler.utils";
 import { getLocal, getSession } from "../../utils/localStorage.utils";
 import { Link } from "react-router-dom";
 
@@ -34,8 +34,8 @@ const UserDropdown = () => {
           <span className="w-12 h-12 text-sm text-white bg-blueGray-200 inline-flex items-center justify-center rounded-full">
             <img
               alt="..."
-              className="w-full rounded-full align-middle border-none shadow-lg"
-              src={require("../../assets/img/team-1-800x800.jpg").default}
+              className="w-full h-full object-cover rounded-full align-middle border-none shadow-lg"
+              src={user?.image ? imgPath(user.image) : require("../../assets/img/team-1-800x800.jpg").default}
             />
           </span>
         </div>

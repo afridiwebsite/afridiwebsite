@@ -41,6 +41,9 @@ class SiteSettingController {
             day_7_reward,
             spin_cost_coins,
             spin_daily_limit,
+            support_email,
+            telegram_number,
+            youtube_link,
         } = req.body;
 
         const settings = await getOrCreate();
@@ -60,6 +63,9 @@ class SiteSettingController {
         if (day_7_reward !== undefined) settings.day_7_reward = Number(day_7_reward) || 0;
         if (spin_cost_coins !== undefined)  settings.spin_cost_coins  = Number(spin_cost_coins)  || 0;
         if (spin_daily_limit !== undefined) settings.spin_daily_limit = Number(spin_daily_limit) || 0;
+        if (support_email !== undefined)    settings.support_email    = String(support_email || '').trim();
+        if (telegram_number !== undefined)  settings.telegram_number  = String(telegram_number || '').trim();
+        if (youtube_link !== undefined)     settings.youtube_link     = String(youtube_link || '').trim();
 
         await settings.save();
         response.data = settings;

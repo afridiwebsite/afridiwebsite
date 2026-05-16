@@ -34,6 +34,7 @@ router.get('/admin/:id', auth, adminController.getAdminById) // Get admin by id
 router.get('/admin-auth/:id', auth, adminController.getAdminAuthById) // Get admin auth by admin id
 router.get('/auth-modules', auth, adminController.getAuthModules) // Get all auths
 router.get('/profile', auth, adminController.getAdminProfile)
+router.post('/profile/update', auth, adminController.updateAdminProfile)
 router.get('/get-uc-balance-sheet/:package_id', adminController.getUCBalanceSheet)
 
 router.post('/auth-modules/active/:id', auth, authModuleActiveValidator, adminController.activeAuthModules)

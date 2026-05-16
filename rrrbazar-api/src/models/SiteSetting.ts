@@ -19,6 +19,9 @@ export default (sequelize: Sequelize) => {
         public day_7_reward!: number;
         public spin_cost_coins!: number;
         public spin_daily_limit!: number;
+        public support_email!: string;
+        public telegram_number!: string;
+        public youtube_link!: string;
     }
 
     SiteSetting.init({
@@ -61,6 +64,11 @@ export default (sequelize: Sequelize) => {
         day_7_reward: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 14 },
         spin_cost_coins:  { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
         spin_daily_limit: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
+        support_email:    { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
+        // Telegram contact — admin enters either a phone (with country code,
+        // e.g. +8801234567890) or a username. The client builds the t.me link.
+        telegram_number:  { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
+        youtube_link:     { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,

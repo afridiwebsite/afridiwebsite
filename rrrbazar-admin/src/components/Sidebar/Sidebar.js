@@ -60,18 +60,20 @@ export default function Sidebar({ isOpenSidebar }) {
           path: "/physical-product",
           icon: "fab fa-product-hunt",
         },
-        {
+       
+      ]
+    },
+     {
           text: "UniPin Voucher",
           path: "/upins",
           icon: "fas fa-cubes",
         },
-      ]
-    },
     {
       text: "Add Wallet",
       path: "/add-wallet",
       icon: "fas fa-plus-circle",
     },
+
     {
       text: "Topup Order",
       path: "/tables",

@@ -364,11 +364,44 @@ class AdminController {
   getAdminProfile = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils()
     try {
-      const admin = await Admin.findByPk(req.admin.id);
+      const admin = await Admin.findByPk((req as any).admin.id);
       response.data = admin!;
-      res.send(response);
+      res.send(response.response);
     } catch (error) {
-      
+      console.log(error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  updateAdminProfile = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const admin = await Admin.findByPk((req as any).admin.id);
+      if (!admin) {
+        response.message = 'Admin not found';
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      const { first_name, last_name, email, phone, gender, date_of_birth, image } = req.body;
+
+      if (first_name !== undefined) admin.first_name = first_name;
+      if (last_name !== undefined) admin.last_name = last_name;
+      if (email !== undefined) admin.email = email;
+      if (phone !== undefined) admin.phone = phone;
+      if (gender !== undefined) admin.gender = gender;
+      if (date_of_birth !== undefined) admin.date_of_birth = date_of_birth;
+      if (image !== undefined) admin.image = image;
+
+      await admin.save();
+
+      response.message = 'Profile updated successfully';
+      response.data = admin;
+      res.send(response.response);
+    } catch (error) {
+      console.log(error);
+      res.status(400).send(response.internalError);
     }
   }
 
@@ -792,7 +825,7 @@ class AdminController {
         status: 'pending'
       })
 
-      admin.wallet = admin.wallet - amount;
+      admin.wallet = Number(admin.wallet) - Number(amount);
       admin.save();
 
       response.data = createTransaction;
@@ -829,7 +862,7 @@ class AdminController {
       }
 
       if (status == 'cancel' && transaction.status == 'pending') {
-        admin.wallet = admin.wallet + transaction.amount
+        admin.wallet = Number(admin.wallet) + Number(transaction.amount)
         await admin.save();
       }
 
@@ -881,7 +914,7 @@ class AdminController {
         admin.wallet = admin.wallet + transaction.amount;
         await admin.save();
       }
-      user.wallet = user.wallet + transaction.amount
+      user.wallet = Number(user.wallet) + Number(transaction.amount)
       await user.save();
     }
 
@@ -1149,8 +1182,9 @@ class AdminController {
     try {
       const totalUser = await User.count()
 
-      const TODAY_START = new Date().setHours(0, 0, 0, 0);
-      const NOW = new Date().setHours(23, 59, 0, 0);
+      const TODAY_START = moment().startOf('day').toDate();
+      const NOW = moment().endOf('day').toDate();
+      const MONTH_START = moment().startOf('month').toDate();
 
       if (adminId != 1) {
         filter.completed_by = adminId
@@ -1160,8 +1194,8 @@ class AdminController {
         where: {
           payment_status: 1,
           created_at: {
-            [Op.gt]: TODAY_START,
-            [Op.lt]: NOW
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
           },
           ...filter
         }
@@ -1172,8 +1206,8 @@ class AdminController {
           payment_status: 1,
           status: 'completed',
           created_at: {
-            [Op.gt]: TODAY_START,
-            [Op.lt]: NOW
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
           },
           ...filter
         }
@@ -1182,8 +1216,8 @@ class AdminController {
       const todaysUser = await User.count({
         where: {
           created_at: {
-            [Op.gt]: TODAY_START,
-            [Op.lt]: NOW
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
           }
         }
       })
@@ -1194,8 +1228,8 @@ class AdminController {
         where: {
           status: 'completed',
           created_at: {
-            [Op.gt]: TODAY_START,
-            [Op.lt]: NOW
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
           }
         }
       })
@@ -1205,8 +1239,8 @@ class AdminController {
           payment_status: 1,
           status: 'completed',
           created_at: {
-            [Op.gt]: TODAY_START,
-            [Op.lt]: NOW
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
           },
           ...filter
         }
@@ -1217,8 +1251,32 @@ class AdminController {
           payment_status: 1,
           status: 'completed',
           created_at: {
-            [Op.gt]: TODAY_START,
-            [Op.lt]: NOW
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
+          },
+          ...filter
+        }
+      })
+
+      const monthlyCompletedOrderBPrice = await Order.sum('bprice', {
+        where: {
+          payment_status: 1,
+          status: 'completed',
+          created_at: {
+            [Op.gte]: MONTH_START,
+            [Op.lte]: NOW
+          },
+          ...filter
+        }
+      })
+
+      const monthlyCompletedOrderAmount = await Order.sum('amount', {
+        where: {
+          payment_status: 1,
+          status: 'completed',
+          created_at: {
+            [Op.gte]: MONTH_START,
+            [Op.lte]: NOW
           },
           ...filter
         }
@@ -1235,12 +1293,15 @@ class AdminController {
       response.data = {
         totalUser,
         todaysOrder,
-        todaysCompletedOrderBPrice,
-        todaysCompletedOrderAmount,
-        todaysProfileAmount: (todaysCompletedOrderAmount-todaysCompletedOrderBPrice) || 0,
+        todaysCompletedOrderBPrice: Number(todaysCompletedOrderBPrice || 0),
+        todaysCompletedOrderAmount: Number(todaysCompletedOrderAmount || 0),
+        todaysProfileAmount: Number((todaysCompletedOrderAmount || 0) - (todaysCompletedOrderBPrice || 0)),
+        monthlyCompletedOrderBPrice: Number(monthlyCompletedOrderBPrice || 0),
+        monthlyCompletedOrderAmount: Number(monthlyCompletedOrderAmount || 0),
+        monthlyProfitAmount: Number((monthlyCompletedOrderAmount || 0) - (monthlyCompletedOrderBPrice || 0)),
         todaysCompletedOrder,
-        totalWallet: (adminId == 1) ? (totalWallet || 0) : 0,
-        todaysTotalWallet: (adminId == 1) ? (todaysTotalWallet || 0) : 0,
+        totalWallet: (adminId == 1) ? Number(totalWallet || 0) : 0,
+        todaysTotalWallet: (adminId == 1) ? Number(todaysTotalWallet || 0) : 0,
         todaysUser,
         uniPin: uniAvaiCount
       }

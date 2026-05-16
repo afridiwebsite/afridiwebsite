@@ -21,6 +21,9 @@ function SiteSettings() {
     ]
     const spin_cost_coins = useRef(null)
     const spin_daily_limit = useRef(null)
+    const support_email = useRef(null)
+    const telegram_number = useRef(null)
+    const youtube_link = useRef(null)
 
     const [logoFile, setLogoFile] = useState(null)
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
@@ -70,6 +73,9 @@ function SiteSettings() {
             day_7_reward: parseInt(dayRewardRefs[6].current?.value || 0, 10),
             spin_cost_coins: parseInt(spin_cost_coins.current?.value || 0, 10),
             spin_daily_limit: parseInt(spin_daily_limit.current?.value || 0, 10),
+            support_email: support_email.current?.value || '',
+            telegram_number: telegram_number.current?.value || '',
+            youtube_link: youtube_link.current?.value || '',
         }
         axiosInstance
             .post('/admin/site-settings/update', payload)
@@ -176,6 +182,48 @@ function SiteSettings() {
                                     <div>
                                         <label>Coin to money rate (1 coin = X BDT)</label>
                                         <input ref={coin_to_money_rate} defaultValue={data.coin_to_money_rate} type="number" step="0.0001" min="0" className="form_input" required />
+                                    </div>
+                                </div>
+
+                                <h4 className="font-bold mt-6 mb-2">Support contact</h4>
+                                <p className="text-sm text-gray-500 mb-3">
+                                    Shown in the footer and the floating Telegram button on the storefront.
+                                </p>
+                                <div className="form_grid">
+                                    <div>
+                                        <label>Support email</label>
+                                        <input
+                                            ref={support_email}
+                                            defaultValue={data.support_email || ''}
+                                            type="email"
+                                            placeholder="support@example.com"
+                                            className="form_input"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label>Telegram number / username</label>
+                                        <input
+                                            ref={telegram_number}
+                                            defaultValue={data.telegram_number || ''}
+                                            type="text"
+                                            placeholder="+8801234567890 or username"
+                                            className="form_input"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Phone (with country code) opens t.me/+&lt;number&gt;; plain text opens t.me/&lt;username&gt;.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="form_grid">
+                                    <div>
+                                        <label>YouTube channel link</label>
+                                        <input
+                                            ref={youtube_link}
+                                            defaultValue={data.youtube_link || ''}
+                                            type="url"
+                                            placeholder="https://youtube.com/@yourchannel"
+                                            className="form_input"
+                                        />
                                     </div>
                                 </div>
 

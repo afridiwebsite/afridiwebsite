@@ -8,6 +8,7 @@ function useGet(urlToFetch, baseURL, refresh) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [data, setData] = useState(null);
+  const [localRefresh, setLocalRefresh] = useState(false);
 
   useEffect(() => {
     if (!urlToFetch) return false;
@@ -33,8 +34,11 @@ function useGet(urlToFetch, baseURL, refresh) {
         });
     }, 400);
 
-  }, [urlToFetch, baseURL, refresh]);
-  return [data, loading, error];
+  }, [urlToFetch, baseURL, refresh, localRefresh]);
+
+  const triggerRefresh = () => setLocalRefresh(prev => !prev)
+
+  return [data, loading, error, triggerRefresh];
 }
 
 export default useGet;

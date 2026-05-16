@@ -398,10 +398,11 @@ function TopupOrderPage() {
                                     const packCoin = Number(
                                       pack?.coin_value || 0,
                                     );
-                                    const hasPackDescription = !!pack?.description
-                                      ?.replace(/<[^>]*>/g, "")
-                                      .replace(/&nbsp;/gi, "")
-                                      .trim();
+                                    const hasPackDescription =
+                                      !!pack?.description
+                                        ?.replace(/<[^>]*>/g, "")
+                                        .replace(/&nbsp;/gi, "")
+                                        .trim();
                                     return (
                                       <div
                                         key={index}
@@ -487,7 +488,9 @@ function TopupOrderPage() {
                                               role="tooltip"
                                               className="topup-pack-card-tooltip"
                                             >
-                                              {ReactHtmlParser(pack.description)}
+                                              {ReactHtmlParser(
+                                                pack.description,
+                                              )}
                                             </span>
                                           </span>
                                         )}
@@ -820,149 +823,6 @@ function TopupOrderPage() {
                             </div>
                           )}
                           {/* Description Section --End-- */}
-
-                          {/* Last Order Form --Start-- */}
-                          <div
-                            className="_order_box_wrapper animate-fade-in-up"
-                            style={{ animationDelay: "380ms" }}
-                          >
-                            <div className="_order_box_header">
-                              <div className="_order_header_step_circle">
-                                📜
-                              </div>
-                              <h5 className="_order_header_title">
-                                Last Order List
-                              </h5>
-                            </div>
-
-                            <div className="order_box_body topup-orders-body">
-                              {productOrder && productOrder.length > 0 ? (
-                                <ul className="topup-orders-list">
-                                  {productOrder.map((po, idx) => {
-                                    const statusKey = String(po.status || "")
-                                      .toLowerCase()
-                                      .trim();
-                                    const orderUser = po.User || po.user;
-                                    const orderProduct =
-                                      po.TopupProduct ||
-                                      po.product ||
-                                      productInfo;
-                                    const displayName =
-                                      orderUser?.username ||
-                                      (orderUser?.email
-                                        ? orderUser.email.split("@")[0]
-                                        : "Anonymous Player");
-                                    const initial = (
-                                      displayName?.[0] || "?"
-                                    ).toUpperCase();
-                                    // created_at is pre-formatted by API moment getter;
-                                    // moment can parse most formats — fall back to raw
-                                    // string if it can't.
-                                    const m = moment(po.created_at);
-                                    const timeLabel = m.isValid()
-                                      ? m.fromNow()
-                                      : po.created_at;
-                                    const timeAbs = m.isValid()
-                                      ? m.format("MMM D, YYYY · h:mm A")
-                                      : po.created_at;
-                                    return (
-                                      <li
-                                        key={po.id}
-                                        className="topup-order-row animate-fade-in-up"
-                                        style={{
-                                          animationDelay: `${
-                                            Math.min(idx, 8) * 40
-                                          }ms`,
-                                        }}
-                                      >
-                                        <div className="topup-order-row-avatar">
-                                          {orderUser?.avatar ? (
-                                            <img
-                                              src={orderUser.avatar}
-                                              alt=""
-                                              referrerPolicy="no-referrer"
-                                              onError={(e) => {
-                                                e.currentTarget.style.display =
-                                                  "none";
-                                                e.currentTarget.parentElement.classList.add(
-                                                  "is-fallback",
-                                                );
-                                              }}
-                                            />
-                                          ) : null}
-                                          <span className="topup-order-row-avatar-fallback">
-                                            {initial}
-                                          </span>
-                                        </div>
-
-                                        <div className="topup-order-row-main">
-                                          <div className="topup-order-row-line">
-                                            <span className="topup-order-row-user">
-                                              {displayName}
-                                            </span>
-                                            <span className="topup-order-row-id">
-                                              #{po.id}
-                                            </span>
-                                          </div>
-                                          <div className="topup-order-row-meta">
-                                            {orderProduct?.logo && (
-                                              <img
-                                                className="topup-order-row-product-logo"
-                                                src={imgPath(orderProduct.logo)}
-                                                alt=""
-                                              />
-                                            )}
-                                            <span className="topup-order-row-product">
-                                              {orderProduct?.name || "Top-up"}
-                                            </span>
-                                            <span className="topup-order-row-dot" />
-                                            <span className="topup-order-row-pack">
-                                              {po.name}
-                                            </span>
-                                            {po.playerid && (
-                                              <>
-                                                <span className="topup-order-row-dot" />
-                                                <span className="topup-order-row-player">
-                                                  ID: {po.playerid}
-                                                </span>
-                                              </>
-                                            )}
-                                          </div>
-                                        </div>
-
-                                        <div className="topup-order-row-side">
-                                          <span
-                                            className={`topup-status-badge topup-status-badge--${statusKey}`}
-                                          >
-                                            <span
-                                              className="topup-status-dot"
-                                              aria-hidden="true"
-                                            />
-                                            {po.status}
-                                          </span>
-                                          <span
-                                            className="topup-order-row-time"
-                                            title={timeAbs}
-                                          >
-                                            {timeLabel}
-                                          </span>
-                                        </div>
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              ) : (
-                                <div className="topup-orders-empty">
-                                  <FaCoins className="topup-orders-empty-icon" />
-                                  <p>
-                                    No orders yet — your first reward is one
-                                    click away.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {/* Last Order Form --End-- */}
                         </div>
                       );
                     }}

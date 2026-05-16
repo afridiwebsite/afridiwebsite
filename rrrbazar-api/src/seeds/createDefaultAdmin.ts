@@ -61,6 +61,9 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     // Site settings (needed to save spin cost / daily limit / day rewards)
     { path: '/site-settings',        method: 'GET'  },
     { path: '/site-settings/update', method: 'POST' },
+    // Admin profile
+    { path: '/profile',              method: 'GET'  },
+    { path: '/profile/update',       method: 'POST' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

@@ -25,8 +25,11 @@ exports.miliSecToDays = (miliSec) => {
 }
 
 exports.getImagePath = (req) => {
-    // req.protocol + '://' + req.get('host') + req.originalUrl
-    return req.protocol + '://' + process.env.PUBLIC_URL + '/images';
+    let publicUrl = process.env.PUBLIC_URL || req.get('host');
+    if (publicUrl.includes('://')) {
+        return publicUrl + '/images';
+    }
+    return req.protocol + '://' + publicUrl + '/images';
 }
 
 exports.responseFormat = (data, success = true, status = 200, message = "") => {
