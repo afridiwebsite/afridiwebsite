@@ -72,10 +72,9 @@ export const topupProductSchema = [
     body('name').exists(checkNullFalse).withMessage('Name is required'),
     body('price').exists(checkNullFalse).withMessage('Price is required'),
     body('logo').exists(checkNullFalse).withMessage('Logo is required'),
-    // body('start_at').exists(checkNullFalse).withMessage('Start at is required'),
-    // body('end_at').exists(checkNullFalse).withMessage('End at is required'),
-    body('rules').exists(checkNullFalse).withMessage('Rules is required'),
-    // body('topuptype').exists(checkNullFalse).withMessage('Topup type is required'),
+    // rules is optional — passthrough products (with product_link) don't have
+    // a description editor and send rules: "" intentionally.
+    body('rules').optional({ checkFalsy: true }).isString(),
     validationHandler
 ];
 

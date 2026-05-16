@@ -20,6 +20,7 @@ export default (sequelize: Sequelize) => {
         public logo!: string;
         public coin_value!: number;
         public description!: string;
+        public order_once!: number;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -79,6 +80,14 @@ export default (sequelize: Sequelize) => {
             // package card.
             type: DataTypes.TEXT('long'),
             allowNull: true,
+        },
+        order_once: {
+            // 1 = each user may only order this package once. The order
+            // endpoint checks Order.user_id + topuppackage_id and rejects
+            // repeats with a clear message.
+            type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
         },
         created_at: {
             type: DataTypes.DATE,

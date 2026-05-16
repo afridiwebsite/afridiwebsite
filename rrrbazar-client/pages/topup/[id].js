@@ -17,6 +17,7 @@ import api, {
   getUserProfile,
   getProductOrders,
   verifyPlayerInput,
+  getMyOrderedOncePackages,
 } from "../../api/api";
 import ActivityIndicator from "../../components/ActivityIndicator";
 import Alert from "../../components/Alert";
@@ -78,6 +79,20 @@ function TopupOrderPage() {
       ...reactQueryConfig,
       enabled: !!product_id,
     },
+  );
+
+  // Order-once: pull the IDs of order_once packages this user has already
+  // claimed so we can disable the matching pack cards below.
+  const { data: orderedOnceData } = useQuery(
+    "my-ordered-once-packages",
+    getMyOrderedOncePackages,
+    {
+      ...reactQueryConfig,
+      enabled: !!isAuth,
+    },
+  );
+  const orderedOnceIds = new Set(
+    (orderedOnceData?.data?.data?.ordered_package_ids || []).map(Number),
   );
 
   const productInfo = productData?.product;
@@ -166,7 +181,7 @@ function TopupOrderPage() {
         <title>{productInfo?.name}</title>
       </Head>
       <section
-        className={`topup-page-section mb-7 ${
+        className={`topup-page-section pt-2 ${
           !hasData(productData)
             ? "flex-grow items-center flex justify-center flex-col"
             : ""
@@ -393,6 +408,11 @@ function TopupOrderPage() {
                                   {packages.map((pack, index) => {
                                     const outOfStock =
                                       parseInt(pack?.in_stock) === 0;
+                                    const alreadyOrdered =
+                                      pack?.order_once == 1 &&
+                                      orderedOnceIds.has(Number(pack?.id));
+                                    const isDisabled =
+                                      outOfStock || alreadyOrdered;
                                     const isSelected =
                                       parseInt(selectedPackage) === index;
                                     const packCoin = Number(
@@ -408,7 +428,7 @@ function TopupOrderPage() {
                                         key={index}
                                         className={`topup-pack-card animate-fade-in-up ${
                                           isSelected ? "is-selected" : ""
-                                        } ${outOfStock ? "is-out" : ""} ${
+                                        } ${isDisabled ? "is-out" : ""} ${
                                           isPackageIdError && !isSelected
                                             ? "is-error"
                                             : ""
@@ -422,7 +442,7 @@ function TopupOrderPage() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            if (outOfStock) return;
+                                            if (isDisabled) return;
                                             setSelectedPackage(index);
                                             setFieldValue(
                                               "selectedpackage",
@@ -434,12 +454,17 @@ function TopupOrderPage() {
                                               "pay",
                                             );
                                           }}
-                                          disabled={outOfStock}
+                                          disabled={isDisabled}
                                           className="topup-pack-card-btn"
                                         >
                                           {outOfStock && (
                                             <span className="topup-pack-card-stock">
                                               Out of stock
+                                            </span>
+                                          )}
+                                          {!outOfStock && alreadyOrdered && (
+                                            <span className="topup-pack-card-stock topup-pack-card-stock--claimed">
+                                              Already claimed
                                             </span>
                                           )}
                                           {pack?.logo ? (
@@ -814,6 +839,16 @@ function TopupOrderPage() {
                                 <h5 className="_order_header_title">
                                   Description
                                 </h5>
+                                {productInfo?.youtube_link && (
+                                  <a
+                                    href={productInfo.youtube_link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="topup-description-yt"
+                                  >
+                                    Watch tutorial →
+                                  </a>
+                                )}
                               </div>
                               <div className="order_box_body">
                                 <div className="_body2 text-[13px]">

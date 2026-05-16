@@ -27,6 +27,7 @@ router.get('/topupproduct', userController.getTopupProducts)
 router.get('/topuppackage/:id', userController.getTopupPackagesByProductId) // :id = product id
 router.get('/payment-method', userController.getPaymentMethod)
 router.post('/packageorder', userAuth, userController.topupPackageOrder)
+router.get('/my-ordered-once-packages', userAuth, userController.myOrderedOncePackages)
 //router.get('/updateuser/:id', userController.updateUser)
 router.get('/usertransaction', userAuth, userController.userTransaction)
 router.get('/myorder', userAuth, userController.myOrder)

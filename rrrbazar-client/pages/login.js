@@ -181,15 +181,15 @@ function LoginPage() {
         {/* Floating decorative icons + soft blobs — cosmetic only, behind
             the card. aria-hidden because the symbols carry no meaning. */}
         <div className="login-icons" aria-hidden="true">
-          <span className="login-blob login-blob-a" />
+          {/* <span className="login-blob login-blob-a" />
           <span className="login-blob login-blob-b" />
           <span className="login-blob login-blob-c" />
-          <span className="login-blob login-blob-d" />
-          <span className="login-bubble login-bubble-1" />
+          <span className="login-blob login-blob-d" /> */}
+          {/* <span className="login-bubble login-bubble-1" />
           <span className="login-bubble login-bubble-2" />
           <span className="login-bubble login-bubble-3" />
           <span className="login-bubble login-bubble-4" />
-          <span className="login-bubble login-bubble-5" />
+          <span className="login-bubble login-bubble-5" /> */}
           {FLOATING_ICONS.map((item, i) => {
             const Icon = item.Icon;
             return (
@@ -228,14 +228,14 @@ function LoginPage() {
                 <HiSparkles className="login-welcome-badge-icon" />
                 Welcome to RRR Bazar
               </span>
-              <h1 className="login-welcome-title">
+              {/* <h1 className="login-welcome-title">
                 Play, Win &amp;{" "}
                 <span className="login-welcome-accent">Cash Out</span>
               </h1>
               <p className="login-welcome-sub">
                 Join thousands of players in the most trusted gaming arena.
                 Fast payouts, fair play, and 24&times;7 support.
-              </p>
+              </p> */}
             </div>
 
             <div className="login-card-divider" aria-hidden="true" />

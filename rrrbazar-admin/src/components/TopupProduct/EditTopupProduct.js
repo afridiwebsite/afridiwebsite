@@ -33,6 +33,19 @@ function EditTopupProduct(props) {
   const serial = useRef(null);
   const is_active_product = useRef(null);
 
+  // Passthrough product link + tutorial youtube link. When productLinkValue
+  // is non-empty, the form hides everything that doesn't make sense for an
+  // external/affiliate product.
+  const [productLinkValue, setProductLinkValue] = useState("");
+  const [youtubeLinkValue, setYoutubeLinkValue] = useState("");
+  useEffect(() => {
+    if (data) {
+      if (typeof data.product_link === "string") setProductLinkValue(data.product_link);
+      if (typeof data.youtube_link === "string") setYoutubeLinkValue(data.youtube_link);
+    }
+  }, [data]);
+  const isPassthrough = !!productLinkValue.trim();
+
   const [catRefresh, setCatRefresh] = useState(0);
   const [categories] = useGet("admin/categories", undefined, catRefresh);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
@@ -206,11 +219,13 @@ function EditTopupProduct(props) {
         logo: path || data?.logo,
         price: 1,
         serial: serial.current.value,
-        rules: convertToHTML(editorState.getCurrentContent()),
+        rules: isPassthrough ? "" : convertToHTML(editorState.getCurrentContent()),
         isactivefortopup: isactivefortopupValue,
         is_active: is_active_product.current.checked ? 1 : 0,
         is_offer: 0,
         offer_items: 0,
+        product_link: productLinkValue.trim(),
+        youtube_link: youtubeLinkValue.trim(),
       })
       .then(async () => {
         try {
@@ -315,6 +330,44 @@ function EditTopupProduct(props) {
                     </div>
                   </div>
 
+                  <div className="my-3 p-3 border border-blue-100 bg-blue-50 rounded">
+                    <label htmlFor="product_link" className="block font-semibold text-blue-900">
+                      Product link{' '}
+                      <span className="text-xs font-normal text-blue-700">
+                        (optional — when set, this product acts as a
+                        passthrough: clicking it on the home page opens this
+                        URL instead of the topup form, and all other fields
+                        below are hidden)
+                      </span>
+                    </label>
+                    <input
+                      id="product_link"
+                      type="url"
+                      className="form_input mt-1"
+                      placeholder="https://example.com/external-product"
+                      value={productLinkValue}
+                      onChange={(e) => setProductLinkValue(e.target.value)}
+                    />
+                    {!isPassthrough && (
+                      <>
+                        <label htmlFor="youtube_link" className="block font-semibold text-blue-900 mt-3">
+                          YouTube link{' '}
+                          <span className="text-xs font-normal text-blue-700">
+                            (optional — surfaced beside the Description header on the topup page)
+                          </span>
+                        </label>
+                        <input
+                          id="youtube_link"
+                          type="url"
+                          className="form_input mt-1"
+                          placeholder="https://youtube.com/watch?v=…"
+                          value={youtubeLinkValue}
+                          onChange={(e) => setYoutubeLinkValue(e.target.value)}
+                        />
+                      </>
+                    )}
+                  </div>
+
                   <div className="my-3">
                     <label htmlFor="category" className="block mb-2 font-semibold">
                       Category
@@ -388,6 +441,8 @@ function EditTopupProduct(props) {
                     )}
                   </div>
 
+                  {!isPassthrough && (
+                  <>
                   <Editor
                     editorState={editorState}
                     editorStyle={{
@@ -566,6 +621,8 @@ function EditTopupProduct(props) {
                     })}
                   </div>
                   {/* End Dynamic Inputs ---- */}
+                  </>
+                  )}
 
                   <div className="my-2">
                     <label className="py-2 inline-block cursor-pointer select-none">

@@ -25,7 +25,8 @@ const {
   WithdrawEarnWallet,
   EarnWallet,
   StoreUnipin,
-  AutoServer
+  AutoServer,
+  CoinTransaction
 } = Schema;
 
 // Reserved keyword for the Player ID input. Only one input per product is
@@ -1953,12 +1954,67 @@ class AdminController {
         await product.save()
       }
 
-      response.message = 'Inputs saved'
       response.data = { count: cleaned.length }
       res.send(response.response)
     } catch (error) {
       console.log(error)
       res.status(400).send(response.internalError)
+    }
+  }
+
+  updateUser = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const id = req.params.id as any;
+      const { wallet, coins, password } = req.body;
+      const user = await User.findByPk(id);
+
+      if (!user) {
+        response.message = 'User not found';
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      const admin = (req as any).admin;
+
+      // Handle wallet update and transaction
+      if (wallet !== undefined && Number(wallet) !== Number(user.wallet)) {
+        const diff = Number(wallet) - Number(user.wallet);
+        await Transaction.create({
+          user_id: user.id,
+          amount: Math.abs(diff),
+          status: 'completed',
+          purpose: diff > 0 ? 'Admin Credit' : 'Admin Debit',
+          action_by: admin.id,
+        });
+        user.wallet = Number(wallet);
+      }
+
+      // Handle coins update and transaction
+      if (coins !== undefined && Number(coins) !== Number(user.coins)) {
+        const diff = Number(coins) - Number(user.coins);
+        await CoinTransaction.create({
+          user_id: user.id,
+          amount: Math.abs(diff),
+          type: diff > 0 ? 'Admin Credit' : 'Admin Debit',
+          note: `Adjusted by Admin: ${admin.username}`,
+        });
+        user.coins = Number(coins);
+      }
+
+      if (password) {
+        user.password = password;
+      }
+
+      await user.save();
+
+      response.message = 'User updated successfully';
+      response.data = user;
+      res.send(response.response);
+    } catch (error) {
+      console.log(error);
+      res.status(400).send(response.internalError);
     }
   }
 

@@ -50,6 +50,8 @@ export const verifyPlayerInput = async (inputId, value) =>
     `/verify-player-input/${inputId}?value=${encodeURIComponent(value || '')}`,
   );
 export const getTopupPackage = async (id) => api.get(`/topuppackage/${id}`);
+export const getMyOrderedOncePackages = async () =>
+  api.get('/my-ordered-once-packages');
 export const getTournamentById = async (id) => api.get(`/tournament/${id}`);
 export const getTournamentWinners = async (id) =>
   api.get(`/tournament/winners/${id}`);

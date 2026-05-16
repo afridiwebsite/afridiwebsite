@@ -18,9 +18,15 @@ import { getTopupPackage } from "../../api/api";
 import { imgPath } from "../../helpers/helpers";
 
 function Game({ game }) {
-  const { logo, name, id } = game;
+  const { logo, name, id, product_link } = game;
   const cardRef = useRef(null);
   const closeTimerRef = useRef(null);
+
+  // Passthrough products bypass /topup/:id entirely — clicking the tile opens
+  // the admin-configured URL in a new tab. We also skip the hover popover
+  // since there are no packages to preview for these.
+  const externalHref = (product_link || "").trim();
+  const isExternal = !!externalHref;
 
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false); // SSR-safe portal gate
@@ -92,7 +98,7 @@ function Game({ game }) {
   }, [open]);
 
   const menu =
-    open && mounted
+    open && mounted && !isExternal
       ? ReactDOM.createPortal(
           <div
             className="game-card-menu is-open"
@@ -150,25 +156,33 @@ function Game({ game }) {
         )
       : null;
 
+  const inner = (
+    <div className="game-card-link hover:cursor-pointer">
+      <div className="game-card-image-wrap">
+        <img src={imgPath(logo)} className="game-card-image" alt={name} />
+      </div>
+      <div className="game-card-title-wrap">
+        <h6 className="game-card-title">{name}</h6>
+      </div>
+    </div>
+  );
+
   return (
     <div
       ref={cardRef}
       className={`game-card ${open ? "is-hover" : ""}`}
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
-      onFocus={onEnter}
-      onBlur={onLeave}
+      onMouseEnter={isExternal ? undefined : onEnter}
+      onMouseLeave={isExternal ? undefined : onLeave}
+      onFocus={isExternal ? undefined : onEnter}
+      onBlur={isExternal ? undefined : onLeave}
     >
-      <Link href={`/topup/${id}`}>
-        <div className="game-card-link hover:cursor-pointer">
-          <div className="game-card-image-wrap">
-            <img src={imgPath(logo)} className="game-card-image" alt={name} />
-          </div>
-          <div className="game-card-title-wrap">
-            <h6 className="game-card-title">{name}</h6>
-          </div>
-        </div>
-      </Link>
+      {isExternal ? (
+        <a href={externalHref} target="_blank" rel="noreferrer">
+          {inner}
+        </a>
+      ) : (
+        <Link href={`/topup/${id}`}>{inner}</Link>
+      )}
       {menu}
     </div>
   );

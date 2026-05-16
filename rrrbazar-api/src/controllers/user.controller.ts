@@ -513,6 +513,46 @@ class UserController {
     }
   };
 
+  // Returns the topuppackage IDs the current user has already ordered AMONG
+  // packages flagged order_once. The client uses this to disable already-
+  // claimed packs on /topup/:id without leaking other users' history.
+  myOrderedOncePackages = async (
+    req: express.Request,
+    res: express.Response,
+  ) => {
+    const response = new responseUtils();
+    try {
+      const user_id = req.user.id;
+      const oncePacks = await TopupPackage.findAll({
+        where: { order_once: 1 },
+        attributes: ["id"],
+      });
+      const onceIds = oncePacks.map((p: any) => p.id);
+      if (onceIds.length === 0) {
+        response.data = { ordered_package_ids: [] };
+        return res.send(response.response);
+      }
+      const orders = await Order.findAll({
+        where: {
+          user_id,
+          topuppackage_id: { [Op.in]: onceIds },
+        },
+        attributes: ["topuppackage_id"],
+      });
+      const ordered = Array.from(
+        new Set(orders.map((o: any) => o.topuppackage_id)),
+      );
+      response.data = { ordered_package_ids: ordered };
+      return res.send(response.response);
+    } catch (error) {
+      console.log(
+        "myOrderedOncePackages error",
+        (error as any)?.message || error,
+      );
+      res.status(400).send(response.internalError);
+    }
+  };
+
   getPaymentMethod = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils();
 
@@ -710,6 +750,21 @@ class UserController {
       if (!topupPackage) {
         response.message = "Topup package not found";
         return res.status(400).send(response.response);
+      }
+
+      // Enforce one-per-user limit on packages flagged order_once.
+      if ((topupPackage as any).order_once == 1) {
+        const previous = await Order.count({
+          where: {
+            user_id,
+            topuppackage_id,
+          },
+        });
+        if (previous > 0) {
+          response.message =
+            "You have already ordered this package — it's limited to one per user.";
+          return res.status(400).send(response.response);
+        }
       }
       // const topupPaymentMethods = await PaymentMethod.query().where("is_active", 1).fetch()
       // const payments = topupPaymentMethods.rows.map(data => data.payment_method)

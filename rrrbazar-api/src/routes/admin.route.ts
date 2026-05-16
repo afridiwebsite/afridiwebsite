@@ -162,7 +162,7 @@ router.get('/users', auth, userController.getUsers)
 router.get('/users/earn-wallet/:id', auth, userController.userEarnWallet)
 router.post('/earn-wallet/update/:id', auth, userController.userEarnWalletUpdate)
 router.get('/user/:id', auth, userController.getUserById)
-router.post('/user/update/:id', auth, userController.updateUser)
+router.post('/user/update/:id', auth, adminController.updateUser)
 router.post('/user/delete/:id', auth, userController.deleteUser)
 // User apis ----END----
 

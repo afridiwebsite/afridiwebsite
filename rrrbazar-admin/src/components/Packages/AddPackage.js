@@ -29,6 +29,7 @@ function AddPackage(props) {
     const serial = useRef(null);
     const logo = useRef(null);
     const coin_value = useRef(null);
+    const order_once = useRef(null);
 
     // Rich-text package description. Toolbar enables inline images (uploaded
     // as base64 — kept simple to avoid wiring a second upload pipeline).
@@ -57,6 +58,7 @@ function AddPackage(props) {
             logo: path,
             coin_value: coin_value.current.value || 0,
             in_stock: in_stock.current.checked ? 1 : 0,
+            order_once: order_once.current?.checked ? 1 : 0,
             description: convertToHTML(editorState.getCurrentContent()),
         }).then(res => {
             toast.success('Topup package created successfully', toastDefault)
@@ -132,6 +134,24 @@ function AddPackage(props) {
                                                 <input ref={in_stock} id="in_stock" value="1" className="form-checkbox" type="checkbox" />
                                                 <span class="ml-2">In Stock</span>
                                             </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="form_grid">
+                                        <div>
+                                            <label className="inline-flex items-center cursor-pointer select-none">
+                                                <input
+                                                    ref={order_once}
+                                                    id="order_once"
+                                                    value="1"
+                                                    className="form-checkbox"
+                                                    type="checkbox"
+                                                />
+                                                <span className="ml-2">Order once per user</span>
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                When on, each user can only order this package once.
+                                            </p>
                                         </div>
                                     </div>
 

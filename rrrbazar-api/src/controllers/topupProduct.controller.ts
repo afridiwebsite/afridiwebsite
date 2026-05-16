@@ -88,6 +88,8 @@ class TopupProductController {
             is_active,
             is_offer,
             offer_items,
+            product_link,
+            youtube_link,
         } = req.body
 
         const data = await TopupProduct.create({
@@ -103,6 +105,8 @@ class TopupProductController {
             is_active,
             is_offer,
             offer_items,
+            product_link: product_link || '',
+            youtube_link: youtube_link || '',
         })
         response.data = data
         res.send(response.response)
@@ -125,6 +129,8 @@ class TopupProductController {
             is_active,
             is_offer,
             offer_items,
+            product_link,
+            youtube_link,
         } = req.body
 
         const product = await TopupProduct.findByPk(id)
@@ -149,6 +155,8 @@ class TopupProductController {
         product.serial = serial;
         product.is_offer = is_offer;
         product.offer_items = offer_items;
+        if (product_link !== undefined) product.product_link = product_link || '';
+        if (youtube_link !== undefined) product.youtube_link = youtube_link || '';
 
         await product.save();
 

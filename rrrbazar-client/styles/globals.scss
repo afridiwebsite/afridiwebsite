@@ -2215,6 +2215,33 @@ body {
   border-radius: 9999px;
   z-index: 2;
 }
+// Order-once "already claimed" badge — themed instead of red since this
+// isn't an out-of-stock situation, it's a per-user limit.
+.topup-pack-card-stock--claimed {
+  color: #fff;
+  background: var(--theme-primary, #3856B5);
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb, 56 86 181) / 0.35);
+}
+
+// "Watch tutorial →" link sits flush right inside the Description header.
+.topup-description-yt {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #FF0000; // YouTube brand red — hardcoded as per support-icon convention
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(255, 0, 0, 0.08);
+  border: 1px solid rgba(255, 0, 0, 0.22);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.topup-description-yt:hover {
+  background: rgba(255, 0, 0, 0.16);
+  transform: translateY(-1px);
+}
 
 // --- Last orders list (cards, not table) ---
 .topup-orders-body { padding-top: 8px !important; }

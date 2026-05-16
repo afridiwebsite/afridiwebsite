@@ -18,6 +18,14 @@ function AddTopupProduct() {
   // from whether a "Player ID" dynamic input is defined.
   const is_active_product = useRef(null);
 
+  // When a product_link is set, the product is a passthrough — clicking it on
+  // the home page goes straight to that URL. We hide all the non-essential
+  // fields (packages-related, dynamic inputs, etc.) so the admin can't enter
+  // data that will never be used.
+  const [productLinkValue, setProductLinkValue] = useState("");
+  const [youtubeLinkValue, setYoutubeLinkValue] = useState("");
+  const isPassthrough = !!productLinkValue.trim();
+
   const [editorState, setEditorState] = useState(EditorState.createEmpty());
   const [productLogo, setProductLogo] = useState(null);
   const { path, uploading } = useUpload(productLogo);
@@ -184,7 +192,9 @@ function AddTopupProduct() {
           is_active: is_active_product.current.checked ? 1 : 0,
           is_offer: 0,
           offer_items:  0,
-          rules: convertToHTML(editorState.getCurrentContent()),
+          rules: isPassthrough ? "" : convertToHTML(editorState.getCurrentContent()),
+          product_link: productLinkValue.trim(),
+          youtube_link: youtubeLinkValue.trim(),
         })
         .then(async (res) => {
           const newId = res?.data?.data?.id;
@@ -272,6 +282,43 @@ function AddTopupProduct() {
                   </div>
                 </div>
 
+                <div className="my-3 p-3 border border-blue-100 bg-blue-50 rounded">
+                  <label htmlFor="product_link" className="block font-semibold text-blue-900">
+                    Product link{' '}
+                    <span className="text-xs font-normal text-blue-700">
+                      (optional — when set, this product acts as a passthrough:
+                      clicking it on the home page opens this URL instead of the
+                      topup form, and all other fields below are hidden)
+                    </span>
+                  </label>
+                  <input
+                    id="product_link"
+                    type="url"
+                    className="form_input mt-1"
+                    placeholder="https://example.com/external-product"
+                    value={productLinkValue}
+                    onChange={(e) => setProductLinkValue(e.target.value)}
+                  />
+                  {!isPassthrough && (
+                    <>
+                      <label htmlFor="youtube_link" className="block font-semibold text-blue-900 mt-3">
+                        YouTube link{' '}
+                        <span className="text-xs font-normal text-blue-700">
+                          (optional — surfaced beside the Description header on the topup page)
+                        </span>
+                      </label>
+                      <input
+                        id="youtube_link"
+                        type="url"
+                        className="form_input mt-1"
+                        placeholder="https://youtube.com/watch?v=…"
+                        value={youtubeLinkValue}
+                        onChange={(e) => setYoutubeLinkValue(e.target.value)}
+                      />
+                    </>
+                  )}
+                </div>
+
                 <div className="my-3">
                   <label htmlFor="category" className="block mb-2 font-semibold">
                     Category
@@ -345,6 +392,8 @@ function AddTopupProduct() {
                   )}
                 </div>
 
+                {!isPassthrough && (
+                <>
                 <Editor
                   editorState={editorState}
                   editorStyle={{
@@ -523,6 +572,8 @@ function AddTopupProduct() {
                   })}
                 </div>
                 {/* End Dynamic Inputs ---- */}
+                </>
+                )}
 
                 <div className="my-2">
                   <label className="py-2 inline-block cursor-pointer select-none">

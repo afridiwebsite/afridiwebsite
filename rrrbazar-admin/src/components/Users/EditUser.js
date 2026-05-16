@@ -3,7 +3,7 @@ import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../common/axios';
 import useGet from '../../hooks/useGet';
-import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
+import { getErrors, hasData, imgPath, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
 function EditUser(props) {
     const history = useHistory()
@@ -12,24 +12,16 @@ function EditUser(props) {
     const [loading, setLoading] = useState(null)
     const [data, loadingData, error] = useGet(`admin/user/${userId}`)
 
-    console.log(data);
-
-    const phone = useRef(null);
     const wallet = useRef(null);
-    const address = useRef(null);
-    const city = useRef(null);
-    const zip_code = useRef(null);
+    const coins = useRef(null);
     const password = useRef(null);
 
     const editPaymentMethodHandler = (e) => {
         e.preventDefault()
         setLoading(true)
         axiosInstance.post(`/admin/user/update/${userId}`, {
-            phone: phone.current.value,
             wallet: wallet.current.value,
-            address: address.current.value,
-            city: city.current.value,
-            zip_code: zip_code.current.value,
+            coins: coins.current.value,
             password: password.current.value,
         }).then(res => {
             toast.success('User updated successfully', toastDefault)
@@ -52,48 +44,42 @@ function EditUser(props) {
                     </h3>
                 </div>
                 <div className="py-10 px-4" >
-                    <div className="w-full md:w-[70%] min-h-[300px] mx-auto py-6 relative border border-gray-200 px-4">
+                    <div className="w-full md:w-[70%] min-h-[300px] mx-auto py-6 relative border border-gray-200 px-4 rounded">
                         {loadingData && <Loader absolute />}
                         {loading && <Loader absolute />}
                         {
                             hasData(data, loading, error) && (
                                 <form onSubmit={editPaymentMethodHandler} >
+                                    <div className="flex flex-col items-center mb-8">
+                                        <img
+                                            alt="Avatar"
+                                            src={data?.avatar ? (data.avatar.startsWith('http') ? data.avatar : imgPath(data.avatar)) : require("../../assets/img/team-2-800x800.jpg").default}
+                                            className="shadow-xl rounded-full h-24 w-24 object-cover border-none"
+                                        />
+                                        <h4 className="text-xl font-bold mt-4">{data?.username}</h4>
+                                        <p className="text-gray-500 text-sm">{data?.email}</p>
+                                    </div>
                                     <div>
 
                                         <div className="form_grid">
                                             <div>
-                                                <label>Phone</label>
-                                                <input ref={phone} defaultValue={data?.phone} className="form_input" type="number" placeholder="Phone" />
+                                                <label className="block text-sm font-bold mb-1">Wallet (BDT)</label>
+                                                <input ref={wallet} defaultValue={data?.wallet} className="form_input" type="number" step="0.01" placeholder="Wallet balance" />
                                             </div>
                                             <div>
-                                                <label>Wallet</label>
-                                                <input ref={wallet} defaultValue={data?.wallet} className="form_input" type="number" placeholder="Wallet" />
+                                                <label className="block text-sm font-bold mb-1">Coins</label>
+                                                <input ref={coins} defaultValue={data?.coins} className="form_input" type="number" placeholder="Coin balance" />
                                             </div>
                                         </div>
                                         <div className="form_grid">
-                                            <div>
-                                                <label>Set new password</label>
-                                                <input ref={password} className="form_input" type="text" placeholder="Set new password" />
-                                            </div>
-                                            <div>
-                                                <label>Address</label>
-                                                <input ref={address} defaultValue={data?.address} className="form_input" type="text" placeholder="Address" />
-                                            </div>
-
-                                        </div>
-                                        <div className="form_grid">
-                                            <div>
-                                                <label>City</label>
-                                                <input ref={city} defaultValue={data?.city} className="form_input" type="text" placeholder="City" />
-                                            </div>
-                                            <div>
-                                                <label>Zip code</label>
-                                                <input ref={zip_code} defaultValue={data?.zip_code} className="form_input" type="text" placeholder="Zip code" />
+                                            <div className="md:col-span-2">
+                                                <label className="block text-sm font-bold mb-1">Set new password (leave blank to keep current)</label>
+                                                <input ref={password} className="form_input" type="text" placeholder="New password" />
                                             </div>
                                         </div>
 
-                                        <div className="mt-4">
-                                            <button type="submit" className="cstm_btn w-full block">Updated user</button>
+                                        <div className="mt-8">
+                                            <button type="submit" className="cstm_btn w-full block">Update User Balance</button>
                                         </div>
                                     </div>
                                 </form>

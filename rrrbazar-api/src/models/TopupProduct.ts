@@ -19,6 +19,8 @@ export default (sequelize: Sequelize) => {
         public is_active!: number;
         public is_offer!: number;
         public offer_items!: number;
+        public product_link!: string;
+        public youtube_link!: string;
 
         static associate({ Category, ProductCategory, TopupProductInput }: typeof Schema) {
             this.belongsToMany(Category, {
@@ -88,6 +90,21 @@ export default (sequelize: Sequelize) => {
         offer_items: {
             type: DataTypes.INTEGER,
             defaultValue: 1
+        },
+        product_link: {
+            // When set, the product tile on the home page links straight to
+            // this URL instead of /topup/:id. Used for affiliate / external
+            // products that don't have packages to pick.
+            type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
+        },
+        youtube_link: {
+            // Optional tutorial video URL — surfaced beside the Description
+            // header on the topup page.
+            type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
         },
         created_at: {
             type: DataTypes.DATE,
