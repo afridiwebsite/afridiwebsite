@@ -289,7 +289,16 @@ function Header() {
                   </div>
                 </>
               ) : (
-                <></>
+                <div className="flex items-center">
+                  <Link href={routes.login.name}>
+                    <a>
+                      <Button
+                        text="Login"
+                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold small"
+                      />
+                    </a>
+                  </Link>
+                </div>
               )}
             </div>
             {/* User Avatar or hamburger menu --End-- */}

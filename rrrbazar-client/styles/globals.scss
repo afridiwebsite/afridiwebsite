@@ -2483,16 +2483,39 @@ body {
 }
 
 @media (max-width: 540px) {
-  .topup-order-row { flex-wrap: wrap; }
+  .topup-order-row { 
+    flex-wrap: wrap; 
+    padding: 12px;
+  }
   .topup-order-row-side {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
+    width: calc(100% - 52px);
     margin-left: 52px;
-    margin-top: 2px;
+    margin-top: 4px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
+    gap: 8px;
   }
-  .topup-order-row-user { max-width: 160px; }
+  .topup-order-row-user { 
+    max-width: 140px; 
+  }
+  .topup-order-row-time {
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .topup-status-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .topup-order-row-side {
+    margin-left: 0;
+    width: 100%;
+  }
 }
 
 .topup-status-badge {

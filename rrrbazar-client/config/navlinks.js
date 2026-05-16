@@ -58,17 +58,4 @@ export default [
     auth: true,
     disabled_for_desktop: true,
   },
- 
-  {
-    disabled_for_mobile_sidebar: true,
-    component: (
-      <Link href={routes.login.name}>
-        <a>
-          <Button className="_btn small !px-4 font-semibold">Login</Button>
-        </a>
-      </Link>
-    ),
-    auth: false,
-  },
-
 ];
