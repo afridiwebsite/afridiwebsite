@@ -90,6 +90,11 @@ export default function Sidebar({ isOpenSidebar }) {
           path: "/subadmin-order",
           icon: "fab fa-first-order",
         },
+        {
+          text: "Order Comments",
+          path: "/order-comments",
+          icon: "fab fa-first-order",
+        },
       ],
     },
     {

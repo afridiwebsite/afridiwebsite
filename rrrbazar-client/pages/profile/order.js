@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useQuery } from 'react-query';
+import ReactHtmlParser from 'react-html-parser';
 import { getUserOrders } from '../../api/api';
 import ActivityIndicator from '../../components/ActivityIndicator';
 import Alert from '../../components/Alert';
@@ -70,7 +71,10 @@ function OrderPage() {
                         type="error"
                         title={
                           <span>
-                            <strong>Note:</strong> {order.brief_note}
+                            <strong>Note:</strong>{' '}
+                            <span className="inline order-note-html">
+                              {ReactHtmlParser(order.brief_note)}
+                            </span>
                           </span>
                         }
                         className="block w-full !mt-2.5"

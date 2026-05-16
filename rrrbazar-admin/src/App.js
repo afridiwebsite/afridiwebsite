@@ -56,6 +56,7 @@ import EditBot from "./components/autobot/EditBot";
 import Categories from "./components/Categories/Categories";
 import SiteSettings from "./components/SiteSettings/SiteSettings";
 import SpinRewards from "./components/SiteSettings/SpinRewards";
+import OrderComments from "./components/Orders/OrderComments";
 
 
 function App() {
@@ -70,6 +71,7 @@ function App() {
 
             <Route path="/order" exact component={Orders} />
             <Route path="/subadmin-order" exact component={SubadminOrders} />
+            <Route path="/order-comments" exact component={OrderComments} />
 
             <Route path="/user" exact component={Users} />
             <Route path="/user/edit/:id" exact component={EditUser} />

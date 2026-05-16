@@ -58,12 +58,27 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/spin-rewards/create',     method: 'POST' },
     { path: '/spin-rewards/update/:id', method: 'POST' },
     { path: '/spin-rewards/delete/:id', method: 'POST' },
-    // Site settings (needed to save spin cost / daily limit / day rewards)
+    // Site settings (needed to save spin cost / daily limit / day rewards
+    // and the new support_email / telegram_number / youtube_link fields)
     { path: '/site-settings',        method: 'GET'  },
     { path: '/site-settings/update', method: 'POST' },
     // Admin profile
     { path: '/profile',              method: 'GET'  },
     { path: '/profile/update',       method: 'POST' },
+    // Topup product dynamic inputs (admin defines the order form per product)
+    { path: '/topup-product/:id/inputs',     method: 'POST' },
+    { path: '/topup-product/:id/categories', method: 'POST' },
+    // Category CRUD
+    { path: '/categories',          method: 'GET'  },
+    { path: '/category/:id',        method: 'GET'  },
+    { path: '/category/create',     method: 'POST' },
+    { path: '/category/update/:id', method: 'POST' },
+    { path: '/category/delete/:id', method: 'POST' },
+    // Saved order-comment templates (used by the Orders edit modal)
+    { path: '/order-comments',             method: 'GET'  },
+    { path: '/order-comments',             method: 'POST' },
+    { path: '/order-comments/:id',         method: 'POST' },
+    { path: '/order-comments/:id/delete',  method: 'POST' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

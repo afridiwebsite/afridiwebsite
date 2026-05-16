@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Modal from 'react-modal'
+import parse from 'html-react-parser'
 import { toast } from 'react-toastify'
 import { toastDefault } from '../../utils/handler.utils'
 import Badge from '../Badge'
@@ -123,7 +124,12 @@ function ViewOrderModal({ order }) {
                     </Row> */}
                     {order.brief_note ? (
                         <Row label="Note">
-                            <span className="break-all">{order.brief_note}</span>
+                            {/* brief_note may contain rich HTML when the
+                                admin applied a saved comment template; parse
+                                it so formatting / links render properly. */}
+                            <span className="break-words order-note-html">
+                                {parse(String(order.brief_note))}
+                            </span>
                         </Row>
                     ) : null}
 

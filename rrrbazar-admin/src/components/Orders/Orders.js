@@ -4,14 +4,40 @@ import Table from "../react-table/Table";
 import { Link } from 'react-router-dom'
 import { toast } from "react-toastify";
 import axiosInstance from "../../common/axios";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import SearchOrder from "./SearchOrder";
 import ViewOrderModal from "./ViewOrderModal";
 
+// Escape user-supplied template strings so they're safe to inline as HTML
+// attribute values inside the Swal markup (datalist option, etc.).
+const escAttr = (s) =>
+    String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
 function Orders() {
     const [totalDataCount, setTotalDataCount] = useState(null)
+    const [savedComments, setSavedComments] = useState([])
     const reloadRefFunc = useRef(null)
+
+    // Pull the saved comment templates once on mount and refresh whenever
+    // the admin returns to this page. The dropdown in the edit modal is
+    // populated from this list (admin can still type a custom note).
+    useEffect(() => {
+        let cancelled = false
+        axiosInstance
+            .get('/admin/order-comments')
+            .then((res) => {
+                if (cancelled) return
+                const list = Array.isArray(res?.data?.data) ? res.data.data : []
+                setSavedComments(list)
+            })
+            .catch(() => { /* the dropdown just stays empty */ })
+        return () => { cancelled = true }
+    }, [])
 
 
     let actionMenu = {
@@ -39,6 +65,26 @@ function Orders() {
 
     const openChangeStatusModal = async (order_id) => {
 
+        // Build the saved-comment picker + datalist from the API-loaded list.
+        const savedOptions = savedComments
+            .map((c) => {
+                const label = c.label || (c.plain_text || '').slice(0, 80)
+                return `<option value="${escAttr(c.id)}">${escAttr(label)}</option>`
+            })
+            .join('')
+        const dynamicDatalist = savedComments
+            .map((c) => `<option value="${escAttr(c.plain_text)}"></option>`)
+            .join('')
+        const savedPickerHtml = savedComments.length
+            ? `<label class="block text-left mb-2">
+                    <span class="form_label">Load saved comment</span>
+                    <select id="order-saved-comment" class="form_input">
+                        <option value="">-- Select a saved comment --</option>
+                        ${savedOptions}
+                    </select>
+                </label>`
+            : `<p class="text-xs text-gray-500 mb-2 text-left">No saved comment templates yet — <a href="/order-comments" class="text-blue-600 underline">create one</a> to reuse here.</p>`
+
         const { value: formValues } = await Swal.fire({
             title: 'Change order status',
             html:
@@ -48,10 +94,11 @@ function Orders() {
                     <option value="In Progress" style="font-size: 2em;">In Progress</option>
                     <option value="cancel" style="font-size: 2em;">Cancel</option>
                 </select>` +
+                savedPickerHtml +
                 `
             <label class="block text-left">
                 <span class="form_label">Brief Note</span>
-                <input type="text" class="mt-1 block w-full form_input" id="order-note" placeholder="Enter some long form content." list="auto_comment" />
+                <textarea rows="3" class="mt-1 block w-full form_input" id="order-note" placeholder="Pick a saved comment above or type your own." list="auto_comment"></textarea>
                 <datalist id="auto_comment">
                     <option value="আইডি কোড ভুল"></option>
                     <option value="অন্য সার্ভার এর আইডি"></option>
@@ -60,18 +107,56 @@ function Orders() {
                     <option value="আপনার আইডিতে এই order টি নেই"></option>
                 </datalist>
             </label>`,
+            didOpen: () => {
+                const picker = document.getElementById('order-saved-comment')
+                const note = document.getElementById('order-note')
+                if (!picker || !note) return
+                // When the admin picks a saved comment, copy its plain text
+                // into the textarea for previewing/editing AND stash the
+                // template's HTML on the textarea via a data-attribute. On
+                // submit we prefer the HTML if it's still the original
+                // template (textarea unchanged), so the client can render
+                // formatting like bold / lists / links.
+                picker.addEventListener('change', (e) => {
+                    const id = e.target.value
+                    if (!id) {
+                        note.dataset.html = ''
+                        note.dataset.plain = ''
+                        return
+                    }
+                    const found = savedComments.find(
+                        (c) => String(c.id) === String(id),
+                    )
+                    if (found) {
+                        note.value = found.plain_text || ''
+                        note.dataset.html = found.html || ''
+                        note.dataset.plain = found.plain_text || ''
+                    }
+                })
+                // If the admin edits the textarea, drop the cached HTML so we
+                // fall back to submitting the typed plain text.
+                note.addEventListener('input', () => {
+                    if (note.value !== note.dataset.plain) {
+                        note.dataset.html = ''
+                    }
+                })
+                // Append the dynamic datalist options (built from API data).
+                const dl = document.getElementById('auto_comment')
+                if (dl) dl.innerHTML += `${dynamicDatalist}`
+            },
             focusConfirm: false,
             preConfirm: () => {
-                let orderStatus = document.getElementById('order-status-value').value
-                let orderNote = document.getElementById('order-note').value
+                const orderStatus = document.getElementById('order-status-value').value
+                const noteEl = document.getElementById('order-note')
+                const plain = noteEl.value
+                const cachedHtml = noteEl.dataset.html || ''
+                // Prefer the saved-template HTML when the textarea is still
+                // the unedited plain rendering of it; otherwise send the raw
+                // text the admin typed.
+                const orderNote = cachedHtml || plain
 
                 if (!orderStatus) {
                     toast.error('Select an order status', toastDefault)
-                }
-                // if (!orderNote) {
-                //     toast.error('Order note is required', toastDefault)
-                // }
-                if (!orderStatus) {
                     return false
                 }
 

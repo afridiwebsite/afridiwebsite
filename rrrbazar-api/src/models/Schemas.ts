@@ -32,6 +32,7 @@ import SiteSetting from './SiteSetting'
 import CoinTransaction from './CoinTransaction'
 import SpinReward from './SpinReward'
 import SpinResult from './SpinResult'
+import OrderComment from './OrderComment'
 
 
 
@@ -83,5 +84,6 @@ export const Schema = {
   SiteSetting: SiteSetting(sequelize),
   CoinTransaction: CoinTransaction(sequelize),
   SpinReward: SpinReward(sequelize),
-  SpinResult: SpinResult(sequelize)
+  SpinResult: SpinResult(sequelize),
+  OrderComment: OrderComment(sequelize),
 }

@@ -26,8 +26,24 @@ const {
   EarnWallet,
   StoreUnipin,
   AutoServer,
-  CoinTransaction
+  CoinTransaction,
+  OrderComment,
 } = Schema;
+
+// Crude HTML → plaintext for the saved-comment picker. Doesn't try to be
+// perfect, just enough that an admin selecting a template gets readable text
+// to send through the existing order_note flow.
+const htmlToPlain = (html: string) =>
+  String(html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
 // Reserved keyword for the Player ID input. Only one input per product is
 // allowed to have this title; assigning it also auto-enables isactivefortopup.
@@ -2002,6 +2018,101 @@ class AdminController {
     } catch (error) {
       console.log(error);
       res.status(400).send(response.internalError);
+    }
+  }
+
+  // -------- Order comment templates --------
+  // Admins save reusable comment templates with rich text. The Orders edit
+  // modal lets the admin pick from the saved list or type a custom note;
+  // either way the order's brief_note is set to plain text.
+
+  listOrderComments = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const comments = await OrderComment.findAll({
+        order: [['id', 'DESC']],
+      })
+      response.data = comments
+      res.send(response.response)
+    } catch (error) {
+      console.log('listOrderComments error:', error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  createOrderComment = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const html = String(req.body.html || '').trim()
+      const label = String(req.body.label || '').trim()
+      const plain_text = htmlToPlain(html)
+
+      if (!plain_text) {
+        response.message = 'Comment cannot be empty'
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+
+      const created = await OrderComment.create({
+        html,
+        plain_text,
+        // Use the first ~80 chars of plain text as the picker label if the
+        // admin didn't supply one.
+        label: label || plain_text.slice(0, 80),
+      })
+      response.data = created
+      response.message = 'Comment template saved'
+      res.send(response.response)
+    } catch (error) {
+      console.log('createOrderComment error:', error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  updateOrderComment = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const id = req.params.id as any
+      const comment = await OrderComment.findByPk(id)
+      if (!comment) {
+        response.message = 'Comment not found'
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+      const html = String(req.body.html || '').trim()
+      const label = String(req.body.label || '').trim()
+      const plain_text = htmlToPlain(html)
+      if (!plain_text) {
+        response.message = 'Comment cannot be empty'
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+      comment.html = html
+      comment.plain_text = plain_text
+      comment.label = label || plain_text.slice(0, 80)
+      await comment.save()
+      response.data = comment
+      response.message = 'Comment template updated'
+      res.send(response.response)
+    } catch (error) {
+      console.log('updateOrderComment error:', error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  deleteOrderComment = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const id = req.params.id as any
+      await OrderComment.destroy({ where: { id } })
+      response.message = 'Comment template deleted'
+      res.send(response.response)
+    } catch (error) {
+      console.log('deleteOrderComment error:', error)
+      res.status(400).send(response.internalError)
     }
   }
 

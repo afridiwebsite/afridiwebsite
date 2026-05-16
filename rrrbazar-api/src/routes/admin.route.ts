@@ -28,6 +28,12 @@ router.get('/publish-permission', auth, adminController.publishPermission)
 //router.get('/mmdatab', authController.getTokenData)
 router.get('/orders', auth, adminController.getOrders) // Get all orders
 router.post('/order/update-order-status/:id', auth, adminController.updateOrderStatus) // Get all orders
+
+// Saved comment templates used by the order status edit modal.
+router.get('/order-comments', auth, adminController.listOrderComments)
+router.post('/order-comments', auth, adminController.createOrderComment)
+router.post('/order-comments/:id', auth, adminController.updateOrderComment)
+router.post('/order-comments/:id/delete', auth, adminController.deleteOrderComment)
 router.get('/admins', auth, adminController.getAdmins) // Get all admins
 router.post('/admin/delete/:id', auth, adminController.deleteAdmin) // Get all admins
 router.get('/admin/:id', auth, adminController.getAdminById) // Get admin by id
