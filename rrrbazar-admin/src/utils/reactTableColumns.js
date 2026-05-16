@@ -10,21 +10,41 @@ import PlayerRankingEditForm from '../components/PlayerRankingEditForm';
 import ProductDescriptionSeeMore from '../components/ProductDescriptionSeeMore';
 import { imgPath } from './handler.utils';
 
+// Shared helper: copies on click and toasts. Renders '---' if empty.
+const copyableCell = (label, accessor) => (e) => {
+    const value = e.row.original[accessor];
+    if (value === null || value === undefined || value === '') return <span className="text-gray-400">---</span>;
+    return (
+        <span
+            className="cursor-pointer hover:text-blue-600"
+            title={`Click to copy ${label}`}
+            onClick={() => {
+                navigator.clipboard.writeText(String(value));
+                toast.info(`Copied ${label}: ${value}`, toastDefault);
+            }}
+        >
+            {value}
+        </span>
+    );
+};
+
 export const ordersTableColumns = [
     {
         Header: 'Order id',
         accessor: 'id',
-        Cell: (e) => <span className="capitalize" onClick={() => {navigator.clipboard.writeText(e.row.original['id']); toast.info('Copied Order ID:: ' + e.row.original['id'], toastDefault); return e.row.original['id'];} }>{e.row.original['id']}</span>
+        Cell: copyableCell('Order ID', 'id'),
     },
     {
         Header: 'Player id',
         accessor: 'playerid',
-        Cell: (e) => <span className="capitalize" onClick={() => {navigator.clipboard.writeText(e.row.original['playerid']); toast.info('Copied Player ID:: ' + e.row.original['playerid'], toastDefault); return e.row.original['playerid'];} }>{e.row.original['playerid']}</span>
-    },
-    {
-        Header: 'Password',
-        accessor: 'ingamepassword',
-        Cell: (e) => <span className="capitalize" onClick={() => {navigator.clipboard.writeText(e.row.original['ingamepassword']); toast.info('Copied Password:: ' + e.row.original['ingamepassword'], toastDefault); return e.row.original['ingamepassword'];} }>{e.row.original['ingamepassword']}</span>
+        // Only meaningful when the product has a Player ID dynamic input —
+        // otherwise the field is empty (or "UNIPIN_VOUCHER" for the legacy
+        // Unipin path). The helper renders '---' for falsy values.
+        Cell: (e) => {
+            const v = e.row.original['playerid'];
+            if (!v || v === 'UNIPIN_VOUCHER') return <span className="text-gray-400">---</span>;
+            return copyableCell('Player ID', 'playerid')(e);
+        },
     },
     {
         Header: 'Package name',
@@ -35,22 +55,8 @@ export const ordersTableColumns = [
         accessor: 'amount',
     },
     {
-        Header: 'Account type',
-        accessor: 'accounttype',
-    },
-    {
-        Header: 'Security code',
-        accessor: 'securitycode',
-        Cell: (e) => <span className="capitalize" onClick={() => {navigator.clipboard.writeText(e.row.original['securitycode']); toast.info('Copied Security code:: ' + e.row.original['securitycode'], toastDefault); return e.row.original['securitycode'];} }>{e.row.original['securitycode']}</span>
-    },
-    {
         Header: 'uc',
         accessor: 'uc',
-    },
-    {
-        Header: 'Completed by',
-        accessor: 'completed_by',
-        Cell: (e) => <span className="capitalize" >{e.row.original?.Admin?.first_name + ' ' + e.row.original?.Admin?.last_name}</span>
     },
     {
         Header: 'Created at',
@@ -64,7 +70,7 @@ export const ordersTableColumns = [
     {
         Header: 'User id',
         accessor: 'user_id',
-        Cell: (e) => <span className="capitalize" onClick={() => {navigator.clipboard.writeText(e.row.original['user_id']); toast.info('Copied User ID:: ' + e.row.original['user_id'], toastDefault); return e.row.original['user_id'];} }>{e.row.original['user_id']}</span>
+        Cell: copyableCell('User ID', 'user_id'),
     },
 ];
 

@@ -7,6 +7,7 @@ import axiosInstance from "../../common/axios";
 import { useRef, useState } from "react";
 import Swal from "sweetalert2";
 import SearchOrder from "./SearchOrder";
+import ViewOrderModal from "./ViewOrderModal";
 
 function Orders() {
     const [totalDataCount, setTotalDataCount] = useState(null)
@@ -18,13 +19,19 @@ function Orders() {
         Header: "Action",
         accessor: 'id',
         Cell: (e) => {
-            const status = e.row.original.status
-            if (status !== 'pending' && status !== 'In Progress') return '---'
-            return <ul className="flex space-x-2">
-                <li className="cstm_btn_small" onClick={() => openChangeStatusModal(e.value)}>
-                    Edit
-                </li>
-            </ul>
+            const order = e.row.original
+            const status = order.status
+            const canEdit = status === 'pending' || status === 'In Progress'
+            return (
+                <ul className="flex space-x-2">
+                    <ViewOrderModal order={order} />
+                    {canEdit && (
+                        <li className="cstm_btn_small" onClick={() => openChangeStatusModal(e.value)}>
+                            Edit
+                        </li>
+                    )}
+                </ul>
+            )
         }
     };
     let withActionMenu = [...ordersTableColumns, actionMenu]

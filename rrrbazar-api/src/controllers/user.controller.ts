@@ -631,7 +631,12 @@ class UserController {
           "user_id",
           "product_id",
           [
-            Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
+            // Qualify the columns — Order, User, and TopupProduct all have a
+            // created_at/updated_at, so MySQL throws "ambiguous" without the
+            // table prefix once the joins are applied.
+            Sequelize.literal(
+              "TIMESTAMPDIFF(SECOND, `Order`.`created_at`, `Order`.`updated_at`)",
+            ),
             "diff_in_seconds",
           ],
         ],
@@ -650,7 +655,7 @@ class UserController {
         where: {
           product_id: product_id,
         },
-        order: [["created_at", "DESC"]],
+        order: [[Sequelize.col("Order.created_at"), "DESC"]],
         limit: product_id == "16" ? 500 : 20,
       });
 
@@ -677,7 +682,11 @@ class UserController {
           "user_id",
           "product_id",
           [
-            Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
+            // Qualify with `Order` so the joined User / TopupProduct tables
+            // don't make MySQL complain about ambiguous created_at/updated_at.
+            Sequelize.literal(
+              "TIMESTAMPDIFF(SECOND, `Order`.`created_at`, `Order`.`updated_at`)",
+            ),
             "diff_in_seconds",
           ],
         ],
@@ -693,14 +702,14 @@ class UserController {
             required: false,
           },
         ],
-        order: [["created_at", "DESC"]],
+        order: [[Sequelize.col("Order.created_at"), "DESC"]],
         limit: 20,
       });
 
       response.data = orders;
       res.send(response.response);
     } catch (error) {
-      console.log(error);
+      console.log("getProductOrders error:", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -1011,9 +1020,19 @@ class UserController {
           topupPackage.uc,
           send_unipin,
         );
-        order.status = botStatus ? "In Progress" : "pending";
-        order.uc = send_unipin;
-        order.ingamepassword = botStatus;
+        if (botStatus) {
+          order.status = "In Progress";
+          order.uc = send_unipin;
+          order.ingamepassword = botStatus;
+        } else {
+          // Bot didn't accept the job — return the reserved voucher to the
+          // pool so it can be re-sold, and leave the order pending for the
+          // admin to either retry or refund.
+          store_unipin_auto.status = 1;
+          await store_unipin_auto.save();
+          order.status = "pending";
+          order.uc = "";
+        }
         await order.save();
       }
       // AUTO BOT SET IN CODE END
@@ -1058,6 +1077,11 @@ class UserController {
       order.status = mystatus;
       //order.ingamepassword = (botUrl?.toString() ?? '') || '';
       order.securitycode = message;
+      // If the bot failed, clear the reserved code off the order — a retry
+      // will pick a fresh voucher from the pool.
+      if (mystatus !== "completed") {
+        order.uc = "";
+      }
       await order.save();
 
       const store_unipin = await StoreUnipin.findOne({
@@ -1071,7 +1095,9 @@ class UserController {
         response.message = "NOT FOUND";
         return res.status(404).send(response.response);
       }
-      store_unipin.status = mystatus == "completed" ? 2 : 5;
+      // On success → mark voucher used (2). On failure → return it to the
+      // pool (1) so it can be re-sold, instead of leaving it held (5).
+      store_unipin.status = mystatus == "completed" ? 2 : 1;
       await store_unipin.save();
 
       if (mystatus == "Failed") {
@@ -1943,9 +1969,18 @@ class UserController {
                       topupPackage.uc,
                       myunipincode,
                     );
-                    order.status = botStatus ? "In Progress" : "pending";
-                    order.uc = myunipincode;
-                    order.ingamepassword = botStatus;
+                    if (botStatus) {
+                      order.status = "In Progress";
+                      order.uc = myunipincode;
+                      order.ingamepassword = botStatus;
+                    } else {
+                      // Bot rejected — return the voucher and reset the order
+                      // to pending so it can be retried or refunded.
+                      store_unipin_auto.status = 1;
+                      await store_unipin_auto.save();
+                      order.status = "pending";
+                      order.uc = "";
+                    }
                     await order.save();
                   }
                 }

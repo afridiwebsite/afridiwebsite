@@ -31,6 +31,7 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
     const [userId, setUserId] = useState('')
     const [orderId, setOrderId] = useState('')
     const [orserStatus, setOrderStatus] = useState('')
+    const [uc, setUc] = useState('')
 
     // useEffect(() => {
     //     setTimeout(() => {
@@ -53,6 +54,11 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
         if (orderId) addSearchParam('order_id', orderId)
         else removeSearchParam('order_id')
     }, [orderId])
+
+    useEffect(() => {
+        if (uc) addSearchParam('uc', uc)
+        else removeSearchParam('uc')
+    }, [uc])
 
     const submitHandler = (e) => {
         e.preventDefault()
@@ -79,6 +85,18 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
                         const value = e.target.value
                         typingTimer = setTimeout(() => setOrderId(value), value ? doneTypingInterval : 0);
                     }} />
+                </div>
+                <div className="w-full md:w-[160px]">
+                    <input
+                        type="text"
+                        placeholder="UC code"
+                        className="form_input mb-0"
+                        onChange={(e) => {
+                            clearTimeout(typingTimer);
+                            const value = e.target.value
+                            typingTimer = setTimeout(() => setUc(value), value ? doneTypingInterval : 0);
+                        }}
+                    />
                 </div>
                 <div className="w-full md:w-[150px]">
                     <Select

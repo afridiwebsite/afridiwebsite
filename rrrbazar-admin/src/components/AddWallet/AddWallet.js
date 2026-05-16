@@ -20,37 +20,54 @@ function AddWallet() {
     const [listPerPage, setListPerPage] = useState(10)
     const [uniqueState, setUniqueState] = useState(false)
     const [searchWalletInput, setSearchWalletInput] = useState('')
+    const [transactionIdInput, setTransactionIdInput] = useState('')
     const [isOpenModal, setIsOpenModal] = useState(false)
     const [editRowId, setEditRowId] = useState(null)
 
-    const [urlToFetch, setUrlToFetch] = useState(`admin/transaction?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
+    // Build the URL from the current filter state. Centralizing this avoids
+    // forgetting one of the params when a new filter is added later.
+    const buildUrl = (page, perPage, q, txId) => {
+        const params = new URLSearchParams()
+        params.set('page', String(page))
+        params.set('limit', String(perPage))
+        if (q) params.set('q', q)
+        if (txId) params.set('transaction_id', txId)
+        return `admin/transaction?${params.toString()}`
+    }
+
+    const [urlToFetch, setUrlToFetch] = useState(buildUrl(currentPage, listPerPage, searchWalletInput, transactionIdInput))
     const [transactionData, loading, error] = useGet(urlToFetch, '', uniqueState)
     const addWalletData = transactionData?.transactions
 
     useEffect(() => {
-        setUrlToFetch(`admin/transaction?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
+        setUrlToFetch(buildUrl(currentPage, listPerPage, searchWalletInput, transactionIdInput))
     }, [currentPage, listPerPage])
 
     useEffect(() => {
         if (!searchWalletInput) clearSearchHandler()
     }, [searchWalletInput])
 
+    // Debounce the transaction-id input so we don't fire a request on every
+    // keystroke when the admin pastes a long id.
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setCurrentPage(1)
+            setUrlToFetch(buildUrl(1, listPerPage, searchWalletInput, transactionIdInput))
+        }, 400)
+        return () => clearTimeout(t)
+    }, [transactionIdInput])
+
     const searchWalletHandler = (e) => {
         setCurrentPage(1)
         e.preventDefault();
         if (!searchWalletInput) return false
-        const totalLength = searchWalletInput.length;
-        if (totalLength >= 8) {
-            setUrlToFetch(`admin/transaction?q=${searchWalletInput}&page=${currentPage}&limit=${listPerPage}`)
-        } else {
-            setUrlToFetch(`admin/transaction?q=${searchWalletInput}&page=${currentPage}&limit=${listPerPage}`)
-        }
+        setUrlToFetch(buildUrl(1, listPerPage, searchWalletInput, transactionIdInput))
     }
 
     const clearSearchHandler = () => {
         setSearchWalletInput('')
         setCurrentPage(1)
-        setUrlToFetch(`admin/transaction?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
+        setUrlToFetch(buildUrl(1, listPerPage, '', transactionIdInput))
     }
 
     const openChangeStatusModal = async (transaction_id) => {
@@ -194,9 +211,29 @@ function AddWallet() {
                         </div>
 
                         <div className="w-full md:w-auto">
-                            <form onSubmit={searchWalletHandler} className="flex items-center space-x-2">
-                                <input value={searchWalletInput} onChange={(e) => setSearchWalletInput(e.target.value)} type="text" placeholder="Search" className="form_input mb-0 w-full" />
-                                {searchWalletInput && <button onClick={clearSearchHandler} type="button" className="cstm_btn !py-[7px] !rounded">Clear</button>}
+                            <form onSubmit={searchWalletHandler} className="flex items-center space-x-2 flex-wrap gap-y-2">
+                                <input
+                                    value={transactionIdInput}
+                                    onChange={(e) => setTransactionIdInput(e.target.value)}
+                                    type="text"
+                                    placeholder="Transaction id"
+                                    className="form_input mb-0 w-full md:w-[160px]"
+                                />
+                                <input value={searchWalletInput} onChange={(e) => setSearchWalletInput(e.target.value)} type="text" placeholder="Search number / user id" className="form_input mb-0 w-full md:w-auto" />
+                                {(searchWalletInput || transactionIdInput) && (
+                                    <button
+                                        onClick={() => {
+                                            setSearchWalletInput('')
+                                            setTransactionIdInput('')
+                                            setCurrentPage(1)
+                                            setUrlToFetch(buildUrl(1, listPerPage, '', ''))
+                                        }}
+                                        type="button"
+                                        className="cstm_btn !py-[7px] !rounded"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
                             </form>
                         </div>
                     </div>

@@ -63,9 +63,9 @@ function Users() {
                 <Link to={`/user/edit/${e.value}`} className="cstm_btn_small" >
                     Edit
                 </Link>
-                <Link to={`/user/earn-wallet/edit/${e.value}`} className="cstm_btn_small" >
+                {/* <Link to={`/user/earn-wallet/edit/${e.value}`} className="cstm_btn_small" >
                     Earn Wallet
-                </Link>
+                </Link> */}
                 <li className="cstm_btn_small btn_red" onClick={(() => deleteUserHandler(e.value))} >
                     Delete
                 </li>

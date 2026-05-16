@@ -47,7 +47,7 @@ class AdminController {
   async getOrders(req: express.Request, res: express.Response) {
     const response = new responseUtils()
     try {
-      const { user_id, order_id, status } = req.query;
+      const { user_id, order_id, status, uc } = req.query;
       const filter: any = {};
 
       filter.payment_status = 1
@@ -61,6 +61,10 @@ class AdminController {
 
       if (status) {
         filter.status = status
+      }
+
+      if (uc) {
+        filter.uc = { [Op.like]: `%${uc}%` }
       }
 
       // Qualify with `Order` so MySQL doesn't see the joined Admin.status / id
@@ -563,11 +567,12 @@ class AdminController {
   async getAllTransaction(req: express.Request, res: express.Response) {
     const response = new responseUtils()
     const query = req.query.q || ''
+    const transactionIdFilter = req.query.transaction_id
 
     const limit: any = parseInt(req.query.limit?.toString() || '20')
     const page: any = parseInt(req.query.page?.toString() || '1')
 
-    const whereQuery = {
+    const whereQuery: any = {
       [Op.or]: [
         {
           number: { [Op.like]: `%${query}%` }
@@ -577,6 +582,12 @@ class AdminController {
         }
       ]
     };
+
+    // Narrow further by transaction id when the admin provides one — this
+    // wins over the loose `q` search.
+    if (transactionIdFilter) {
+      whereQuery.id = transactionIdFilter
+    }
 
     try {
       const totalRow = await Transaction.count({
