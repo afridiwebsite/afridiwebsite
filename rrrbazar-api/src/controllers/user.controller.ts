@@ -195,12 +195,12 @@ class UserController {
       }
 
       if (type === "add") {
-        newAmount = newAmount + parseInt(amount);
+        newAmount = Number(newAmount) + Number(amount);
       } else if (type === "deduct") {
-        if (newAmount < parseInt(amount)) {
+        if (Number(newAmount) < Number(amount)) {
           throw createError(400, "Insufficient balance");
         }
-        newAmount = newAmount - parseInt(amount);
+        newAmount = Number(newAmount) - Number(amount);
       } else {
         throw createError(400, "Action type missing");
       }
@@ -714,8 +714,8 @@ class UserController {
       // const topupPaymentMethods = await PaymentMethod.query().where("is_active", 1).fetch()
       // const payments = topupPaymentMethods.rows.map(data => data.payment_method)
 
-      let amount = parseInt(topupPackage.price);
-      let bprice = parseInt(topupPackage.bprice);
+      let amount = parseFloat(topupPackage.price);
+      let bprice = parseFloat(topupPackage.bprice);
 
       let product = await TopupProduct.findByPk(product_id);
 
@@ -1765,7 +1765,7 @@ class UserController {
       const createTransaction = await Transaction.create({
         user_id: metadataObj.id,
         purpose: "fastPay",
-        amount: Math.round(parseFloat(amount)),
+        amount: parseFloat(amount),
         number: sender_number,
         paymentmethod_id: metadataObj.paymentmethod,
         action_by: metadataObj.seller_id,
@@ -1774,13 +1774,13 @@ class UserController {
 
       if (status.toLowerCase() == "completed") {
         if (user && !metadataObj?.order) {
-          user.wallet = user.wallet + parseInt(amount);
+          user.wallet = Number(user.wallet) + Number(amount);
           await user.save();
 
           if (metadataObj.seller_id) {
             const admin = await Admin.findByPk(metadataObj.seller_id);
             if (admin) {
-              admin.wallet = admin.wallet + parseInt(amount);
+              admin.wallet = Number(admin.wallet) + Number(amount);
               await admin.save();
             }
           }

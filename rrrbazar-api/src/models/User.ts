@@ -61,12 +61,12 @@ export default (sequelize: Sequelize) => {
       defaultValue: '',
     },
     wallet: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0,
     },
     coins: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0,
     },

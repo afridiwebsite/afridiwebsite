@@ -6,24 +6,21 @@
  * Date: 25 November 2021 (Thursday)
  *
  */
-import { useRouter } from 'next/dist/client/router';
-import Link from 'next/link';
-import { useContext, useEffect, useRef, useState } from 'react';
-import { HiMenuAlt3 } from 'react-icons/hi';
-import Button from '../components/Button';
-import navlinks from '../config/navlinks';
-import routes from '../config/routes';
-import { globalContext } from '../pages/_app';
-import MobileSidebar from './MobileSidebar';
-import NoticePopup from './notice-popup/NoticePopup';
-import UserPopoverHead from './user-popover-menu/UserPopoverHead';
-import UserPopoverMenu from './user-popover-menu/UserPopoverMenu';
-import { imgPath } from '../helpers/helpers';
-import { searchGlobal } from '../api/api';
-import {
-  __site_name_1,
-  __site_name_2,
-} from '../config/globalConfig';
+import { useRouter } from "next/dist/client/router";
+import Link from "next/link";
+import { useContext, useEffect, useRef, useState } from "react";
+import { HiMenuAlt3 } from "react-icons/hi";
+import Button from "../components/Button";
+import navlinks from "../config/navlinks";
+import routes from "../config/routes";
+import { globalContext } from "../pages/_app";
+import MobileSidebar from "./MobileSidebar";
+import NoticePopup from "./notice-popup/NoticePopup";
+import UserPopoverHead from "./user-popover-menu/UserPopoverHead";
+import UserPopoverMenu from "./user-popover-menu/UserPopoverMenu";
+import { imgPath } from "../helpers/helpers";
+import { searchGlobal } from "../api/api";
+import { __site_name_1, __site_name_2 } from "../config/globalConfig";
 
 const SEARCH_DEBOUNCE_MS = 220;
 const SEARCH_MIN_CHARS = 1;
@@ -33,7 +30,7 @@ const SEARCH_MIN_CHARS = 1;
 // link that routes to /search?q=…. Closes on outside-click and on submit.
 function HeaderSearch() {
   const router = useRouter();
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState({ products: [], packages: [] });
@@ -61,7 +58,8 @@ function HeaderSearch() {
           packages: Array.isArray(data.packages) ? data.packages : [],
         });
       } catch (e) {
-        if (mine === requestSeqRef.current) setResults({ products: [], packages: [] });
+        if (mine === requestSeqRef.current)
+          setResults({ products: [], packages: [] });
       } finally {
         if (mine === requestSeqRef.current) setLoading(false);
       }
@@ -75,8 +73,8 @@ function HeaderSearch() {
       if (!containerRef.current) return;
       if (!containerRef.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
   const onSubmit = (e) => {
@@ -101,7 +99,10 @@ function HeaderSearch() {
           <input
             type="text"
             value={q}
-            onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setOpen(true);
+            }}
             onFocus={() => setOpen(true)}
             placeholder="Search games and packages…"
             className="header-search-input"
@@ -114,9 +115,7 @@ function HeaderSearch() {
 
       {showResults && (
         <div className="header-search-menu animate-fade-in" role="listbox">
-          {loading && (
-            <div className="header-search-empty">Searching…</div>
-          )}
+          {loading && <div className="header-search-empty">Searching…</div>}
 
           {!loading && total === 0 && (
             <div className="header-search-empty">
@@ -159,7 +158,8 @@ function HeaderSearch() {
                     <div className="header-search-row-main">
                       <div className="header-search-row-name">{pk.name}</div>
                       <div className="header-search-row-sub">
-                        {pk.product_name ? `${pk.product_name} · ` : ''}৳ {pk.price}
+                        {pk.product_name ? `${pk.product_name} · ` : ""}৳{" "}
+                        {pk.price}
                       </div>
                     </div>
                   </a>
@@ -188,7 +188,7 @@ function Header() {
 
   const openSidebar = () => setIsOpenSidebar(true);
 
-  const logoSrc = siteSettings?.logo_full_url || '/logo.png';
+  const logoSrc = siteSettings?.logo_full_url || "/logo.png";
   const siteName = siteSettings?.site_name || __site_name_2;
 
   return (
@@ -232,17 +232,23 @@ function Header() {
                   if (auth !== undefined && auth !== isAuth) return null;
 
                   // Skip login/register/user-menu as we handle them separately now
-                  if (link === routes.login.name || link === routes.register.name || text === 'Login' || text === 'Register') return null;
+                  if (
+                    link === routes.login.name ||
+                    link === routes.register.name ||
+                    text === "Login" ||
+                    text === "Register"
+                  )
+                    return null;
                   if (navLink.isUserMenu) return null;
 
                   if (component) return <li key={index}>{component}</li>;
                   if (text && link)
                     return (
                       <li key={index}>
-                        <Link href={link || '#'}>
+                        <Link href={link || "#"}>
                           <a
                             className={`_body2 font-semibold text-gray-500 hover:text-primary-600 duration-150 ${
-                              router.route === link ? 'text-primary-600' : ''
+                              router.route === link ? "text-primary-600" : ""
                             }`}
                           >
                             {text}
@@ -261,27 +267,18 @@ function Header() {
             <div className="flex items-center gap-2 md:gap-3">
               {isAuth ? (
                 <>
-                  {/* Coin pill / daily-bonus trigger lives on the dedicated
-                      /spin page now. Kept commented for easy revival.
-                  <button
-                    type="button"
-                    onClick={() => setCoinModalOpen(true)}
-                    aria-label="Open daily login bonus"
-                    className="header-pill header-pill-coin"
-                  >
-                    <span aria-hidden="true" className="header-pill-emoji">🪙</span>
-                    <span className="header-pill-value">{coinBalance}</span>
-                    {canClaim && <span className="header-pill-dot" aria-hidden="true" />}
-                  </button>
-                  */}
                   {/* Wallet pill — links to Add Money */}
                   <Link href={routes.addMoney.name}>
                     <a
                       aria-label="Open wallet — add money"
                       className="header-pill header-pill-wallet"
                     >
-                      <span aria-hidden="true" className="header-pill-emoji">💰</span>
-                      <span className="header-pill-value">৳ {authUser?.wallet ?? 0}</span>
+                      <span aria-hidden="true" className="header-pill-emoji">
+                        💰
+                      </span>
+                      <span className="header-pill-value">
+                        ৳ {Number(authUser?.wallet ?? 0).toFixed(2)}
+                      </span>
                     </a>
                   </Link>
                   <div className="hidden md:block">
@@ -291,7 +288,9 @@ function Header() {
                     <UserPopoverHead />
                   </div>
                 </>
-              ) : <></>}
+              ) : (
+                <></>
+              )}
             </div>
             {/* User Avatar or hamburger menu --End-- */}
           </div>

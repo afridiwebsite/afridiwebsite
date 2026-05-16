@@ -255,14 +255,14 @@ function SpinPage() {
                 <div className="spin-stat-label">Coins</div>
               </div>
             </div>
-            <button
+            {/* <button
               type="button"
               onClick={() => setBonusOpen(true)}
               className="spin-bonus-btn"
             >
               <FaGift />
               <span>Daily bonus</span>
-            </button>
+            </button> */}
           </div>
         </header>
 

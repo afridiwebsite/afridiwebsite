@@ -15,6 +15,8 @@ import {
   FaClipboardList,
   FaCoins,
 } from 'react-icons/fa';
+import { GiTwoCoins, GiCoins } from 'react-icons/gi';
+import { HiSparkles } from 'react-icons/hi';
 import { getMyCoins, getUserOrders, getUserProfile } from '../api/api';
 import reactQueryConfig from '../config/reactQueryConfig';
 import Avatar from './Avatar';
@@ -145,22 +147,46 @@ function ProfilePage() {
               icon: <FaClipboardList />,
               path: routes.myOrder.name,
             },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className={`profile-stat-card animate-fade-in-up ${stat.path ? 'cursor-pointer hover:border-primary-500' : ''} ${stat.accent === 'coin' ? 'profile-stat-card-coin' : ''}`}
-              style={{ animationDelay: `${stat.delay}ms` }}
-              onClick={() => stat.path && router.push(stat.path)}
-            >
-              <div className="flex flex-col items-center gap-3 py-6">
-                <div className={`text-3xl mb-1 opacity-80 ${stat.accent === 'coin' ? 'text-amber-500' : 'text-primary-500'}`}>
-                  {stat.icon}
+          ].map((stat) => {
+            const isCoin = stat.accent === 'coin';
+            return (
+              <div
+                key={stat.label}
+                className={`profile-stat-card animate-fade-in-up ${stat.path ? 'cursor-pointer' : ''} ${isCoin ? 'profile-stat-card-coin' : ''}`}
+                style={{ animationDelay: `${stat.delay}ms` }}
+                onClick={() => stat.path && router.push(stat.path)}
+              >
+                {/* Floating coin / sparkle layer — only on the coin card. */}
+                {isCoin && (
+                  <div className="profile-stat-stage" aria-hidden="true">
+                    <span className="profile-stat-coin profile-stat-coin--1">
+                      <FaCoins />
+                    </span>
+                    <span className="profile-stat-coin profile-stat-coin--2">
+                      <GiTwoCoins />
+                    </span>
+                    <span className="profile-stat-coin profile-stat-coin--3">
+                      <GiCoins />
+                    </span>
+                    <span className="profile-stat-sparkle profile-stat-sparkle--a">
+                      <HiSparkles />
+                    </span>
+                    <span className="profile-stat-sparkle profile-stat-sparkle--b">
+                      <HiSparkles />
+                    </span>
+                  </div>
+                )}
+                <div className="profile-stat-shine" aria-hidden="true" />
+                <div className="relative flex flex-col items-center gap-3 py-6">
+                  <div className={`profile-stat-icon ${isCoin ? 'is-coin' : ''}`}>
+                    {stat.icon}
+                  </div>
+                  <p className="profile-stat-value !text-2xl !mb-1">{stat.value}</p>
+                  <p className="profile-stat-label !text-sm">{stat.label}</p>
                 </div>
-                <p className="profile-stat-value !text-2xl !mb-1">{stat.value}</p>
-                <p className="profile-stat-label !text-sm">{stat.label}</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

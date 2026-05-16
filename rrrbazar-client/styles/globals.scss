@@ -784,7 +784,120 @@ body {
 .profile-stat-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 18px 32px rgba(20, 30, 60, 0.1);
-  border-color: rgba(0, 0, 0, 0.06);
+  border-color: rgba(var(--theme-primary-rgb, 56 86 181) / 0.4);
+}
+
+// Sweep shine layer — runs once when the card enters the viewport via the
+// fade-in animation, and again on hover.
+.profile-stat-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.profile-stat-shine::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -60%;
+  width: 50%;
+  height: 140%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  animation: profile-stat-shine 2.4s ease-in-out 0.4s 1;
+}
+.profile-stat-card:hover .profile-stat-shine::before {
+  animation: profile-stat-shine 1.1s ease-in-out 1;
+}
+@keyframes profile-stat-shine {
+  from { left: -60%; }
+  to   { left: 130%; }
+}
+
+// Icon pop — themed gradient puck.
+.profile-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  font-size: 22px;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--theme-primary, #3856B5) 0%,
+    var(--theme-accent, #4D67D8) 100%
+  );
+  box-shadow: 0 8px 18px rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
+  transition: transform 0.25s ease;
+}
+.profile-stat-card:hover .profile-stat-icon {
+  transform: translateY(-2px) scale(1.04);
+}
+.profile-stat-icon.is-coin {
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 60%, #b45309 100%);
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.35);
+  animation: profile-stat-coin-spin 3.6s ease-in-out infinite;
+}
+@keyframes profile-stat-coin-spin {
+  0%, 100% { transform: rotateY(0deg); }
+  50%      { transform: rotateY(180deg); }
+}
+
+// Floating coin + sparkle stage — only on the coin card.
+.profile-stat-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.profile-stat-coin,
+.profile-stat-sparkle {
+  position: absolute;
+  font-size: 14px;
+  color: #f59e0b;
+  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.35));
+  opacity: 0;
+}
+.profile-stat-coin--1 { top: 8px;   left: 10px;  animation: profile-stat-coin-burst-1 3.6s ease-in-out infinite; }
+.profile-stat-coin--2 { top: 14px;  right: 12px; font-size: 16px; animation: profile-stat-coin-burst-2 4s   ease-in-out infinite; }
+.profile-stat-coin--3 { bottom: 14px; left: 18px;  font-size: 12px; animation: profile-stat-coin-burst-3 4.4s ease-in-out infinite; }
+.profile-stat-sparkle {
+  color: #fde047;
+  font-size: 12px;
+}
+.profile-stat-sparkle--a { top: 24%; right: 22%; animation: profile-stat-sparkle 1.8s ease-in-out infinite; }
+.profile-stat-sparkle--b { bottom: 26%; right: 14%; animation: profile-stat-sparkle 2.2s ease-in-out infinite 0.4s; }
+
+@keyframes profile-stat-coin-burst-1 {
+  0%, 100% { transform: translateY(0) rotate(0deg);   opacity: 0; }
+  20%      { opacity: 0.9; }
+  50%      { transform: translateY(-8px) rotate(20deg); opacity: 0.95; }
+  80%      { opacity: 0.4; }
+}
+@keyframes profile-stat-coin-burst-2 {
+  0%, 100% { transform: translateY(0) rotate(0deg);    opacity: 0; }
+  25%      { opacity: 0.85; }
+  50%      { transform: translateY(-10px) rotate(-25deg); opacity: 1; }
+  75%      { opacity: 0.35; }
+}
+@keyframes profile-stat-coin-burst-3 {
+  0%, 100% { transform: translateY(0) rotate(0deg);    opacity: 0; }
+  30%      { opacity: 0.85; }
+  50%      { transform: translateY(-6px) rotate(15deg); opacity: 0.9; }
+  70%      { opacity: 0.3; }
+}
+@keyframes profile-stat-sparkle {
+  0%, 100% { transform: scale(0.6) rotate(0deg);  opacity: 0; }
+  50%      { transform: scale(1.1) rotate(180deg); opacity: 1; }
 }
 .profile-stat-value {
   font-size: 22px;

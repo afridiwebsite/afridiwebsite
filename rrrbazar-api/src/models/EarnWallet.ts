@@ -21,7 +21,7 @@ export default (sequelize: Sequelize) => {
             allowNull: true,
         },
         amount: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.DECIMAL(10, 2),
             allowNull: true,
         },
         purpose: {
@@ -30,7 +30,7 @@ export default (sequelize: Sequelize) => {
             defaultValue: 'earn'
         },
         total_amount: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.DECIMAL(10, 2),
             allowNull: true,
         },
         created_at: {

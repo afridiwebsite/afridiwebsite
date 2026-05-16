@@ -169,7 +169,7 @@ class AdminController {
       }
 
       product.price = product.price + parseFloat((order as any).bprice)
-      user.wallet = user.wallet + parseInt((order as any).amount)
+      user.wallet = Number(user.wallet) + Number((order as any).amount)
 
       await product.save()
       await user.save()
@@ -913,7 +913,7 @@ class AdminController {
         return res.status(400).send(response.response)
       }
 
-      transaction.amount = parseInt(amount);
+      transaction.amount = Number(amount);
       transaction.number = number;
       if (transaction.status === 'cancel') transaction.status = status;
       await transaction.save()
@@ -942,7 +942,7 @@ class AdminController {
       return res.status(400).send(response.response)
     }
 
-    transaction.amount = parseInt(amount);
+    transaction.amount = Number(amount);
     transaction.number = number;
     if (transaction.status === 'cancel') transaction.status = status;
     await transaction.save()

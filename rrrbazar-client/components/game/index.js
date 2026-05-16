@@ -11,11 +11,11 @@
  * persistent transform) end up painting over the popover regardless of any
  * z-index gymnastics on the wrapper.
  */
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
-import { getTopupPackage } from '../../api/api';
-import { imgPath } from '../../helpers/helpers';
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom";
+import { getTopupPackage } from "../../api/api";
+import { imgPath } from "../../helpers/helpers";
 
 function Game({ game }) {
   const { logo, name, id } = game;
@@ -30,7 +30,9 @@ function Game({ game }) {
   // Cache the first fetch — null = not loaded, array = loaded (maybe empty).
   const loadedRef = useRef(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const loadPackages = async () => {
     if (loadedRef.current) return;
@@ -38,10 +40,7 @@ function Game({ game }) {
     setLoading(true);
     try {
       const res = await getTopupPackage(id);
-      const list =
-        res?.data?.data?.packages ??
-        res?.data?.packages ??
-        [];
+      const list = res?.data?.data?.packages ?? res?.data?.packages ?? [];
       setPackages(Array.isArray(list) ? list : []);
     } catch (e) {
       setPackages([]);
@@ -84,90 +83,91 @@ function Game({ game }) {
   useEffect(() => {
     if (!open) return undefined;
     const handler = () => updateMenuPos();
-    window.addEventListener('scroll', handler, true);
-    window.addEventListener('resize', handler);
+    window.addEventListener("scroll", handler, true);
+    window.addEventListener("resize", handler);
     return () => {
-      window.removeEventListener('scroll', handler, true);
-      window.removeEventListener('resize', handler);
+      window.removeEventListener("scroll", handler, true);
+      window.removeEventListener("resize", handler);
     };
   }, [open]);
 
-  const menu = (open && mounted)
-    ? ReactDOM.createPortal(
-        <div
-          className="game-card-menu is-open"
-          role="menu"
-          onMouseEnter={onEnter}
-          onMouseLeave={onLeave}
-          style={{
-            position: 'absolute',
-            top: menuPos.top,
-            left: menuPos.left,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div className="game-card-menu-arrow" aria-hidden="true" />
-          <div className="game-card-menu-header">
-            <span className="game-card-menu-name">{name}</span>
-            {!loading && Array.isArray(packages) && (
-              <span className="game-card-menu-count">
-                {packages.length} {packages.length === 1 ? 'pack' : 'packs'}
-              </span>
-            )}
-          </div>
-
-          {loading && (
-            <div className="game-card-menu-empty">Loading packages…</div>
-          )}
-          {!loading && Array.isArray(packages) && packages.length === 0 && (
-            <div className="game-card-menu-empty">No packages yet.</div>
-          )}
-          {!loading && Array.isArray(packages) && packages.length > 0 && (
-            <ul className="game-card-pkg-list">
-              {packages.slice(0, 6).map((p, i) => (
-                <li
-                  key={p.id ?? i}
-                  className="game-card-pkg"
-                  style={{ animationDelay: `${i * 40}ms` }}
-                >
-                  <span className="game-card-pkg-name">{p.name}</span>
-                  <span className="game-card-pkg-price">৳ {p.price}</span>
-                </li>
-              ))}
-              {packages.length > 6 && (
-                <li className="game-card-pkg-more">
-                  +{packages.length - 6} more
-                </li>
+  const menu =
+    open && mounted
+      ? ReactDOM.createPortal(
+          <div
+            className="game-card-menu is-open"
+            role="menu"
+            onMouseEnter={onEnter}
+            onMouseLeave={onLeave}
+            style={{
+              position: "absolute",
+              top: menuPos.top,
+              left: menuPos.left,
+              transform: "translateX(-50%)",
+            }}
+          >
+            <div className="game-card-menu-arrow" aria-hidden="true" />
+            <div className="game-card-menu-header">
+              <span className="game-card-menu-name">{name}</span>
+              {!loading && Array.isArray(packages) && (
+                <span className="game-card-menu-count">
+                  {packages.length} {packages.length === 1 ? "pack" : "packs"}
+                </span>
               )}
-            </ul>
-          )}
+            </div>
 
-          <Link href={`/topup/${id}`}>
-            <a className="game-card-menu-cta">View all packages →</a>
-          </Link>
-        </div>,
-        document.body,
-      )
-    : null;
+            {loading && (
+              <div className="game-card-menu-empty">Loading packages…</div>
+            )}
+            {!loading && Array.isArray(packages) && packages.length === 0 && (
+              <div className="game-card-menu-empty">No packages yet.</div>
+            )}
+            {!loading && Array.isArray(packages) && packages.length > 0 && (
+              <ul className="game-card-pkg-list">
+                {packages.slice(0, 6).map((p, i) => (
+                  <li
+                    key={p.id ?? i}
+                    className="game-card-pkg"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                  >
+                    <span className="game-card-pkg-name">{p.name}</span>
+                    <span className="game-card-pkg-price">৳ {p.price}</span>
+                  </li>
+                ))}
+                {packages.length > 6 && (
+                  <li className="game-card-pkg-more">
+                    +{packages.length - 6} more
+                  </li>
+                )}
+              </ul>
+            )}
+
+            <Link href={`/topup/${id}`}>
+              <a className="game-card-menu-cta">View all packages →</a>
+            </Link>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div
       ref={cardRef}
-      className={`game-card ${open ? 'is-hover' : ''}`}
+      className={`game-card ${open ? "is-hover" : ""}`}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       onFocus={onEnter}
       onBlur={onLeave}
     >
       <Link href={`/topup/${id}`}>
-        <a target="_blank" rel="noreferrer" className="game-card-link">
+        <div className="game-card-link">
           <div className="game-card-image-wrap">
             <img src={imgPath(logo)} className="game-card-image" alt={name} />
           </div>
           <div className="game-card-title-wrap">
             <h6 className="game-card-title">{name}</h6>
           </div>
-        </a>
+        </div>
       </Link>
       {menu}
     </div>
