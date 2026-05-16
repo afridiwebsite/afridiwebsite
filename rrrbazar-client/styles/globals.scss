@@ -1980,6 +1980,27 @@ body {
 .topup-pack-card.is-out { opacity: 0.55; }
 .topup-pack-card.is-out .topup-pack-card-btn { cursor: not-allowed; }
 
+// Order-once package the user already claimed. Stronger visual lock than
+// out-of-stock: desaturate the whole card, drop opacity further, and kill
+// pointer events entirely so the card can't be selected, focused, or hovered
+// into a tooltip-style state.
+.topup-pack-card.is-claimed {
+  opacity: 0.5;
+  filter: grayscale(0.85);
+  pointer-events: none;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+.topup-pack-card.is-claimed .topup-pack-card-btn {
+  cursor: not-allowed;
+}
+.topup-pack-card.is-claimed .topup-pack-card-name,
+.topup-pack-card.is-claimed .topup-pack-card-price {
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+
 // Inner clickable area — fills the card without any background of its own.
 .topup-pack-card-btn {
   width: 100%;

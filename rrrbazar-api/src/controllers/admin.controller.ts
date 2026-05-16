@@ -81,9 +81,9 @@ class AdminController {
         filter.status = status
       }
 
-      let order_by_str = sequelize.literal('CASE `Order`.status WHEN \'pending\' THEN 1 WHEN \'completed\' THEN 2 WHEN \'Failed\' THEN 3 WHEN \'cancel\' THEN 4 END, `Order`.created_at desc, `Order`.id desc');
+      let order_by_str = sequelize.literal("CASE status WHEN 'pending' THEN 1 WHEN 'completed' THEN 2 WHEN 'Failed' THEN 3 WHEN 'cancel' THEN 4 END, created_at desc, id desc");
       if (status == 'cancel' || status == 'completed') {
-        order_by_str = sequelize.literal('Order.id desc');
+        order_by_str = sequelize.literal('id desc');
       }
 
 

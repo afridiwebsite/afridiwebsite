@@ -429,6 +429,8 @@ function TopupOrderPage() {
                                         className={`topup-pack-card animate-fade-in-up ${
                                           isSelected ? "is-selected" : ""
                                         } ${isDisabled ? "is-out" : ""} ${
+                                          alreadyOrdered ? "is-claimed" : ""
+                                        } ${
                                           isPackageIdError && !isSelected
                                             ? "is-error"
                                             : ""

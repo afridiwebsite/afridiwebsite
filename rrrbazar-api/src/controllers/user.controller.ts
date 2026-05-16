@@ -631,7 +631,7 @@ class UserController {
           "user_id",
           "product_id",
           [
-            Sequelize.literal("TIMESTAMPDIFF(SECOND, Order.created_at, Order.updated_at)"),
+            Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
             "diff_in_seconds",
           ],
         ],
@@ -650,7 +650,7 @@ class UserController {
         where: {
           product_id: product_id,
         },
-        order: [["Order", "created_at", "DESC"]],
+        order: [["created_at", "DESC"]],
         limit: product_id == "16" ? 500 : 20,
       });
 
@@ -677,7 +677,7 @@ class UserController {
           "user_id",
           "product_id",
           [
-            Sequelize.literal("TIMESTAMPDIFF(SECOND, Order.created_at, Order.updated_at)"),
+            Sequelize.literal("TIMESTAMPDIFF(SECOND, created_at, updated_at)"),
             "diff_in_seconds",
           ],
         ],
@@ -693,7 +693,7 @@ class UserController {
             required: false,
           },
         ],
-        order: [["Order", "created_at", "DESC"]],
+        order: [["created_at", "DESC"]],
         limit: 20,
       });
 
