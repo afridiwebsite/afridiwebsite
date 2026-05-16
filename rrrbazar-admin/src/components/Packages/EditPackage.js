@@ -1,6 +1,10 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Editor } from 'react-draft-wysiwyg';
+import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+import { EditorState } from 'draft-js';
+import { convertToHTML, convertFromHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import useGet from '../../hooks/useGet';
@@ -27,6 +31,28 @@ function EditPackage(props) {
     const logo = useRef(null);
     const coin_value = useRef(null);
 
+    const [editorState, setEditorState] = useState(EditorState.createEmpty());
+
+    // Seed the editor once the package loads. Skips reseeding on later
+    // updates so the admin's in-progress edits aren't clobbered.
+    useEffect(() => {
+        if (data?.description) {
+            setEditorState(
+                EditorState.createWithContent(convertFromHTML(data.description))
+            );
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data?.id]);
+
+    const uploadImageCallback = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ data: { link: reader.result } });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     const editPackageHandler = (e) => {
         e.preventDefault()
         setLoading(true)
@@ -38,8 +64,8 @@ function EditPackage(props) {
             serial: serial.current.value,
             logo: path || data?.logo,
             coin_value: coin_value.current.value || 0,
-            in_stock: in_stock.current.checked ? 1 : 0
-
+            in_stock: in_stock.current.checked ? 1 : 0,
+            description: convertToHTML(editorState.getCurrentContent()),
         }).then(res => {
             toast.success('Topup package updated successfully', toastDefault)
 
@@ -117,8 +143,34 @@ function EditPackage(props) {
                                         </div>
                                     </div>
 
+                                    <div className="my-4">
+                                        <label className="block mb-2 font-semibold">
+                                            Description{' '}
+                                            <span className="text-xs font-normal text-gray-500">
+                                                (shown as a tooltip when users hover the package card — inline images supported)
+                                            </span>
+                                        </label>
+                                        <Editor
+                                            editorState={editorState}
+                                            editorStyle={{ height: 220 }}
+                                            wrapperStyle={{
+                                                border: '1px solid #dcdcf3',
+                                                borderRadius: 6,
+                                            }}
+                                            onEditorStateChange={setEditorState}
+                                            toolbar={{
+                                                image: {
+                                                    uploadCallback: uploadImageCallback,
+                                                    alt: { present: true, mandatory: false },
+                                                    previewImage: true,
+                                                    inputAccept: 'image/jpeg,image/jpg,image/png,image/gif,image/webp',
+                                                },
+                                            }}
+                                        />
+                                    </div>
+
                                     <div>
-                                        <button type="submit" className="cstm_btn w-full block">Edit package</button>
+                                        <button type="submit" disabled={uploading} className="cstm_btn w-full block">Edit package</button>
                                     </div>
                                 </div>
                             </form>

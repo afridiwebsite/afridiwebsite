@@ -58,6 +58,7 @@ class TopupPackageController {
             serial,
             logo,
             coin_value,
+            description,
         } = req.body
 
         try {
@@ -71,6 +72,7 @@ class TopupPackageController {
                 serial,
                 logo,
                 coin_value: Number(coin_value) || 0,
+                description: description || '',
             })
 
             response.message = 'Created successfully'
@@ -98,6 +100,7 @@ class TopupPackageController {
             serial,
             logo,
             coin_value,
+            description,
         } = req.body
 
         try {
@@ -118,6 +121,9 @@ class TopupPackageController {
             }
             if (coin_value !== undefined) {
                 topupPackage.coin_value = Number(coin_value) || 0;
+            }
+            if (description !== undefined) {
+                topupPackage.description = description;
             }
             await topupPackage.save()
 

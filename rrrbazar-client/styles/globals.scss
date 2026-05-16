@@ -1948,17 +1948,10 @@ body {
 }
 .topup-pack-card {
   position: relative;
-  overflow: hidden;
-  text-align: left;
+  overflow: visible; // let the tooltip escape
   border-radius: 16px;
-  padding: 16px 14px 14px;
   background: #fff;
   border: 1.5px solid #e5e7eb;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -1966,72 +1959,221 @@ body {
     background-color 0.25s ease;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
-.topup-pack-card::before {
-  // tinted gradient corner blob — sits behind content
-  content: '';
-  position: absolute;
-  inset: -30% -30% auto auto;
-  width: 160px;
-  height: 160px;
-  background: var(--pack-blob, radial-gradient(circle, #fde68a 0%, transparent 70%));
-  filter: blur(20px);
-  opacity: 0.7;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-  z-index: 0;
-}
-.topup-pack-card > * { position: relative; z-index: 1; }
-.topup-pack-card:hover:not(.is-out):not(:disabled) {
+.topup-pack-card:hover:not(.is-out) {
   transform: translateY(-3px);
-  border-color: var(--pack-border, #d1d5db);
+  border-color: rgba(var(--theme-primary-rgb, 56 86 181) / 0.45);
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
 }
-.topup-pack-card:hover::before { opacity: 0.95; }
 
+// Selected = strong themed border + subtle ring. No background or overlay
+// swap — the card keeps its normal look so the logo image stays untouched.
 .topup-pack-card.is-selected {
-  border-color: transparent;
-  color: #fff;
-  background: var(--pack-bg, linear-gradient(135deg, #f59e0b 0%, #b45309 100%));
+  border-color: var(--theme-primary, #3856B5);
+  border-width: 2.5px;
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 16px 30px var(--pack-shadow, rgba(245, 158, 11, 0.35));
+    0 0 0 3px rgba(var(--theme-primary-rgb, 56 86 181) / 0.18),
+    0 14px 28px rgba(var(--theme-primary-rgb, 56 86 181) / 0.18);
   transform: translateY(-3px);
-}
-.topup-pack-card.is-selected::before { opacity: 0; }
-.topup-pack-card.is-selected .topup-pack-card-name,
-.topup-pack-card.is-selected .topup-pack-card-price { color: #fff; }
-.topup-pack-card.is-selected .topup-pack-card-reward {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.3);
-}
-.topup-pack-card.is-selected .topup-pack-card-coin {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.32);
 }
 
 .topup-pack-card.is-error { border-color: #ef4444; }
-.topup-pack-card.is-out { opacity: 0.55; cursor: not-allowed; }
-.topup-pack-card:disabled { cursor: not-allowed; }
+.topup-pack-card.is-out { opacity: 0.55; }
+.topup-pack-card.is-out .topup-pack-card-btn { cursor: not-allowed; }
 
-.topup-pack-card-coin {
-  width: 36px;
-  height: 36px;
-  border-radius: 9999px;
+// Inner clickable area — fills the card without any background of its own.
+.topup-pack-card-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  border-radius: inherit;
+  padding: 16px 14px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  color: inherit;
+  position: relative;
+}
+.topup-pack-card-btn:disabled { cursor: not-allowed; }
+
+// Package logo / placeholder. When a real logo is set on the package
+// (.has-logo on the card), the image bleeds to the top half of the card.
+// When there's no logo, we fall back to a small puck with the initial.
+.topup-pack-card-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  background: var(--pack-coin-bg, rgba(245, 158, 11, 0.12));
-  color: var(--pack-coin-color, #b45309);
-  border: 1px solid var(--pack-coin-border, rgba(245, 158, 11, 0.25));
+  background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.08);
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.18);
+  overflow: hidden;
   margin-bottom: 2px;
   transition: transform 0.2s ease;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--theme-primary, #3856B5);
 }
-.topup-pack-card:hover .topup-pack-card-coin {
-  transform: rotate(-8deg) scale(1.05);
+.topup-pack-card-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
+.topup-pack-card:hover .topup-pack-card-logo {
+  transform: scale(1.04);
+}
+
+// Logo-as-background treatment. The image fills the entire card and a dark
+// gradient overlay sits above it so the name/price/coin pill stay readable.
+.topup-pack-card.has-logo {
+  overflow: hidden; // keep the bg image clipped to the card radius
+  // Tooltip is rooted at the wrap span (which is also positioned), so it can
+  // still escape via its own absolute positioning + high z-index.
+}
+.topup-pack-card.has-logo .topup-pack-card-logo:not(.is-placeholder) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: inherit;
+  background: #0b1530;
+  z-index: 0;
+  pointer-events: none;
+}
+.topup-pack-card.has-logo .topup-pack-card-logo:not(.is-placeholder) img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+// Dark gradient overlay — slightly weighted toward the bottom where the text
+// sits, so the image still reads at the top.
+.topup-pack-card.has-logo .topup-pack-card-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.4) 45%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+// Lift content above the overlay.
+.topup-pack-card.has-logo .topup-pack-card-btn > *:not(.topup-pack-card-logo) {
+  position: relative;
+  z-index: 2;
+}
+.topup-pack-card.has-logo .topup-pack-card-btn {
+  min-height: 150px;
+  justify-content: flex-end;
+}
+// Light text on the dark overlay.
+.topup-pack-card.has-logo .topup-pack-card-name { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.topup-pack-card.has-logo .topup-pack-card-price {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.topup-pack-card.has-logo .topup-pack-card-reward {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.topup-pack-card.has-logo .topup-pack-card-reward svg { color: #fde047; }
+// The hover-scale on .topup-pack-card-logo doesn't make sense once it's a
+// full background; cancel it.
+.topup-pack-card.has-logo:hover .topup-pack-card-logo:not(.is-placeholder) {
+  transform: none;
+}
+
+// Info icon — tooltip opens on hover/focus.
+.topup-pack-card-info-wrap {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+}
+.topup-pack-card-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.35);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--theme-primary, #3856B5);
+  font-size: 10px;
+  cursor: help;
+  padding: 0;
+  // Slight backdrop helps it stay readable on top of a colorful logo image.
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.topup-pack-card-info:hover,
+.topup-pack-card-info:focus {
+  background: var(--theme-primary, #3856B5);
+  color: #fff;
+  transform: scale(1.08);
+  outline: none;
+}
+.topup-pack-card-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  max-width: 280px;
+  background: var(--theme-secondary, #1B2A4A);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+  pointer-events: none;
+  z-index: 30;
+  text-align: left;
+}
+.topup-pack-card-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  background: var(--theme-secondary, #1B2A4A);
+  transform: rotate(45deg);
+}
+.topup-pack-card-tooltip img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+.topup-pack-card-tooltip p { margin: 0 0 6px; }
+.topup-pack-card-tooltip p:last-child { margin-bottom: 0; }
+.topup-pack-card-info-wrap:hover .topup-pack-card-tooltip,
+.topup-pack-card-info:focus + .topup-pack-card-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0s;
+}
+
 .topup-pack-card-name {
   font-size: 13px;
   font-weight: 700;
@@ -2042,7 +2184,7 @@ body {
 .topup-pack-card-price {
   font-size: 18px;
   font-weight: 800;
-  color: var(--pack-price, #b45309);
+  color: var(--theme-primary, #3856B5);
   letter-spacing: -0.01em;
 }
 .topup-pack-card-reward {
@@ -2059,8 +2201,6 @@ body {
   border: 1px solid rgba(var(--theme-secondary-rgb, 27 42 74) / 0.1);
 }
 .topup-pack-card-reward svg { font-size: 13px; color: #f59e0b; }
-.topup-pack-card.is-selected .topup-pack-card-reward svg { color: #fde68a; }
-
 .topup-pack-card-stock {
   position: absolute;
   top: 10px;
@@ -2074,72 +2214,6 @@ body {
   padding: 2px 8px;
   border-radius: 9999px;
   z-index: 2;
-}
-.topup-pack-card-check {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 22px;
-  height: 22px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--theme-secondary, #1B2A4A);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 900;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-  z-index: 2;
-}
-
-// Three tints — gold (coin-themed) plus two theme-driven shades, cycled
-// in JS via index % 3. Gold is the only off-theme accent we keep.
-.topup-pack-card--gold {
-  --pack-blob:        radial-gradient(circle, #fde68a 0%, transparent 70%);
-  --pack-border:      rgba(245, 158, 11, 0.6);
-  --pack-bg:          linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-  --pack-shadow:      rgba(245, 158, 11, 0.35);
-  --pack-coin-bg:     rgba(245, 158, 11, 0.12);
-  --pack-coin-color:  #b45309;
-  --pack-coin-border: rgba(245, 158, 11, 0.25);
-  --pack-price:       #b45309;
-}
-.topup-pack-card--primary {
-  --pack-blob:        radial-gradient(
-                        circle,
-                        rgba(var(--theme-primary-rgb, 56 86 181) / 0.32) 0%,
-                        transparent 70%
-                      );
-  --pack-border:      rgba(var(--theme-primary-rgb, 56 86 181) / 0.55);
-  --pack-bg:          linear-gradient(
-                        135deg,
-                        var(--theme-primary, #3856B5) 0%,
-                        var(--theme-secondary, #1B2A4A) 100%
-                      );
-  --pack-shadow:      rgba(var(--theme-primary-rgb, 56 86 181) / 0.32);
-  --pack-coin-bg:     rgba(var(--theme-primary-rgb, 56 86 181) / 0.12);
-  --pack-coin-color:  var(--theme-primary, #3856B5);
-  --pack-coin-border: rgba(var(--theme-primary-rgb, 56 86 181) / 0.25);
-  --pack-price:       var(--theme-primary, #3856B5);
-}
-.topup-pack-card--accent {
-  --pack-blob:        radial-gradient(
-                        circle,
-                        rgba(var(--theme-accent-rgb, 77 103 216) / 0.3) 0%,
-                        transparent 70%
-                      );
-  --pack-border:      rgba(var(--theme-accent-rgb, 77 103 216) / 0.55);
-  --pack-bg:          linear-gradient(
-                        135deg,
-                        var(--theme-accent, #4D67D8) 0%,
-                        var(--theme-primary, #3856B5) 100%
-                      );
-  --pack-shadow:      rgba(var(--theme-accent-rgb, 77 103 216) / 0.32);
-  --pack-coin-bg:     rgba(var(--theme-accent-rgb, 77 103 216) / 0.12);
-  --pack-coin-color:  var(--theme-accent, #4D67D8);
-  --pack-coin-border: rgba(var(--theme-accent-rgb, 77 103 216) / 0.25);
-  --pack-price:       var(--theme-accent, #4D67D8);
 }
 
 // --- Last orders list (cards, not table) ---
@@ -3543,41 +3617,23 @@ body {
     }
 
     ._order_box_header {
-      @apply flex items-center gap-3 py-3 pb-4 px-4;
-      background: linear-gradient(
-        135deg,
-        var(--theme-primary, #2563eb) 0%,
-        var(--theme-accent, #4D67D8) 100%
-      );
-      position: relative;
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 16px;
-        right: 16px;
-        bottom: 0;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.2);
-      }
+      @apply flex items-center gap-3 py-3 px-4 bg-white border-b border-gray-100;
 
       ._order_header_step_circle {
-        @apply w-8 h-8 rounded-full overflow-hidden _flex_center border-2 border-white text-lg font-bold text-white;
-        background: rgba(255, 255, 255, 0.18);
-        -webkit-backdrop-filter: blur(6px);
-                backdrop-filter: blur(6px);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        @apply w-9 h-9 rounded-full overflow-hidden _flex_center text-base font-bold text-white;
+        background: var(--theme-primary, #3856B5);
+        box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb, 56 86 181) / 0.32);
       }
 
       ._order_header_title {
         @extend ._h5;
-        @apply text-white #{!important};
+        color: var(--theme-primary, #3856B5) !important;
         letter-spacing: 0.01em;
       }
     }
 
     .order_box_body {
-      @apply border-t flex flex-col gap-4 border-gray-100 px-3 md:px-5 py-5 bg-white mt-[-5px];
+      @apply flex flex-col gap-4 px-3 md:px-5 py-5 bg-white;
     }
   }
   // Grid 2

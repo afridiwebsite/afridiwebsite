@@ -83,7 +83,7 @@ function ProfilePage() {
           }}
         />
 
-        <div className="flex flex-col sm:flex-row justify-center items-center md:items-end md:justify-between pb-5 absolute md:left-10 md:-bottom-10 left-0 right-0 m-auto top-1">
+        <div className="flex flex-col sm:flex-row justify-center items-center md:items-end md:justify-between pb-5 absolute md:left-10 md:-bottom-3 left-0 right-0 m-auto top-1">
           <div className="flex flex-col items-center md:flex-row md:items-end gap-4 md:gap-5 mb-6 md:mb-0 animate-fade-in-up">
             <div className="rounded-full p-1 md:-mb-8 bg-white inline-block shadow-xl ring-2 ring-white/40">
               <Avatar
@@ -97,19 +97,19 @@ function ProfilePage() {
             <div className="text-center md:text-left">
               <h4 className="_h4 text-white drop-shadow">{username}</h4>
               <p className="text-white/85 _subtitle2">{email}</p>
-              <button
+              {/* <button
                 onClick={() => router.push(routes.settings.name)}
                 className="profile-hero-btn"
               >
                 Settings
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats — five cards in a 5-col grid on lg, wrapping on smaller. */}
-      <div className="container mt-20">
+      <div className="container mt-14">
         <div className="grid grid-cols-1 xxs:grid-cols-2 lg:!grid-cols-5 gap-5 md:gap-7">
           {[
             { label: 'User Id',     value: authUser?.id,           delay: 60,  icon: <FaIdBadge /> },

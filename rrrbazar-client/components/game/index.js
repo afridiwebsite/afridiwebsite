@@ -160,7 +160,7 @@ function Game({ game }) {
       onBlur={onLeave}
     >
       <Link href={`/topup/${id}`}>
-        <div className="game-card-link">
+        <div className="game-card-link hover:cursor-pointer">
           <div className="game-card-image-wrap">
             <img src={imgPath(logo)} className="game-card-image" alt={name} />
           </div>

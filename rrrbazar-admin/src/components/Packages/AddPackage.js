@@ -1,6 +1,10 @@
 import React, { useRef, useState } from 'react'
 import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Editor } from 'react-draft-wysiwyg';
+import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+import { EditorState } from 'draft-js';
+import { convertToHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import useGet from '../../hooks/useGet';
@@ -26,6 +30,21 @@ function AddPackage(props) {
     const logo = useRef(null);
     const coin_value = useRef(null);
 
+    // Rich-text package description. Toolbar enables inline images (uploaded
+    // as base64 — kept simple to avoid wiring a second upload pipeline).
+    const [editorState, setEditorState] = useState(EditorState.createEmpty());
+
+    const uploadImageCallback = (file) => {
+        // Inline image as base64 data URL. Works without server changes; if the
+        // descriptions ever get heavy, swap this for a real upload.
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ data: { link: reader.result } });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     const addPackageHandler = (e) => {
         e.preventDefault()
         setLoading(true)
@@ -37,7 +56,8 @@ function AddPackage(props) {
             serial: serial.current.value,
             logo: path,
             coin_value: coin_value.current.value || 0,
-            in_stock: in_stock.current.checked ? 1 : 0
+            in_stock: in_stock.current.checked ? 1 : 0,
+            description: convertToHTML(editorState.getCurrentContent()),
         }).then(res => {
             toast.success('Topup package created successfully', toastDefault)
 
@@ -115,8 +135,34 @@ function AddPackage(props) {
                                         </div>
                                     </div>
 
+                                    <div className="my-4">
+                                        <label className="block mb-2 font-semibold">
+                                            Description{' '}
+                                            <span className="text-xs font-normal text-gray-500">
+                                                (shown as a tooltip when users hover the package card — inline images supported)
+                                            </span>
+                                        </label>
+                                        <Editor
+                                            editorState={editorState}
+                                            editorStyle={{ height: 220 }}
+                                            wrapperStyle={{
+                                                border: '1px solid #dcdcf3',
+                                                borderRadius: 6,
+                                            }}
+                                            onEditorStateChange={setEditorState}
+                                            toolbar={{
+                                                image: {
+                                                    uploadCallback: uploadImageCallback,
+                                                    alt: { present: true, mandatory: false },
+                                                    previewImage: true,
+                                                    inputAccept: 'image/jpeg,image/jpg,image/png,image/gif,image/webp',
+                                                },
+                                            }}
+                                        />
+                                    </div>
+
                                     <div>
-                                        <button type="submit" className="cstm_btn w-full block">Add package</button>
+                                        <button type="submit" disabled={uploading} className="cstm_btn w-full block">Add package</button>
                                     </div>
                                 </div>
                             </form>

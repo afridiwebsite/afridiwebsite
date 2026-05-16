@@ -19,6 +19,7 @@ export default (sequelize: Sequelize) => {
         public serial!: number;
         public logo!: string;
         public coin_value!: number;
+        public description!: string;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -71,6 +72,13 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: true,
             defaultValue: 0
+        },
+        description: {
+            // Rich HTML description (text editor output) — can include inline
+            // <img> tags. Surfaced to the storefront as a hover tooltip on each
+            // package card.
+            type: DataTypes.TEXT('long'),
+            allowNull: true,
         },
         created_at: {
             type: DataTypes.DATE,

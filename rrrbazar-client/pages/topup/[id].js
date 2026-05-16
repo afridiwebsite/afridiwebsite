@@ -6,7 +6,7 @@ import { useContext, useEffect, useState } from "react";
 import moment from "moment";
 import ReactHtmlParser from "react-html-parser";
 import { HiOutlineExternalLink } from "react-icons/hi";
-import { FaCoins } from "react-icons/fa";
+import { FaCoins, FaInfo } from "react-icons/fa";
 import { GiTwoCoins } from "react-icons/gi";
 import { useQuery } from "react-query";
 //import ShowMoreText from 'react-show-more-text';
@@ -356,7 +356,7 @@ function TopupOrderPage() {
                       // }, [isPackageIdError, isPaymentError]);
 
                       return (
-                        <div>
+                        <div className="mt-6">
                           {isSubmitting && (
                             <div className="_absolute_full z-50"></div>
                           )}
@@ -398,73 +398,100 @@ function TopupOrderPage() {
                                     const packCoin = Number(
                                       pack?.coin_value || 0,
                                     );
-                                    // Cycle through theme-driven tints (primary,
-                                    // accent) plus gold for the coin theme.
-                                    const tint = ["gold", "primary", "accent"][
-                                      index % 3
-                                    ];
+                                    const hasPackDescription = !!pack?.description
+                                      ?.replace(/<[^>]*>/g, "")
+                                      .replace(/&nbsp;/gi, "")
+                                      .trim();
                                     return (
-                                      <button
-                                        type="button"
+                                      <div
                                         key={index}
-                                        onClick={() => {
-                                          if (outOfStock) return;
-                                          setSelectedPackage(index);
-                                          setFieldValue(
-                                            "selectedpackage",
-                                            pack,
-                                          );
-                                          setSelectedPaymentMethod("pay");
-                                          setFieldValue(
-                                            "payment_mathod",
-                                            "pay",
-                                          );
-                                        }}
-                                        disabled={outOfStock}
-                                        className={`topup-pack-card topup-pack-card--${tint} animate-fade-in-up ${
+                                        className={`topup-pack-card animate-fade-in-up ${
                                           isSelected ? "is-selected" : ""
                                         } ${outOfStock ? "is-out" : ""} ${
                                           isPackageIdError && !isSelected
                                             ? "is-error"
                                             : ""
-                                        }`}
+                                        } ${pack?.logo ? "has-logo" : ""}`}
                                         style={{
                                           animationDelay: `${
                                             Math.min(index, 10) * 50
                                           }ms`,
                                         }}
                                       >
-                                        {outOfStock && (
-                                          <span className="topup-pack-card-stock">
-                                            Out of stock
-                                          </span>
-                                        )}
-                                        {isSelected && (
-                                          <span
-                                            className="topup-pack-card-check"
-                                            aria-hidden="true"
-                                          >
-                                            ✓
-                                          </span>
-                                        )}
-                                        <span
-                                          className="topup-pack-card-coin"
-                                          aria-hidden="true"
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (outOfStock) return;
+                                            setSelectedPackage(index);
+                                            setFieldValue(
+                                              "selectedpackage",
+                                              pack,
+                                            );
+                                            setSelectedPaymentMethod("pay");
+                                            setFieldValue(
+                                              "payment_mathod",
+                                              "pay",
+                                            );
+                                          }}
+                                          disabled={outOfStock}
+                                          className="topup-pack-card-btn"
                                         >
-                                          <FaCoins />
-                                        </span>
-                                        <span className="topup-pack-card-name">
-                                          {pack?.name}
-                                        </span>
-                                        <span className="topup-pack-card-price">
-                                          ৳ {pack?.price}
-                                        </span>
-                                        {packCoin > 0 && (
-                                          <span className="topup-pack-card-reward">
-                                            <GiTwoCoins /> +{packCoin}
+                                          {outOfStock && (
+                                            <span className="topup-pack-card-stock">
+                                              Out of stock
+                                            </span>
+                                          )}
+                                          {pack?.logo ? (
+                                            <span
+                                              className="topup-pack-card-logo"
+                                              aria-hidden="true"
+                                            >
+                                              <img
+                                                src={imgPath(pack.logo)}
+                                                alt=""
+                                              />
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className="topup-pack-card-logo is-placeholder"
+                                              aria-hidden="true"
+                                            >
+                                              {(pack?.name || "?")
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                            </span>
+                                          )}
+                                          <span className="topup-pack-card-name">
+                                            {pack?.name}
+                                          </span>
+                                          <span className="topup-pack-card-price">
+                                            ৳ {pack?.price}
+                                          </span>
+                                          {packCoin > 0 && (
+                                            <span className="topup-pack-card-reward">
+                                              <GiTwoCoins /> +{packCoin}
+                                            </span>
+                                          )}
+                                        </button>
+                                        {hasPackDescription && (
+                                          <span className="topup-pack-card-info-wrap">
+                                            <button
+                                              type="button"
+                                              className="topup-pack-card-info"
+                                              aria-label="Package details"
+                                              tabIndex={0}
+                                            >
+                                              <FaInfo />
+                                            </button>
+                                            <span
+                                              role="tooltip"
+                                              className="topup-pack-card-tooltip"
+                                            >
+                                              {ReactHtmlParser(pack.description)}
+                                            </span>
                                           </span>
                                         )}
-                                      </button>
+                                      </div>
                                     );
                                   })}
                                   {/* Single Recharge --End-- */}

@@ -212,7 +212,7 @@ function SiteSettings() {
                                     </div>
                                 </div>
 
-                                <h4 className="font-bold mt-6 mb-2">Daily streak rewards</h4>
+                                {/* <h4 className="font-bold mt-6 mb-2">Daily streak rewards</h4>
                                 <p className="text-sm text-gray-500 mb-3">
                                     Coin amount awarded for each day of the 7-day login streak.
                                     Resets to Day 1 if the user misses a day.
@@ -231,7 +231,7 @@ function SiteSettings() {
                                             />
                                         </div>
                                     ))}
-                                </div>
+                                </div> */}
 
                                 <div className="mt-6">
                                     <button type="submit" disabled={uploading || busy} className="cstm_btn w-full block">
