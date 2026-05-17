@@ -1,19 +1,19 @@
-import Head from 'next/head';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useContext, useEffect, useState } from 'react';
-import ReactHtmlParser from 'react-html-parser';
-import { useQuery } from 'react-query';
-import { toast } from 'react-toastify';
-import Swal from 'sweetalert2';
-import api, { getUserProfile } from '../../api/api';
-import ActivityIndicator from '../../components/ActivityIndicator';
-import Alert from '../../components/Alert';
-import Button from '../../components/Button';
-import { __page_title_end } from '../../config/globalConfig';
-import reactQueryConfig from '../../config/reactQueryConfig';
-import routes from '../../config/routes';
-import toastifyConfig from '../../config/toastifyConfig';
+import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useContext, useEffect, useState } from "react";
+import ReactHtmlParser from "react-html-parser";
+import { useQuery } from "react-query";
+import { toast } from "react-toastify";
+import Swal from "sweetalert2";
+import api, { getUserProfile } from "../../api/api";
+import ActivityIndicator from "../../components/ActivityIndicator";
+import Alert from "../../components/Alert";
+import Button from "../../components/Button";
+import { __page_title_end } from "../../config/globalConfig";
+import reactQueryConfig from "../../config/reactQueryConfig";
+import routes from "../../config/routes";
+import toastifyConfig from "../../config/toastifyConfig";
 import {
   addRedirectQuery,
   getErrors,
@@ -21,8 +21,8 @@ import {
   imgPath,
   scrollTopWindow,
   setFlashMessage,
-} from '../../helpers/helpers';
-import { globalContext } from '../_app';
+} from "../../helpers/helpers";
+import { globalContext } from "../_app";
 
 function SingleProductPage({ product }) {
   const router = useRouter();
@@ -32,7 +32,7 @@ function SingleProductPage({ product }) {
   const hasEnoughMoney = authUser?.wallet > product?.sale_price;
   const userWallet = authUser?.wallet;
 
-  const { data } = useQuery('user-profile', getUserProfile, {
+  const { data } = useQuery("user-profile", getUserProfile, {
     ...reactQueryConfig,
     enabled: !!isAuth,
   });
@@ -44,6 +44,8 @@ function SingleProductPage({ product }) {
 
   const confirmProductOrder = () => {
     let isConfirmed = false;
+
+    console.log(isConfirmed, "dsas");
     Swal.fire({
       title: false,
       html: `
@@ -53,21 +55,21 @@ function SingleProductPage({ product }) {
               <p className="modal_sub_title">You need <span class="_bold_it">৳${product?.sale_price}</span> to purchase this product.</p>
             </div>`,
       customClass: {
-        popup: '_confirm_order_modal_popup',
-        cancelButton: '_cancel_btn',
-        confirmButton: '_confirm_btn',
+        popup: "_confirm_order_modal_popup",
+        cancelButton: "_cancel_btn",
+        confirmButton: "_confirm_btn",
       },
-      cancelButtonText: 'Cancel',
-      confirmButtonText: 'Confirm order',
+      cancelButtonText: "Cancel",
+      confirmButtonText: "Confirm order",
       showCancelButton: true,
-      cancelButtonColor: 'red',
+      cancelButtonColor: "red",
     }).then((e) => {
       if (e.isConfirmed && !isConfirmed) {
         isConfirmed = true;
         setSubmitting(true);
         setServerError(null);
         api
-          .post('/product-order', {
+          .post("/product-order", {
             product_id: product.id,
           })
           .then(() => {
@@ -75,7 +77,7 @@ function SingleProductPage({ product }) {
             //   'Your order has been placed successfully.',
             //   toastifyConfig
             // );
-            setFlashMessage('Your order has been placed successfully.');
+            setFlashMessage("Your order has been placed successfully.");
             router.push(`${routes.myShop.name}`);
           })
           .catch((err) => {
@@ -105,7 +107,7 @@ function SingleProductPage({ product }) {
       )}
       <main
         className={`flex items-stretch flex-grow relative my-5 md:my-0 ${
-          !product ? 'justify-center' : ''
+          !product ? "justify-center" : ""
         } `}
       >
         <ActivityIndicator

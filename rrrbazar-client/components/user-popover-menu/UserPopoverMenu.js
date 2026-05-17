@@ -6,20 +6,20 @@
  * Date: 25 November 2021 (Thursday)
  *
  */
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from "react";
 import {
   AiOutlineDollarCircle,
   AiOutlinePoweroff,
   AiOutlineTransaction,
   AiOutlineUser,
-} from 'react-icons/ai';
-import { GiShoppingCart } from 'react-icons/gi';
-import { IoGameControllerOutline } from 'react-icons/io5';
-import { MdBorderAll } from 'react-icons/md';
-import routes from '../../config/routes';
-import { globalContext } from '../../pages/_app';
-import UserMenuList from './UserMenuList';
-import UserPopoverHead from './UserPopoverHead';
+} from "react-icons/ai";
+import { GiShoppingCart } from "react-icons/gi";
+import { IoGameControllerOutline } from "react-icons/io5";
+import { MdBorderAll } from "react-icons/md";
+import routes from "../../config/routes";
+import { globalContext } from "../../pages/_app";
+import UserMenuList from "./UserMenuList";
+import UserPopoverHead from "./UserPopoverHead";
 
 function UserPopoverMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,8 +28,8 @@ function UserPopoverMenu() {
   const closePopover = () => setIsOpen(false);
 
   useEffect(() => {
-    window.addEventListener('scroll', closePopover);
-    return () => window.removeEventListener('scroll', closePopover);
+    window.addEventListener("scroll", closePopover);
+    return () => window.removeEventListener("scroll", closePopover);
   }, []);
 
   return (
@@ -39,8 +39,8 @@ function UserPopoverMenu() {
         <div
           className={`absolute top-[calc(100%+5px)] right-0 py-1 bg-white min-w-[185px] z-[9999999999] border border-gray-200 rounded-md duration-150 ${
             isOpen
-              ? 'pointer-events-auto opacity-100 translate-y-0'
-              : 'translate-y-4 opacity-0 pointer-events-none'
+              ? "pointer-events-auto opacity-100 translate-y-0"
+              : "translate-y-4 opacity-0 pointer-events-none"
           }`}
         >
           <div onClick={closePopover}>
@@ -67,7 +67,7 @@ function UserPopoverMenu() {
             <UserMenuList
               icon={<GiShoppingCart size={18} />}
               text="Spin"
-              link={'/spin'}
+              link={"/spin"}
             />
             <UserMenuList
               icon={<AiOutlinePoweroff size={18} />}

@@ -185,6 +185,11 @@ function Header() {
   const router = useRouter();
   const { isAuth, authUser, siteSettings } = useContext(globalContext);
   const [isOpenSidebar, setIsOpenSidebar] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const openSidebar = () => setIsOpenSidebar(true);
 
@@ -224,7 +229,7 @@ function Header() {
             {/* Nav --Start-- */}
             <nav className="hidden md:block">
               <ul className="flex items-center justify-end gap-2">
-                {navlinks.map((navLink, index) => {
+                {mounted && navlinks.map((navLink, index) => {
                   const { disabled_for_desktop, component, text, link, auth } =
                     navLink;
 
@@ -264,41 +269,43 @@ function Header() {
             {/* Nav --End-- */}
 
             {/* User Avatar or hamburger menu --Start-- */}
-            <div className="flex items-center gap-2 md:gap-3">
-              {isAuth ? (
-                <>
-                  {/* Wallet pill — links to Add Money */}
-                  <Link href={routes.addMoney.name}>
-                    <a
-                      aria-label="Open wallet — add money"
-                      className="header-pill header-pill-wallet"
-                    >
-                      <span aria-hidden="true" className="header-pill-emoji">
-                        💰
-                      </span>
-                      <span className="header-pill-value">
-                        ৳ {Number(authUser?.wallet ?? 0).toFixed(2)}
-                      </span>
-                    </a>
-                  </Link>
-                  <div className="hidden md:block">
-                    <UserPopoverMenu />
+            <div className="flex items-center gap-2 md:gap-3 min-h-[40px]">
+              {mounted && (
+                isAuth ? (
+                  <>
+                    {/* Wallet pill — links to Add Money */}
+                    <Link href={routes.addMoney.name}>
+                      <a
+                        aria-label="Open wallet — add money"
+                        className="header-pill header-pill-wallet"
+                      >
+                        <span aria-hidden="true" className="header-pill-emoji">
+                          💰
+                        </span>
+                        <span className="header-pill-value">
+                          ৳ {Number(authUser?.wallet ?? 0).toFixed(2)}
+                        </span>
+                      </a>
+                    </Link>
+                    <div className="hidden md:!block">
+                      <UserPopoverMenu />
+                    </div>
+                    <div className="!block md:!hidden" onClick={openSidebar}>
+                      <UserPopoverHead />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center">
+                    <Link href={routes.login.name}>
+                      <a>
+                        <Button
+                          text="Login"
+                          className="bg-primary-500 hover:bg-primary-600 text-white font-bold small"
+                        />
+                      </a>
+                    </Link>
                   </div>
-                  <div className="md:hidden" onClick={openSidebar}>
-                    <UserPopoverHead />
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center">
-                  <Link href={routes.login.name}>
-                    <a>
-                      <Button
-                        text="Login"
-                        className="bg-primary-500 hover:bg-primary-600 text-white font-bold small"
-                      />
-                    </a>
-                  </Link>
-                </div>
+                )
               )}
             </div>
             {/* User Avatar or hamburger menu --End-- */}

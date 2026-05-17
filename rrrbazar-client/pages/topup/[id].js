@@ -176,7 +176,7 @@ function TopupOrderPage() {
   // Likewise, `selectedpackage` is only required when the product actually
   // has packages to pick from — otherwise the form is in info-only mode and
   // the submit just records the dynamic input values.
-  const requirePlayerId = !!playerIdInput || isActiveForTopup;
+  const requirePlayerId = !!playerIdInput;
   const validationSchema = Yup.object().shape({
     playerid: requirePlayerId
       ? Yup.string().required("Player ID is required").trim()
@@ -201,11 +201,11 @@ function TopupOrderPage() {
             : ""
         }`}
       >
-        <div className="topup-page-decor" aria-hidden="true">
+        {/* <div className="topup-page-decor" aria-hidden="true">
           <span className="topup-page-blob topup-page-blob-a" />
           <span className="topup-page-blob topup-page-blob-b" />
           <span className="topup-page-blob topup-page-blob-c" />
-        </div>
+        </div> */}
         <div className="container relative">
           <ActivityIndicator
             data={productData}
@@ -234,7 +234,7 @@ function TopupOrderPage() {
                   )}
 
                   {isAuth &&
-                    !userWallet &&
+                    Number(authUser?.wallet ?? 0) <= 0 &&
                     selectedPaymentMethod != "auto_payment" && (
                       <Alert
                         className="mb-4"
@@ -326,7 +326,10 @@ function TopupOrderPage() {
                               topuppackage_id: selectedpackage?.id || null,
                               product_id:
                                 selectedpackage?.product_id || product_id,
-                              name: selectedpackage?.name || productInfo?.name || "",
+                              name:
+                                selectedpackage?.name ||
+                                productInfo?.name ||
+                                "",
                               accounttype,
                               playerid,
                               ingameid: dynExtras || undefined,
@@ -401,12 +404,16 @@ function TopupOrderPage() {
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
                       const isNotEnoughMoney =
-                        values.selectedpackage?.price > authUser?.wallet;
+                        Number(values.selectedpackage?.price || 0) > Number(authUser?.wallet || 0);
 
-                      // useEffect(() => {
-                      //   isPackageIdError && setFieldTouched('selectedpackage');
-                      //   isPaymentError && setFieldTouched('payment_mathod');
-                      // }, [isPackageIdError, isPaymentError]);
+                      console.log(
+                        "errors",
+                        isAccountTypeError,
+                        isPaymentError,
+                        isPackageIdError,
+                        isNotEnoughMoney,
+                        errors,
+                      );
 
                       return (
                         <div className="mt-6">
@@ -594,27 +601,27 @@ function TopupOrderPage() {
 
                           {/* Account Info Form --Start-- */}
                           {accountInfoVisible && (
-                          <div
-                            className="_order_box_wrapper animate-fade-in-up"
-                            style={{
-                              animationDelay: "140ms",
-                            }}
-                          >
-                            <div className="_order_box_header">
-                              <div className="_order_header_step_circle">
-                                {accountInfoStep}
+                            <div
+                              className="_order_box_wrapper animate-fade-in-up"
+                              style={{
+                                animationDelay: "140ms",
+                              }}
+                            >
+                              <div className="_order_box_header">
+                                <div className="_order_header_step_circle">
+                                  {accountInfoStep}
+                                </div>
+                                <h5 className="_order_header_title">
+                                  Account Info
+                                </h5>
                               </div>
-                              <h5 className="_order_header_title">
-                                Account Info
-                              </h5>
-                            </div>
 
-                            <div className="order_box_body">
-                              {
-                                // Account Info renders strictly from the admin-
-                                // defined dynamic inputs. No more hardcoded
-                                // Player ID / Account Type / Password branches.
-                              }
+                              <div className="order_box_body">
+                                {
+                                  // Account Info renders strictly from the admin-
+                                  // defined dynamic inputs. No more hardcoded
+                                  // Player ID / Account Type / Password branches.
+                                }
                                 <div className="flex flex-col gap-3">
                                   {dynamicInputs.map((inp) => {
                                     const fieldName = inp.is_player_id
@@ -704,8 +711,8 @@ function TopupOrderPage() {
                                     );
                                   })}
                                 </div>
+                              </div>
                             </div>
-                          </div>
                           )}
                           {/* Account Info Form --End-- */}
 
@@ -822,7 +829,7 @@ function TopupOrderPage() {
                                 </Link>
                               )}
                               {((isAuth &&
-                                !userWallet &&
+                                Number(authUser?.wallet ?? 0) <= 0 &&
                                 selectedPaymentMethod != "auto_payment") ||
                                 (isNotEnoughMoney &&
                                   selectedPaymentMethod != "auto_payment")) && (
@@ -842,7 +849,7 @@ function TopupOrderPage() {
                               <Button
                                 disabled={
                                   !isAuth ||
-                                  (!userWallet &&
+                                  (Number(authUser?.wallet ?? 0) <= 0 &&
                                     selectedPaymentMethod != "auto_payment") ||
                                   (isNotEnoughMoney &&
                                     selectedPaymentMethod != "auto_payment")
