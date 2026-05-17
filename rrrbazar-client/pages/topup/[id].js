@@ -423,7 +423,11 @@ function TopupOrderPage() {
                           )}
 
                           {/* Select Recharge --Start-- */}
-                          {hasPackages && (
+                          {hasPackages && (() => {
+                            const selectedCoin = Number(
+                              values.selectedpackage?.coin_value || 0,
+                            );
+                            return (
                             <div
                               className="_order_box_wrapper animate-fade-in-up"
                               style={{ animationDelay: "80ms" }}
@@ -435,6 +439,14 @@ function TopupOrderPage() {
                                 <h5 className="_order_header_title">
                                   Select Recharge
                                 </h5>
+                                {/* Coin reward only surfaces here when a
+                                    package is selected — pulled out of the
+                                    cards so they stay clean. */}
+                                {selectedCoin > 0 && (
+                                  <span className="topup-pack-header-coin">
+                                    <GiTwoCoins /> +{selectedCoin} coins
+                                  </span>
+                                )}
                               </div>
 
                               <div className="order_box_body">
@@ -480,24 +492,13 @@ function TopupOrderPage() {
                                           isPackageIdError && !isSelected
                                             ? "is-error"
                                             : ""
-                                        } ${pack?.logo ? "has-bg" : ""}`}
+                                        }`}
                                         style={{
                                           animationDelay: `${
                                             Math.min(index, 10) * 50
                                           }ms`,
                                         }}
                                       >
-                                        {pack?.logo && (
-                                          <span
-                                            className="topup-pack-card-bg"
-                                            aria-hidden="true"
-                                          >
-                                            <img
-                                              src={imgPath(pack.logo)}
-                                              alt=""
-                                            />
-                                          </span>
-                                        )}
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -514,7 +515,7 @@ function TopupOrderPage() {
                                             );
                                           }}
                                           disabled={isDisabled}
-                                          className="topup-pack-card-btn"
+                                          className="topup-pack-card-btn h-full"
                                         >
                                           {outOfStock && (
                                             <span className="topup-pack-card-stock">
@@ -534,17 +535,45 @@ function TopupOrderPage() {
                                               ✓
                                             </span>
                                           )}
-                                          <span className="topup-pack-card-name">
-                                            {pack?.name}
-                                          </span>
-                                          <span className="topup-pack-card-price">
-                                            ৳ {pack?.price}
-                                          </span>
-                                          {packCoin > 0 && (
-                                            <span className="topup-pack-card-reward">
-                                              <GiTwoCoins /> +{packCoin}
+                                          {/* Foreground image column — sits
+                                              above the bottom-row text. Falls
+                                              back to a text-only placeholder
+                                              (product's first name) so cards
+                                              keep the same shape even when a
+                                              package has no logo. */}
+                                          {pack?.logo ? (
+                                            <span
+                                              className="topup-pack-card-img"
+                                              aria-hidden="true"
+                                            >
+                                              <img
+                                                src={imgPath(pack.logo)}
+                                                alt=""
+                                              />
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className="topup-pack-card-img is-placeholder"
+                                              aria-hidden="true"
+                                            >
+                                              {(
+                                                String(pack?.name || "?").trim()
+                                                  .charAt(0) || "?"
+                                              ).toUpperCase()}
                                             </span>
                                           )}
+                                          {/* Single bottom row: name + price
+                                              side by side. No coin reward
+                                              badge — that surfaces in the
+                                              section header on selection. */}
+                                          <span className="topup-pack-card-row">
+                                            <span className="topup-pack-card-name">
+                                              {pack?.name}
+                                            </span>
+                                            <span className="topup-pack-card-price">
+                                              ৳ {pack?.price}
+                                            </span>
+                                          </span>
                                         </button>
                                         {hasPackDescription && (
                                           <span className="topup-pack-card-info-wrap">
@@ -597,7 +626,8 @@ function TopupOrderPage() {
                                 />
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                           {/* Select Recharge --End-- */}
 
                           {/* Account Info Form --Start-- */}
@@ -732,7 +762,7 @@ function TopupOrderPage() {
                             </div>
 
                             <div className="order_box_body">
-                              <div className="flex flex-col sm:flex-row gap-2">
+                              <div className="flex w-full  max-w-[450px] gap-2">
                                 <button
                                   type="button"
                                   className={`topup-pay-card ${

@@ -1991,57 +1991,27 @@ body {
 // the outer 16px. Outer 16px - 2px border = ~14px inner radius — anything
 // larger leaves a hairline gap that becomes visible when the border color
 // flips to the theme primary on selection.
-.topup-pack-card-bg {
-  position: absolute;
-  inset: 0;
-  border-radius: 14px;
-  overflow: hidden;
-  z-index: 0;
-  pointer-events: none;
+// Coin reward chip shown in the Select Recharge section header (top right)
+// when a package with a coin_value is selected. Pulled out of the cards so
+// the cards themselves stay clean.
+.topup-pack-header-coin {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 12px;
+  font-weight: 800;
 }
-.topup-pack-card-bg img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  opacity: 0.85;
-  filter: saturate(1.05);
-}
-.topup-pack-card-bg::after {
-  // Transparent at the top (artwork shows clearly) → dark at the bottom
-  // (creates the "darkish overlay behind the text" so name/price stay
-  // readable on white text).
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.15) 35%,
-    rgba(0, 0, 0, 0.55) 75%,
-    rgba(0, 0, 0, 0.75) 100%
-  );
+.topup-pack-header-coin svg {
+  font-size: 14px;
+  color: #f59e0b;
 }
 
-// When the card carries a background image, flip the text to light so it
-// reads on top of the dark overlay. Text-shadow helps on any spots where
-// the gradient is still light.
-.topup-pack-card.has-bg .topup-pack-card-name,
-.topup-pack-card.has-bg .topup-pack-card-price {
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-}
-.topup-pack-card.has-bg .topup-pack-card-reward {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.25);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-}
-.topup-pack-card.has-bg .topup-pack-card-reward svg { color: #fde047; }
-// Content sits above the background layer. (The info-wrap and check have
-// their own higher z-index values set elsewhere, so we only need to lift
-// the main button content.)
 .topup-pack-card-btn {
   position: relative;
   z-index: 1;
@@ -2079,45 +2049,87 @@ body {
   background: transparent;
   text-align: left;
   border-radius: inherit;
-  // Tighter padding now that there's no logo block taking vertical space.
-  // Right padding leaves a safe gutter for the corner checkmark so it
-  // doesn't sit on top of the price text on short cards.
-  padding: 12px 30px 10px 12px;
+  // Image takes the top column, the name+price row sits at the bottom.
+  padding: 10px 10px 8px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 4px;
   color: inherit;
   position: relative;
-  // Keep card heights consistent so the corner check has a dedicated spot
-  // regardless of whether the package has a coin-reward badge.
-  min-height: 96px;
+  min-height: 120px;
 }
+
+// Foreground image column — sits above the bottom-row text. `flex: 1` so
+// it expands to fill any free vertical space between the row and the top
+// of the card.
+.topup-pack-card-img {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  overflow: hidden;
+}
+.topup-pack-card-img img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+// Text placeholder shown when the package has no logo — keeps the card's
+// vertical rhythm consistent with logo'd cards.
+.topup-pack-card-img.is-placeholder {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(var(--theme-primary-rgb, 56 86 181) / 0.7);
+  background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.06);
+  border: 1px dashed rgba(var(--theme-primary-rgb, 56 86 181) / 0.25);
+  border-radius: 10px;
+  padding: 0 8px;
+  text-align: center;
+  word-break: break-word;
+}
+
+// Bottom row: name on the left, price pushed to the right edge.
+.topup-pack-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  width: 100%;
+}
+.topup-pack-card-row .topup-pack-card-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topup-pack-card-row .topup-pack-card-price { flex-shrink: 0; }
 .topup-pack-card-btn:disabled { cursor: not-allowed; }
 
-// Selected-state checkmark — sits flush in the bottom-right corner, fused
-// into the card's border (only the top-left corner is rounded so it reads
-// as a corner seal rather than a floating pill).
+// Selected-state checkmark — a small rounded badge floating in the
+// top-left corner of the card.
 .topup-pack-card-check {
   position: absolute;
-  // -2px bleeds past the 2px border so there's no hairline gap between the
-  // check and the card's outer edge on either axis.
-  bottom: -2px;
-  right: -2px;
-  width: 28px;
-  height: 28px;
-  // top-left = inner curve (looks like a corner cut), bottom-right = match
-  // the card's outer 16px radius, top-right / bottom-left flush at 0.
-  border-radius: 14px 0 16px 0;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
   background: var(--theme-primary, #3856B5);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 900;
-  box-shadow: -2px -2px 6px rgba(var(--theme-primary-rgb, 56 86 181) / 0.25);
+  box-shadow: 0 2px 6px rgba(var(--theme-primary-rgb, 56 86 181) / 0.35);
   z-index: 3;
   pointer-events: none;
 }
@@ -2299,14 +2311,14 @@ body {
 }
 
 .topup-pack-card-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--theme-secondary, #1B2A4A);
-  line-height: 1.25;
+  line-height: 1.2;
   word-break: break-word;
 }
 .topup-pack-card-price {
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--theme-primary, #3856B5);
   letter-spacing: -0.01em;
@@ -2353,9 +2365,9 @@ body {
 // The selected card gets a themed CTA strip; the unselected one is gray.
 .topup-pay-grid {
   display: grid;
-  // Mobile: two side-by-side cards, 50/50 split.
+  // Mobile: two cards in a single row, 50/50 split — never wraps to two rows.
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
   @media (min-width: 640px) {
     // Desktop: keep two cards but cap their width so they don't stretch
     // across the whole section — left-aligned with `justify-content: start`.
@@ -2373,6 +2385,7 @@ body {
   border: 2px solid #e5e7eb;
   overflow: hidden;
   cursor: pointer;
+  width: 100%;
   text-align: center;
   transition:
     border-color 0.18s ease,
@@ -2405,16 +2418,25 @@ body {
   max-width: 300px;
 }
 .topup-pay-card-img {
-  // Fills the card's content area — `object-fit: contain` keeps aspect
-  // ratio so logo strips don't squash.
+  // Centered foreground image — `object-fit: contain` keeps aspect ratio,
+  // `margin: 0 auto` centers it horizontally inside the card body so it
+  // reads centered even on narrow mobile columns where the parent flex
+  // centering can hand off to a smaller intrinsic width.
+  display: block;
   width: 100%;
+  max-width: 180px;
   height: 120px;
   object-fit: contain;
-  margin-bottom: 6px;
+  object-position: center;
+  margin: 0 auto 6px;
 }
 @media (max-width: 480px) {
+  // Tighter dimensions on mobile so the image still has presence inside the
+  // narrow card column, and stays clearly centered.
   .topup-pay-card-img {
-    height: 100px;
+    height: 88px;
+    max-width: 120px;
+    margin-bottom: 4px;
   }
 }
 .topup-pay-card-title {
@@ -3590,154 +3612,171 @@ body {
 }
 
 // --- Footer (components/Footer.js) ---
+// Flatter, denser layout matching the reference: solid dark navy, compact
+// support rows with a small circular icon, clean text-only links.
 .footer-root {
   position: relative;
   margin-top: auto;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.85);
   isolation: isolate;
-  // Original theme gradient — secondary fading into primary.
-  background: linear-gradient(
-    to bottom,
-    var(--theme-secondary, #1B2A4A) 20%,
-    var(--theme-primary, #3856B5)
-  );
+  background: var(--theme-secondary, #1B2A4A);
 }
-.footer-decor {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
-}
-.footer-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-}
-.footer-blob-a {
-  top: -120px;
-  right: -80px;
-  width: 360px;
-  height: 360px;
-  background: radial-gradient(
-    circle,
-    rgba(var(--theme-accent-rgb, 77 103 216) / 0.32) 0%,
-    transparent 70%
-  );
-}
-.footer-blob-b {
-  bottom: -140px;
-  left: -100px;
-  width: 320px;
-  height: 320px;
-  // Soft gold glow — coins are the only off-theme accent we keep.
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, transparent 70%);
-}
+// Decorative blobs are kept in the DOM (Footer.js still renders them) but
+// hidden visually — the new flat look doesn't want the glow.
+.footer-decor { display: none; }
+.footer-blob { display: none; }
 
 .footer-main {
   position: relative;
   z-index: 1;
-  padding-top: 48px;
-  padding-bottom: 40px;
+  padding-top: 40px;
+  padding-bottom: 32px;
 }
 
 .footer-col-title {
-  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #fff;
-  margin: 0 0 16px;
+  margin: 0 0 18px;
+}
+// Small underline accent below each section title (matches the reference).
+.footer-col-title-bar {
+  display: block;
+  width: 36px;
+  height: 2px;
+  margin-top: 8px;
+  background: var(--theme-primary, #3856B5);
+  border-radius: 2px;
 }
 .footer-col-title-row { display: inline-flex; align-items: center; gap: 8px; }
 .footer-col-title-icon {
-  color: #fde047;
+  color: var(--theme-accent, #4D67D8);
   font-size: 14px;
-  filter: drop-shadow(0 0 8px rgba(253, 224, 71, 0.5));
 }
 .footer-col-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.78);
 }
 
+// Boxed support card — dark gradient body, soft hairline border, rounded
+// corners. Icon puck on the left, two-line label/value stack on the right.
 .footer-support-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 12px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--theme-primary-rgb, 56 86 181) / 0.18) 0%,
+    rgba(0, 0, 0, 0.18) 100%
+  );
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
   text-decoration: none;
   color: #fff;
-  position: relative;
-  overflow: hidden;
   transition:
-    transform 0.2s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-.footer-support-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--support-accent, #6366f1);
-  opacity: 0.9;
-  transition: width 0.2s ease;
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 .footer-support-card:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+  border-color: rgba(var(--theme-primary-rgb, 56 86 181) / 0.55);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
 }
-.footer-support-card:hover::before { width: 6px; }
 .footer-support-icon {
   flex-shrink: 0;
-  width: 42px;
-  height: 42px;
-  border-radius: 9999px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--support-icon-bg, rgba(99, 102, 241, 0.22));
-  color: var(--support-icon-color, #c7d2fe);
-  border: 1px solid var(--support-icon-border, rgba(99, 102, 241, 0.4));
-  box-shadow: 0 4px 14px var(--support-icon-shadow, rgba(99, 102, 241, 0.3));
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.footer-support-icon--telegram {
+  background: rgba(34, 158, 217, 0.18);
+  border-color: rgba(34, 158, 217, 0.5);
+  color: #6dd1ff;
+}
+.footer-support-icon--mail {
+  background: rgba(234, 67, 53, 0.18);
+  border-color: rgba(234, 67, 53, 0.5);
+  color: #ffb1a8;
 }
 .footer-support-text { flex: 1; min-width: 0; }
 .footer-support-label {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.02em;
 }
 .footer-support-value {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff;
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.footer-support-arrow {
-  margin-left: auto;
-  color: rgba(255, 255, 255, 0.5);
-  transition: transform 0.2s ease, color 0.2s ease;
-  font-weight: 800;
+.footer-support-arrow { display: none; }
+
+// Information links — 2-column grid like the reference.
+.footer-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
+}
+
+// Stay Connected card — single dark gradient wrapper holding the brand
+// line, email row, and social icon.
+.footer-connect-card {
+  padding: 16px 18px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--theme-primary-rgb, 56 86 181) / 0.18) 0%,
+    rgba(0, 0, 0, 0.18) 100%
+  );
+  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.footer-connect-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.footer-connect-row:hover { color: #fff; }
+.footer-connect-row-icon {
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
-.footer-support-card:hover .footer-support-arrow {
-  transform: translateX(3px);
+.footer-connect-row-label {
+  color: rgba(255, 255, 255, 0.65);
+}
+.footer-connect-row-value {
   color: #fff;
+  font-weight: 600;
+  word-break: break-all;
 }
 
 // Tints derived from the theme. Phone uses primary, WhatsApp uses accent,
@@ -3826,72 +3865,48 @@ body {
 }
 
 .footer-link {
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
   text-decoration: none;
-  position: relative;
   width: -moz-fit-content;
   width: fit-content;
-  padding: 2px 0;
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-.footer-link::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: currentColor;
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  padding: 1px 0;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 .footer-link:hover {
   color: #fff;
-  transform: translateX(3px);
+  transform: translateX(2px);
 }
-.footer-link:hover::after { opacity: 0.6; transform: translateY(0); }
 
 .footer-brand {
   font-size: 18px;
   font-weight: 800;
-  background: linear-gradient(90deg, #fde047, #fb923c);
-  -webkit-background-clip: text;
-          background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #fff;
+  letter-spacing: 0.02em;
 }
 .footer-brand-sub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.82);
-  margin: 4px 0 10px;
-  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 6px 0 14px;
+  line-height: 1.55;
 }
 .footer-socials {
   display: flex;
   gap: 10px;
-  margin-top: 6px;
 }
 .footer-social {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
-.footer-social:hover {
-  transform: translateY(-2px) rotate(-4deg);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
-}
+.footer-social:hover { transform: translateY(-1px); }
 .footer-social--facebook:hover { background: #1877f2; border-color: #1877f2; }
 .footer-social--youtube:hover  { background: #ff0000; border-color: #ff0000; }
 .footer-social--telegram:hover { background: #229ed9; border-color: #229ed9; }
@@ -3899,21 +3914,20 @@ body {
 .footer-bottom {
   position: relative;
   z-index: 1;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.18);
 }
 .footer-bottom-text {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0;
 }
 .footer-bottom-link {
-  color: #fde047;
+  color: #fff;
   font-weight: 700;
   text-decoration: none;
-  border-bottom: 1px dashed rgba(253, 224, 71, 0.55);
 }
-.footer-bottom-link:hover { color: #fff; border-bottom-color: #fff; }
+.footer-bottom-link:hover { text-decoration: underline; }
 
 @media (max-width: 720px) {
   .footer-main { padding-top: 36px; padding-bottom: 28px; }
@@ -4568,6 +4582,7 @@ body {
   overflow: hidden;
   display: flex;
   align-items: center;
+  min-width: 0;
   marquee {
     vertical-align: middle;
     color: var(--theme-primary, #3856B5);
@@ -4577,6 +4592,7 @@ body {
 .home-notice-sep {
   margin: 0 16px;
   color: rgb(var(--theme-primary-rgb, 56 86 181) / 0.4);
+  white-space: nowrap;
 }
 .home-notice-close {
   flex-shrink: 0;

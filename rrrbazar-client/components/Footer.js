@@ -8,7 +8,7 @@
  */
 import { useContext } from 'react';
 import Link from 'next/link';
-import { FaTelegramPlane, FaEnvelope, FaHeadset, FaYoutube } from 'react-icons/fa';
+import { FaTelegramPlane, FaEnvelope, FaYoutube } from 'react-icons/fa';
 import { globalContext } from '../pages/_app';
 import {
   __email_name,
@@ -31,10 +31,20 @@ function buildTelegramLink(value) {
   return `https://t.me/${stripped}`;
 }
 
+// Section title with the small underline accent from the reference.
+function FooterColTitle({ children }) {
+  return (
+    <h3 className="footer-col-title">
+      <span>{children}</span>
+      <span className="footer-col-title-bar" aria-hidden="true" />
+    </h3>
+  );
+}
+
 function FooterColumn({ title, children }) {
   return (
     <div className="footer-col">
-      <h3 className="footer-col-title">{title}</h3>
+      <FooterColTitle>{title}</FooterColTitle>
       <div className="footer-col-body">{children}</div>
     </div>
   );
@@ -56,83 +66,91 @@ function Footer() {
       </div>
 
       <div className="container footer-main">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          <FooterColumn
-            title={
-              <span className="footer-col-title-row">
-                <FaHeadset className="footer-col-title-icon" />
-                24/7 Customer Support
-              </span>
-            }
-          >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
+          <FooterColumn title="Customer Support">
             {telegramLink && (
               <a
                 href={telegramLink}
                 target="_blank"
                 rel="noreferrer"
-                className="footer-support-card footer-support-card--telegram"
+                className="footer-support-card"
               >
-                <div className="footer-support-icon">
+                <span className="footer-support-icon footer-support-icon--telegram">
                   <FaTelegramPlane size={18} />
-                </div>
+                </span>
                 <div className="footer-support-text">
-                  <div className="footer-support-label">Message on Telegram</div>
-                  <div className="footer-support-value">{telegramRaw}</div>
+                  <div className="footer-support-label">9AM – 11PM Daily</div>
+                  <div className="footer-support-value">Telegram Support</div>
                 </div>
-                <span className="footer-support-arrow" aria-hidden="true">→</span>
               </a>
             )}
-            {supportEmail && (
+            {telegramLink && (
               <a
-                href={`mailto:${supportEmail}`}
-                className="footer-support-card footer-support-card--mail"
+                href={telegramLink}
+                target="_blank"
+                rel="noreferrer"
+                className="footer-support-card"
               >
-                <div className="footer-support-icon">
-                  <FaEnvelope size={16} />
-                </div>
+                <span className="footer-support-icon footer-support-icon--telegram">
+                  <FaTelegramPlane size={18} />
+                </span>
                 <div className="footer-support-text">
-                  <div className="footer-support-label">Email support</div>
-                  <div className="footer-support-value">{supportEmail}</div>
+                  <div className="footer-support-label">Telegram Group</div>
+                  <div className="footer-support-value">Join Now</div>
                 </div>
-                <span className="footer-support-arrow" aria-hidden="true">→</span>
               </a>
             )}
           </FooterColumn>
 
           <FooterColumn title="Information">
-            <Link href="/terms-condition">
-              <a className="footer-link">Terms &amp; Conditions</a>
-            </Link>
-            <Link href="/privacy-policy">
-              <a className="footer-link">Privacy Policy</a>
-            </Link>
-            <Link href="/refund-return-policy">
-              <a className="footer-link">Refund Policy</a>
-            </Link>
-            <Link href="/contact-us">
-              <a className="footer-link">Contact Us</a>
-            </Link>
+            <div className="footer-info-grid">
+              <Link href="/terms-condition">
+                <a className="footer-link">Terms &amp; Conditions</a>
+              </Link>
+              <Link href="/contact-us">
+                <a className="footer-link">Contact Us</a>
+              </Link>
+              <Link href="/privacy-policy">
+                <a className="footer-link">Privacy Policy</a>
+              </Link>
+              <Link href="/about-us">
+                <a className="footer-link">About Us</a>
+              </Link>
+              <Link href="/refund-return-policy">
+                <a className="footer-link">Refund &amp; Returns</a>
+              </Link>
+            </div>
           </FooterColumn>
 
           <FooterColumn title="Stay Connected">
-            <div className="footer-brand">{siteName}</div>
-            <p className="footer-brand-sub">
-              Reach out on Telegram or drop us an email — we usually reply
-              within minutes.
-            </p>
-            {youtubeLink && (
-              <div className="footer-socials">
+            <div className="footer-connect-card">
+              <div className="footer-brand">{siteName}</div>
+              {supportEmail && (
                 <a
-                  href={youtubeLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="YouTube"
-                  className="footer-social footer-social--youtube"
+                  href={`mailto:${supportEmail}`}
+                  className="footer-connect-row"
                 >
-                  <FaYoutube size={17} />
+                  <FaEnvelope size={14} className="footer-connect-row-icon" />
+                  <span className="footer-connect-row-label">Email:</span>
+                  <span className="footer-connect-row-value">
+                    {supportEmail}
+                  </span>
                 </a>
-              </div>
-            )}
+              )}
+              {youtubeLink && (
+                <div className="footer-socials">
+                  <a
+                    href={youtubeLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="YouTube"
+                    className="footer-social footer-social--youtube"
+                  >
+                    <FaYoutube size={18} />
+                  </a>
+                </div>
+              )}
+            </div>
           </FooterColumn>
         </div>
       </div>

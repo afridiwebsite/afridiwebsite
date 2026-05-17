@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import moment from 'moment';
 import { Autoplay, Pagination } from 'swiper';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -127,11 +127,24 @@ function Home({
   const looseProducts = Array.isArray(uncategorized) ? uncategorized : [];
 
   const [closedNoticeIds, setClosedNoticeIds] = useState([]);
+  // Ref to the <marquee> element so we can call .start() after mount in
+  // case hydration left it paused (some browsers occasionally start the
+  // element in a stopped state when it's rendered via SSR).
+  const marqueeRef = useRef(null);
 
   useEffect(() => {
     const closed = JSON.parse(localStorage.getItem('closed_notices') || '[]');
     setClosedNoticeIds(closed);
   }, []);
+
+  useEffect(() => {
+    // Kick the marquee on every render where the element exists so it's
+    // running by the time the user sees the page.
+    const el = marqueeRef.current;
+    if (el && typeof el.start === 'function') {
+      try { el.start(); } catch (e) { /* old browsers may not support */ }
+    }
+  });
 
   const handleCloseNotice = (id) => {
     const updated = [...closedNoticeIds, id];
@@ -157,9 +170,10 @@ function Home({
                 <span className="home-notice-dot" aria-hidden="true" />
                 <div className="home-notice-marquee-wrap">
                   <marquee
+                    ref={marqueeRef}
                     scrollamount="5"
-                    onMouseOver={(e) => e.target.stop()}
-                    onMouseOut={(e) => e.target.start()}
+                    onMouseOver={(e) => e.target.stop && e.target.stop()}
+                    onMouseOut={(e) => e.target.start && e.target.start()}
                   >
                     {marquees.map((m, idx) => (
                       <span key={m.id}>
