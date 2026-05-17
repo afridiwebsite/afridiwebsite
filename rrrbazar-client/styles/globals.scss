@@ -2070,11 +2070,12 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 56px;
+  max-height: 72px;
   overflow: hidden;
 }
 .topup-pack-card-img img {
   max-width: 100%;
-  max-height: 100%;
+  max-height: 72px;
   object-fit: contain;
 }
 // Text placeholder shown when the package has no logo — keeps the card's
@@ -2113,23 +2114,27 @@ body {
 .topup-pack-card-row .topup-pack-card-price { flex-shrink: 0; }
 .topup-pack-card-btn:disabled { cursor: not-allowed; }
 
-// Selected-state checkmark — a small rounded badge floating in the
-// top-left corner of the card.
+// Selected-state checkmark — fused into the top-left corner of the card
+// border. Outer top-left matches the card's outer radius, inner bottom-right
+// uses a smaller curve so it reads as a corner seal rather than a floating
+// badge. The other two corners are flush.
 .topup-pack-card-check {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: 9999px;
+  // -2px bleeds past the 2px border so there's no hairline gap between the
+  // check and the card's outer edge on either axis.
+  top: -2px;
+  left: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 16px 0 14px 0;
   background: var(--theme-primary, #3856B5);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
-  box-shadow: 0 2px 6px rgba(var(--theme-primary-rgb, 56 86 181) / 0.35);
+  box-shadow: 2px 2px 6px rgba(var(--theme-primary-rgb, 56 86 181) / 0.25);
   z-index: 3;
   pointer-events: none;
 }
