@@ -21,6 +21,7 @@ export default (sequelize: Sequelize) => {
         public coin_value!: number;
         public description!: string;
         public order_once!: number;
+        public bot_url!: string;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -88,6 +89,15 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.TINYINT,
             allowNull: true,
             defaultValue: 0,
+        },
+        bot_url: {
+            // Per-package auto-bot endpoint. When set, autoOrder will POST
+            // the order details to this URL instead of picking a bot row
+            // from the AutoServer table. Lets us scope a bot to a specific
+            // game/package without maintaining a separate routing table.
+            type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
         },
         created_at: {
             type: DataTypes.DATE,

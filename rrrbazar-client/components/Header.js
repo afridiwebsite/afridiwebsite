@@ -25,6 +25,19 @@ import { __site_name_1, __site_name_2 } from "../config/globalConfig";
 const SEARCH_DEBOUNCE_MS = 220;
 const SEARCH_MIN_CHARS = 1;
 
+// Wallet number formatter — adds thousand separators and trims trailing
+// zeros so a balance of "1234" reads as "1,234" and "1234.5" reads as
+// "1,234.5". Falls back to "0" on invalid input.
+const walletFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+const formatWallet = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0";
+  return walletFormatter.format(num);
+};
+
 // Live search box that opens a dropdown menu with hits as the user types.
 // Two buckets are shown — Products and Packages — plus a "View all results"
 // link that routes to /search?q=…. Closes on outside-click and on submit.
@@ -283,7 +296,7 @@ function Header() {
                           💰
                         </span>
                         <span className="header-pill-value">
-                          ৳ {Number(authUser?.wallet ?? 0).toFixed(2)}
+                          ৳ {formatWallet(authUser?.wallet)}
                         </span>
                       </a>
                     </Link>

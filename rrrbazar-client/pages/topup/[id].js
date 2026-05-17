@@ -215,8 +215,8 @@ function TopupOrderPage() {
           />
           {hasData(productData) && (
             <>
-              <div className="flex flex-col lg:flex-row items-center gap-6 mb-8">
-                <div className="relative">
+              <div className="flex flex-col items-center gap-6 mb-8">
+                <div className="relative w-full">
                   {!isAuth && (
                     <Alert
                       className="mb-4"
@@ -404,7 +404,8 @@ function TopupOrderPage() {
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
                       const isNotEnoughMoney =
-                        Number(values.selectedpackage?.price || 0) > Number(authUser?.wallet || 0);
+                        Number(values.selectedpackage?.price || 0) >
+                        Number(authUser?.wallet || 0);
 
                       console.log(
                         "errors",
@@ -731,38 +732,47 @@ function TopupOrderPage() {
                             </div>
 
                             <div className="order_box_body">
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
-                                <SelectedRadio
-                                  bottomComponent={__site_name_1 + " Wallet"}
-                                  topComponent={
-                                    <div className="p-1.5 bg-white pb-2.5">
-                                      <img
-                                        className="w-full h-auto"
-                                        src="/logo.png"
-                                      />
-                                    </div>
-                                  }
-                                  isSelected={selectedPaymentMethod === "pay"}
-                                  isError={isPaymentError}
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                  type="button"
+                                  className={`topup-pay-card ${
+                                    selectedPaymentMethod === "pay"
+                                      ? "is-selected"
+                                      : ""
+                                  } ${
+                                    isPaymentError &&
+                                    selectedPaymentMethod !== "pay"
+                                      ? "is-error"
+                                      : ""
+                                  }`}
                                   onClick={() => {
                                     setSelectedPaymentMethod("pay");
                                     setFieldValue("payment_mathod", "pay");
                                   }}
-                                />
-                                <SelectedRadio
-                                  bottomComponent="Auto Payment"
-                                  topComponent={
-                                    <div className="p-1.5 bg-white pb-2.5">
-                                      <img
-                                        className="w-full h-auto"
-                                        src="/auto_payment.jpeg"
-                                      />
-                                    </div>
-                                  }
-                                  isSelected={
+                                >
+                                  <div className="topup-pay-card-body">
+                                    <img
+                                      src="/logo.png"
+                                      alt=""
+                                      className="topup-pay-card-img"
+                                    />
+                                  </div>
+                                  <div className="topup-pay-card-cta">
+                                    Wallet Pay
+                                  </div>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`topup-pay-card ${
                                     selectedPaymentMethod === "auto_payment"
-                                  }
-                                  isError={isPaymentError}
+                                      ? "is-selected"
+                                      : ""
+                                  } ${
+                                    isPaymentError &&
+                                    selectedPaymentMethod !== "auto_payment"
+                                      ? "is-error"
+                                      : ""
+                                  }`}
                                   onClick={() => {
                                     setSelectedPaymentMethod("auto_payment");
                                     setFieldValue(
@@ -770,8 +780,46 @@ function TopupOrderPage() {
                                       "auto_payment",
                                     );
                                   }}
-                                />
+                                >
+                                  <div className="topup-pay-card-body">
+                                    <img
+                                      src="/auto_payment.jpeg"
+                                      alt=""
+                                      className="topup-pay-card-img"
+                                    />
+                                  </div>
+                                  <div className="topup-pay-card-cta">
+                                    Instant Pay
+                                  </div>
+                                </button>
                               </div>
+
+                              {/* Account-balance + required-amount info rows
+                                  shown below the payment cards (matches the
+                                  reference layout). */}
+                              <div className="topup-pay-info-rows">
+                                <div className="topup-pay-info">
+                                  <FaInfo className="topup-pay-info-icon" />
+                                  <span className="topup-pay-info-label">
+                                    Your account balance:
+                                  </span>
+                                  <strong className="topup-pay-info-value">
+                                    ৳ {Number(authUser?.wallet ?? 0).toFixed(2)}
+                                  </strong>
+                                </div>
+                                {values.selectedpackage && (
+                                  <div className="topup-pay-info">
+                                    <FaInfo className="topup-pay-info-icon" />
+                                    <span className="topup-pay-info-label">
+                                      You need to purchase this product:
+                                    </span>
+                                    <strong className="topup-pay-info-value">
+                                      ৳ {values.selectedpackage.price}
+                                    </strong>
+                                  </div>
+                                )}
+                              </div>
+
                               <FormikErrorMessage name="payment_mathod" />
                               {isUnipinVoucher && (
                                 <a
@@ -868,7 +916,7 @@ function TopupOrderPage() {
                           <br />
                           <br />
 
-                          {/* Description Section --Start-- */}
+                          {/* Rules & Conditions Section --Start-- */}
                           {hasDescription && (
                             <div
                               className="_order_box_wrapper animate-fade-in-up"
@@ -879,16 +927,16 @@ function TopupOrderPage() {
                                   i
                                 </div>
                                 <h5 className="_order_header_title">
-                                  Description
+                                  Rules &amp; Conditions
                                 </h5>
                                 {productInfo?.youtube_link && (
                                   <a
                                     href={productInfo.youtube_link}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="topup-description-yt"
+                                    className="break-words-none text-xs font-bold text-red-600 underline mb-2"
                                   >
-                                    Watch tutorial →
+                                    Watch tutorial
                                   </a>
                                 )}
                               </div>

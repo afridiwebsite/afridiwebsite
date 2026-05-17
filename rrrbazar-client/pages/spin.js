@@ -39,11 +39,30 @@ function arcPath(cx, cy, r, startDeg, endDeg) {
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y} Z`;
 }
 
+// Pick a font size and label-character budget based on how many slices the
+// wheel has. As slices get thinner the available arc length for the label
+// shrinks, so we both shrink the font and trim/truncate the label.
+function pickWheelTextStyle(segCount) {
+  if (segCount <= 6) return { fontSize: 14, maxChars: 14 };
+  if (segCount <= 8) return { fontSize: 12, maxChars: 12 };
+  if (segCount <= 10) return { fontSize: 11, maxChars: 10 };
+  if (segCount <= 14) return { fontSize: 10, maxChars: 8 };
+  if (segCount <= 18) return { fontSize: 9, maxChars: 6 };
+  return { fontSize: 8, maxChars: 5 };
+}
+
+function truncateLabel(label, maxChars) {
+  const s = String(label || '');
+  if (s.length <= maxChars) return s;
+  return s.slice(0, Math.max(maxChars - 1, 1)) + '…';
+}
+
 function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) {
   const size = 320;
   const r = size / 2;
   const segCount = Math.max(rewards.length, 1);
   const segAngle = 360 / segCount;
+  const { fontSize, maxChars } = pickWheelTextStyle(segCount);
 
   return (
     <div className="spin-wheel-wrap">
@@ -84,11 +103,11 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="#fff"
-                    fontSize="13"
+                    fontSize={fontSize}
                     fontWeight="800"
                     style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
                   >
-                    {reward.label}
+                    {truncateLabel(reward.label, maxChars)}
                   </text>
                 </g>
               </g>
@@ -195,15 +214,6 @@ function SpinPage() {
       const data = res?.data?.data;
       const idx = data?.reward_index ?? 0;
 
-      // Update global state immediately for the coin deduction
-      if (updateAuthUserInfo && authUser) {
-        updateAuthUserInfo({
-          ...authUser,
-          coins: data.coins,
-          wallet: data.wallet ?? authUser.wallet,
-        });
-      }
-
       // Compute the rotation. Segment i's centre sits at i*segAngle + segAngle/2
       // measured clockwise from the top, so the wheel must rotate by
       // -(centre) to align that segment with the pointer at 0deg. Add a few
@@ -221,9 +231,18 @@ function SpinPage() {
       rotationRef.current = next;
       setRotation(next);
 
-      // Wait for the CSS transition to finish (must match .spin-wheel
-      // transition-duration).
+      // Defer EVERYTHING reward-related (coin balance update, toast, reveal
+      // banner, history reload) until the wheel actually stops — otherwise
+      // the user sees their coin count change and the toast pop while the
+      // wheel is still spinning, which spoils the reveal.
       setTimeout(async () => {
+        if (updateAuthUserInfo && authUser) {
+          updateAuthUserInfo({
+            ...authUser,
+            coins: data.coins,
+            wallet: data.wallet ?? authUser.wallet,
+          });
+        }
         setSpinning(false);
         setLastWin(data?.reward);
         toast.success(res?.data?.message || "Spin complete");

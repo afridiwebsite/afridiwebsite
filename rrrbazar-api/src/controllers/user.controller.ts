@@ -1019,6 +1019,7 @@ class UserController {
           playerid,
           topupPackage.uc,
           send_unipin,
+          (topupPackage as any).bot_url || '',
         );
         if (botStatus) {
           order.status = "In Progress";
@@ -1968,6 +1969,7 @@ class UserController {
                       order.playerid,
                       topupPackage.uc,
                       myunipincode,
+                      (topupPackage as any).bot_url || '',
                     );
                     if (botStatus) {
                       order.status = "In Progress";

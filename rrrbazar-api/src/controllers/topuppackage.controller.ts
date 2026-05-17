@@ -60,6 +60,7 @@ class TopupPackageController {
             coin_value,
             description,
             order_once,
+            bot_url,
         } = req.body
 
         try {
@@ -75,6 +76,7 @@ class TopupPackageController {
                 coin_value: Number(coin_value) || 0,
                 description: description || '',
                 order_once: order_once == 1 ? 1 : 0,
+                bot_url: String(bot_url || '').trim(),
             })
 
             response.message = 'Created successfully'
@@ -104,6 +106,7 @@ class TopupPackageController {
             coin_value,
             description,
             order_once,
+            bot_url,
         } = req.body
 
         try {
@@ -130,6 +133,9 @@ class TopupPackageController {
             }
             if (order_once !== undefined) {
                 topupPackage.order_once = order_once == 1 ? 1 : 0;
+            }
+            if (bot_url !== undefined) {
+                topupPackage.bot_url = String(bot_url || '').trim();
             }
             await topupPackage.save()
 

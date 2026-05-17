@@ -31,6 +31,7 @@ function EditPackage(props) {
     const logo = useRef(null);
     const coin_value = useRef(null);
     const order_once = useRef(null);
+    const bot_url = useRef(null);
 
     const [editorState, setEditorState] = useState(EditorState.createEmpty());
 
@@ -67,6 +68,7 @@ function EditPackage(props) {
             coin_value: coin_value.current.value || 0,
             in_stock: in_stock.current.checked ? 1 : 0,
             order_once: order_once.current?.checked ? 1 : 0,
+            bot_url: bot_url.current?.value || '',
             description: convertToHTML(editorState.getCurrentContent()),
         }).then(res => {
             toast.success('Topup package updated successfully', toastDefault)
@@ -160,6 +162,23 @@ function EditPackage(props) {
                                             </label>
                                             <p className="text-xs text-gray-500 mt-1">
                                                 When on, each user can only order this package once.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="form_grid">
+                                        <div>
+                                            <label htmlFor="bot_url">Auto-bot URL</label>
+                                            <input
+                                                ref={bot_url}
+                                                id="bot_url"
+                                                type="url"
+                                                defaultValue={data?.bot_url || ''}
+                                                className="form_input"
+                                                placeholder="https://bot.example.com/dispatch"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Optional. When set, completed orders for this package are POSTed to this URL for automated fulfillment. Leave empty to keep the order pending for manual processing.
                                             </p>
                                         </div>
                                     </div>

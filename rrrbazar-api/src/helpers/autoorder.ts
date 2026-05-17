@@ -1,68 +1,54 @@
 import fetch from 'node-fetch';
-import { Op, Sequelize } from 'sequelize';
-import Schema from '../models';
-const {
-  AutoServer
-} = Schema;
 
-const autoOrder = async (order_id: number, player_id: string, package_id: number, unipin: string, dtype: string = '80') => {
-  let success: any;
+/**
+ * Dispatch an order to a per-package auto-bot endpoint.
+ *
+ * The bot URL is now sourced from the TopupPackage row's `bot_url` column
+ * rather than the AutoServer table — admins configure it per-package on the
+ * Add/Edit Package form. If the package has no bot_url set we treat it as
+ * "no auto-bot for this package" and return false so the caller returns
+ * the voucher to the pool and leaves the order pending.
+ */
+const autoOrder = async (
+  order_id: number,
+  player_id: string,
+  package_uc: number,
+  unipin: string,
+  bot_url: string,
+  dtype: string = '80',
+) => {
+  const url = String(bot_url || '').trim();
+  if (!url) {
+    console.warn('[autoOrder] no bot_url configured for this package — skipping bot dispatch');
+    return false;
+  }
+
   try {
-    let bot_url = "";
-    let bot: any = await AutoServer.findOne({
-      attributes: [
-        [Sequelize.fn('MIN', Sequelize.col('total_order')), 'min_val'],
-        'ip_url',
-        'id'
-      ],
-      where: {
-        status: {
-          [Op.in]: [1, 2]
-        }
-      },
-      group: ['ip_url', 'id'],
-      order: [[Sequelize.literal('min_val'), 'ASC']]
-    });
-    if (!bot) {
-      success = false;
-      return success;
-    }
-    bot_url = bot.ip_url;
-
-    // bot.status = 2;
-    // bot.total_order = bot.min_val + 1;
-    // bot = await bot.save();
-
-    await AutoServer.increment('total_order', {
-      by: 1,
-      where: {
-        id: bot.id
-      }
-    });
-
-    const response = await fetch(bot_url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         playerid: player_id,
-        pacakge: package_id,
+        pacakge: package_uc,
         code: unipin,
         orderid: order_id,
-        url: `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}`
-      })
+        url: `${process.env.API_URL || 'https://api.rrrbazar.com'}/api/v1/check_order?type=${dtype}`,
+      }),
     });
+
     if (!response.ok) {
-      throw new Error(`Network response was not ok: ${response.statusText}`);
+      console.error('[autoOrder] non-ok status from bot:', response.status, response.statusText);
+      return false;
     }
 
-    success = bot_url;
-    return success;
+    // Return the URL we hit so callers can stash it on order.ingamepassword
+    // for traceability (matches the previous helper's contract).
+    return url;
   } catch (error) {
-    console.error('Error:', error);
-    success = false;
-    return success;
+    console.error('[autoOrder] error dispatching to bot:', error);
+    return false;
   }
 };
 
