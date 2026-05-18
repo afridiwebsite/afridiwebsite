@@ -7,7 +7,7 @@ import { Schema } from './Schemas';
 export default (sequelize: Sequelize) => {
     class Order extends Model {
         public id!: number;
-        public product_id!: string;
+        public product_id!: number;
         public phone!: string;
         public payment_mathod!: number;
         public payment_status!: number;
@@ -19,7 +19,7 @@ export default (sequelize: Sequelize) => {
         public ingamepassword!: string;
         public securitycode!: string;
         public playerid!: string;
-        public topuppackage_id!: string;
+        public topuppackage_id!: number;
         public status!: string;
         public user_id!: number;
         public amount!: number;
