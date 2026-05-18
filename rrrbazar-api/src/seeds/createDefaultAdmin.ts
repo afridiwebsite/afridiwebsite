@@ -79,6 +79,11 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/order-comments',             method: 'POST' },
     { path: '/order-comments/:id',         method: 'POST' },
     { path: '/order-comments/:id/delete',  method: 'POST' },
+    // Voucher pool (per-package redemption codes for is_voucher products)
+    { path: '/packages/:id/voucher',       method: 'GET'  },
+    { path: '/packages/add-voucher',       method: 'POST' },
+    { path: '/packages/delete-voucher/:id', method: 'POST' },
+    { path: '/voucher/available-voucher-by-package', method: 'GET' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

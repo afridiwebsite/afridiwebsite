@@ -21,6 +21,7 @@ export default (sequelize: Sequelize) => {
         public offer_items!: number;
         public product_link!: string;
         public youtube_link!: string;
+        public is_voucher!: number;
 
         static associate({ Category, ProductCategory, TopupProductInput }: typeof Schema) {
             this.belongsToMany(Category, {
@@ -105,6 +106,14 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING(512),
             allowNull: true,
             defaultValue: '',
+        },
+        is_voucher: {
+            // 1 = treat this product as a voucher-pool product. Orders for
+            // its packages allocate a code from the Voucher pool instead of
+            // running through the UC / bot flow.
+            type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
         },
         created_at: {
             type: DataTypes.DATE,

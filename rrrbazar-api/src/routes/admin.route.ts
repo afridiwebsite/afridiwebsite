@@ -8,6 +8,7 @@ import paymentmethodController from '../controllers/paymentmethod.controller';
 import physicalProductController from "../controllers/physicalProduct.controller";
 import topuppackageController from '../controllers/topuppackage.controller';
 import topupProductController from '../controllers/topupProduct.controller';
+import voucherController from '../controllers/voucher.controller';
 import userController from '../controllers/user.controller';
 import categoryController from '../controllers/category.controller';
 import siteSettingController from '../controllers/siteSetting.controller';
@@ -181,6 +182,13 @@ router.post('/topup-package/update/:id', auth, topupPackageSchema, topuppackageC
 router.post('/topup-package/delete/:id', auth, topuppackageController.deleteTopupPackage)
 router.post('/topup-package/update-dollar', auth, updateDollarSchema, topuppackageController.updateDollarRate)
 // Topup Package apis ----END----
+
+// Voucher pool apis (per-package code inventory) ----START----
+router.get('/packages/:id/voucher', auth, voucherController.listByPackage)
+router.post('/packages/add-voucher', auth, voucherController.bulkAdd)
+router.post('/packages/delete-voucher/:id', auth, voucherController.remove)
+router.get('/voucher/available-voucher-by-package', auth, userController.getVoucherStatsByPackage)
+// Voucher pool apis ----END----
 
 // Dashboard stats apis ----START----
 router.get('/dashboard-stats', auth, adminController.getDashboardStats)

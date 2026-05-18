@@ -19,6 +19,8 @@ import SubadminOrders from "./components/Orders/SubadminOrders";
 import AddPackage from "./components/Packages/AddPackage";
 import EditPackage from "./components/Packages/EditPackage";
 import Packages from "./components/Packages/Packages";
+import Voucher from "./components/Packages/Voucher/Voucher";
+import VoucherStatistic from "./components/Vouchers/VoucherStatistic";
 import AddPaymentMethod from "./components/PaymentMethod/AddPaymentMethod";
 import EditPaymentMethod from "./components/PaymentMethod/EditPaymentMethod";
 import PaymentMethod from "./components/PaymentMethod/PaymentMethod";
@@ -47,9 +49,6 @@ import Register from "./views/auth/Register";
 import Landing from "./views/Landing";
 import AdminWalletRequest from "./components/AdminWalletRequest/AdminWalletRequest";
 import MyWalletRequest from "./components/AdminWalletRequest/MyWalletRequest";
-import Upins from "./components/Upin/Upins";
-import AddUpin from "./components/Upin/AddUpin";
-import EditUpin from "./components/Upin/EditUpin";
 import Bots from "./components/autobot/Bots";
 import AddBot from "./components/autobot/AddBot";
 import EditBot from "./components/autobot/EditBot";
@@ -76,10 +75,6 @@ function App() {
             <Route path="/user" exact component={Users} />
             <Route path="/user/edit/:id" exact component={EditUser} />
             <Route path="/user/earn-wallet/edit/:id" exact component={EditEarnWallet} />
-
-            <Route path="/upins" exact component={Upins} />
-            <Route path="/upin/add" exact component={AddUpin} />
-            <Route path="/unipin/edit/:id" exact component={EditUpin} />
 
             <Route path="/bots" exact component={Bots} />
             <Route path="/botserver/add" exact component={AddBot} />
@@ -133,6 +128,8 @@ function App() {
             <Route path="/topup-packages" exact component={Packages} />
             <Route path="/topup-package/edit/:id" exact component={EditPackage} />
             <Route path="/topup-package/add/:id" exact component={AddPackage} />
+            <Route path="/topup-package/voucher/:id" exact component={Voucher} />
+            <Route path="/vouchers/stats" exact component={VoucherStatistic} />
 
             <Route path="/send-sms" exact component={SendSms} />
 

@@ -31,7 +31,23 @@ const {
   AutoServer,
   CoinTransaction,
   SiteSetting,
+  Voucher,
 } = Schema;
+
+// Allocate one unused voucher to an order. Wraps the find+assign so the
+// race window between the two is small. Returns the voucher row or null
+// if the pool is empty.
+async function emitProductVoucher(packageId: number, orderId: number) {
+  const voucher = await Voucher.findOne({
+    where: { is_used: 0, package_id: packageId },
+    order: [['id', 'ASC']],
+  });
+  if (!voucher) return null;
+  voucher.is_used = 1;
+  voucher.order_id = orderId;
+  await voucher.save();
+  return voucher;
+}
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -365,6 +381,71 @@ class UserController {
     }
   };
 
+  // Admin voucher-pool overview. One row per package that has any
+  // associated voucher rows, with totals split by used/unused so the
+  // sidebar stats page can render an at-a-glance pool inventory.
+  getVoucherStatsByPackage = async (
+    req: express.Request,
+    res: express.Response,
+  ) => {
+    const response = new responseUtils();
+    try {
+      const rows = await Voucher.findAll({
+        attributes: [
+          'package_id',
+          [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_used = 0 THEN 1 ELSE 0 END')), 'unused'],
+          [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_used = 1 THEN 1 ELSE 0 END')), 'used'],
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'total'],
+        ],
+        group: ['package_id'],
+        raw: true,
+      });
+
+      const packageIds = (rows as any[]).map((r) => r.package_id);
+      const packs = packageIds.length
+        ? await TopupPackage.findAll({
+            where: { id: { [Op.in]: packageIds } },
+            attributes: ['id', 'name', 'product_id'],
+            raw: true,
+          })
+        : [];
+      const productIds = Array.from(
+        new Set(packs.map((p: any) => p.product_id).filter(Boolean)),
+      );
+      const products = productIds.length
+        ? await TopupProduct.findAll({
+            where: { id: { [Op.in]: productIds } },
+            attributes: ['id', 'name'],
+            raw: true,
+          })
+        : [];
+      const packById = new Map(packs.map((p: any) => [p.id, p]));
+      const productById = new Map(products.map((p: any) => [p.id, p]));
+
+      const data = (rows as any[]).map((r) => {
+        const pack = packById.get(r.package_id);
+        const product = pack ? productById.get(pack.product_id) : null;
+        return {
+          package_id: r.package_id,
+          package_name: pack?.name || `Package #${r.package_id}`,
+          product_id: pack?.product_id || null,
+          product_name: product?.name || '—',
+          total: Number(r.total) || 0,
+          used: Number(r.used) || 0,
+          unused: Number(r.unused) || 0,
+        };
+      });
+      // Most-depleted at the top so the admin sees what needs restocking.
+      data.sort((a, b) => a.unused - b.unused);
+
+      response.data = data;
+      res.send(response.response);
+    } catch (error) {
+      console.log('getVoucherStatsByPackage error', error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
   getTopupProducts = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils();
     try {
@@ -601,6 +682,13 @@ class UserController {
         where: {
           user_id: id,
         },
+        include: [
+          {
+            model: Voucher,
+            required: false,
+            attributes: ['id', 'data'],
+          },
+        ],
         order: [["created_at", "DESC"]],
         attributes: { exclude: ["uc", "ingamepassword", "bprice"] },
       });
@@ -969,6 +1057,59 @@ class UserController {
       }
 
       const order = await Order.create(user_order_data);
+
+      // Voucher-pool products: pull a code from the pool and complete the
+      // order. Runs BEFORE the UC/bot block below; voucher products are
+      // expected to have uc == 0, so the bot block becomes a no-op.
+      if ((product as any).is_voucher == 1) {
+        const voucher = await emitProductVoucher(topupPackage.id, order.id);
+        if (!voucher) {
+          // Pool is empty — refund the wallet, remove the order, surface a
+          // clear error to the caller. (auto_payment path never reaches
+          // here; the webhook handles that case.)
+          if (payment_mathod === 'pay') {
+            user.wallet = Number(user.wallet) + Number(amount);
+            await user.save();
+          }
+          await order.destroy();
+          response.message =
+            'Sorry — vouchers for this package are sold out. Your wallet has not been charged.';
+          response.success = false;
+          response.status = 400;
+          return res.status(400).send(response.response);
+        }
+        order.status = 'completed';
+        order.brief_note = `Voucher: ${voucher.data}`;
+        await order.save();
+
+        // Coin reward still applies to voucher purchases.
+        try {
+          const coinReward = Number(topupPackage.coin_value || 0);
+          if (coinReward > 0) {
+            user.coins = (user.coins || 0) + coinReward;
+            await user.save();
+            await CoinTransaction.create({
+              user_id: user.id,
+              amount: coinReward,
+              type: 'purchase',
+              note: `Order #${order.id} (${topupPackage.name})`,
+              reference_id: order.id,
+            });
+          }
+        } catch (e) {
+          // never block order on coin rewarding failure
+        }
+
+        const {
+          uc: ucAliasV,
+          ingamepassword: ingamepasswordAliasV,
+          bprice: bpriceAliasV,
+          ...filteredOrderV
+        } = order.get({ plain: true });
+        response.message = 'Order placed successfully';
+        response.data = filteredOrderV;
+        return res.send(response.response);
+      }
 
       // Award coins for purchase — coin reward is configured per package.
       try {
@@ -1932,6 +2073,31 @@ class UserController {
           if (typeof orderData === "object" && orderData !== null) {
             const order = await Order.create(orderData);
             console.log("Order created from webhook:", order.id);
+
+            // Voucher-pool product? Emit a code and complete the order
+            // before falling into the UC/bot branch below. No refund path
+            // here — payment is already captured; on empty pool the order
+            // is left pending with a brief note so admin can intervene.
+            try {
+              const orderProduct = await TopupProduct.findByPk(order.product_id);
+              if (orderProduct && (orderProduct as any).is_voucher == 1) {
+                const voucher = await emitProductVoucher(
+                  order.topuppackage_id,
+                  order.id,
+                );
+                if (voucher) {
+                  order.status = 'completed';
+                  order.brief_note = `Voucher: ${voucher.data}`;
+                  await order.save();
+                } else {
+                  order.brief_note =
+                    'Voucher pool empty — needs manual fulfilment';
+                  await order.save();
+                }
+              }
+            } catch (e) {
+              console.error('webhook voucher emit failed', e);
+            }
 
             // Award coins for purchase
             try {

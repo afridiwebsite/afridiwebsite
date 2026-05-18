@@ -32,6 +32,7 @@ function EditTopupProduct(props) {
 
   const serial = useRef(null);
   const is_active_product = useRef(null);
+  const is_voucher = useRef(null);
 
   // Passthrough product link + tutorial youtube link. When productLinkValue
   // is non-empty, the form hides everything that doesn't make sense for an
@@ -226,6 +227,7 @@ function EditTopupProduct(props) {
         offer_items: 0,
         product_link: productLinkValue.trim(),
         youtube_link: youtubeLinkValue.trim(),
+        is_voucher: is_voucher.current?.checked ? 1 : 0,
       })
       .then(async () => {
         try {
@@ -633,6 +635,21 @@ function EditTopupProduct(props) {
                         className="mr-2"
                       />
                       Is active product
+                    </label>
+                  </div>
+                  <div className="my-2">
+                    <label className="py-2 inline-block cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        defaultChecked={data?.is_voucher == 1}
+                        ref={is_voucher}
+                        className="mr-2"
+                      />
+                      Is voucher product{" "}
+                      <span className="text-xs font-normal text-gray-500">
+                        (each package keeps its own pool of redemption codes —
+                        manage under <em>Packages → Voucher</em>)
+                      </span>
                     </label>
                   </div>
 

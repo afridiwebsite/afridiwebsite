@@ -90,6 +90,7 @@ class TopupProductController {
             offer_items,
             product_link,
             youtube_link,
+            is_voucher,
         } = req.body
 
         const data = await TopupProduct.create({
@@ -107,6 +108,7 @@ class TopupProductController {
             offer_items,
             product_link: product_link || '',
             youtube_link: youtube_link || '',
+            is_voucher: is_voucher == 1 ? 1 : 0,
         })
         response.data = data
         res.send(response.response)
@@ -131,6 +133,7 @@ class TopupProductController {
             offer_items,
             product_link,
             youtube_link,
+            is_voucher,
         } = req.body
 
         const product = await TopupProduct.findByPk(id)
@@ -157,6 +160,7 @@ class TopupProductController {
         product.offer_items = offer_items;
         if (product_link !== undefined) product.product_link = product_link || '';
         if (youtube_link !== undefined) product.youtube_link = youtube_link || '';
+        if (is_voucher !== undefined) product.is_voucher = is_voucher == 1 ? 1 : 0;
 
         await product.save();
 

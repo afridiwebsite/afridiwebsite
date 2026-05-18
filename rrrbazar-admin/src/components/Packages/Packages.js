@@ -125,9 +125,6 @@ const PackagesUnderProduct = ({ product }) => {
                     <li className="cstm_btn_small btn_red" onClick={() => deletePackageHandler(e.value)}>
                         Delete
                     </li>
-                    <Link to={`/upins?package_id=${e.value}`} className="cstm_btn_small">
-                        Add Voucher
-                    </Link>
                 </ul>
             }
         },

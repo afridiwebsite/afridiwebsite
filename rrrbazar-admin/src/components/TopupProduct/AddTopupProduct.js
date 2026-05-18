@@ -17,6 +17,11 @@ function AddTopupProduct() {
   // isactivefortopup is no longer surfaced as a checkbox — it's auto-derived
   // from whether a "Player ID" dynamic input is defined.
   const is_active_product = useRef(null);
+  // is_voucher: when checked, this product runs on the voucher-pool flow —
+  // each package has a pool of redemption codes (managed under
+  // /topup-package/:id/voucher) and orders allocate one code from the pool
+  // instead of going through the UC/bot path.
+  const is_voucher = useRef(null);
 
   // When a product_link is set, the product is a passthrough — clicking it on
   // the home page goes straight to that URL. We hide all the non-essential
@@ -195,6 +200,7 @@ function AddTopupProduct() {
           rules: isPassthrough ? "" : convertToHTML(editorState.getCurrentContent()),
           product_link: productLinkValue.trim(),
           youtube_link: youtubeLinkValue.trim(),
+          is_voucher: is_voucher.current?.checked ? 1 : 0,
         })
         .then(async (res) => {
           const newId = res?.data?.data?.id;
@@ -584,6 +590,20 @@ function AddTopupProduct() {
                       className="mr-2"
                     />
                     Is active product
+                  </label>
+                </div>
+                <div className="my-2">
+                  <label className="py-2 inline-block cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      ref={is_voucher}
+                      className="mr-2"
+                    />
+                    Is voucher product{" "}
+                    <span className="text-xs font-normal text-gray-500">
+                      (each package keeps its own pool of redemption codes —
+                      manage under <em>Packages → Voucher</em>)
+                    </span>
                   </label>
                 </div>
 

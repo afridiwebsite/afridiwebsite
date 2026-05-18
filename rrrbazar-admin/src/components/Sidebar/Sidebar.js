@@ -63,11 +63,11 @@ export default function Sidebar({ isOpenSidebar }) {
        
       ]
     },
-     {
-          text: "UniPin Voucher",
-          path: "/upins",
-          icon: "fas fa-cubes",
-        },
+    {
+      text: "Voucher Statistics",
+      path: "/vouchers/stats",
+      icon: "fas fa-chart-bar",
+    },
     {
       text: "Add Wallet",
       path: "/add-wallet",

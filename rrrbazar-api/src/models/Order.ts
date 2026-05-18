@@ -28,7 +28,7 @@ export default (sequelize: Sequelize) => {
         public completed_by!: number;
 
 
-        static associate({ Admin, User, TopupProduct }: typeof Schema) {
+        static associate({ Admin, User, TopupProduct, Voucher }: typeof Schema) {
             this.belongsTo(Admin, {
                 foreignKey: "completed_by",
                 constraints: false,
@@ -39,6 +39,10 @@ export default (sequelize: Sequelize) => {
             });
             this.belongsTo(TopupProduct, {
                 foreignKey: "product_id",
+                constraints: false,
+            });
+            this.hasOne(Voucher, {
+                foreignKey: "order_id",
                 constraints: false,
             });
         }
