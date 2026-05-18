@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { BsCheckCircleFill } from 'react-icons/bs';
-import { GoPrimitiveDot } from 'react-icons/go';
+import { GoDot } from 'react-icons/go';
 import { useQuery } from 'react-query';
 import * as Yup from 'yup';
 import api, { getPaymentMethod } from '../api/api';
@@ -259,7 +259,7 @@ function AddMoneyPage() {
                                   className="_body2 flex items-start gap-2"
                                   key={index}
                                 >
-                                  <GoPrimitiveDot className="text-gray-500" />{' '}
+                                  <GoDot className="text-gray-500" />{' '}
                                   {rule}
                                 </p>
                               ))}
@@ -275,7 +275,7 @@ function AddMoneyPage() {
                                   className="_body2 flex items-start gap-2"
                                   key={index}
                                 >
-                                  <GoPrimitiveDot className="text-gray-500" />{' '}
+                                  <GoDot className="text-gray-500" />{' '}
                                   {rule}
                                 </p>
                               ))}

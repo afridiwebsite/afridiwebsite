@@ -75,11 +75,12 @@ function TournamentDetails() {
   const tournamentData = data?.tournament;
   const tournamentPrizes = data?.prizes;
 
-  const playerArray =
-    selectedPlayers &&
-    [...new Array(parseInt(selectedPlayers)).keys()].map((e) => e + 1);
-
-  const isDisabledJoinButton = !selectedPlayers;
+  const playerArray = useMemo(
+    () =>
+      selectedPlayers &&
+      [...new Array(parseInt(selectedPlayers)).keys()].map((e) => e + 1),
+    [selectedPlayers]
+  );
 
   const formikOptions = useMemo(() => {
     let validationSchema = {
@@ -109,7 +110,7 @@ function TournamentDetails() {
       validationSchema: Yup.object().shape(validationSchema),
       initialValues,
     };
-  }, [selectedPlayers]);
+  }, [selectedPlayers, playerArray]);
 
   const joinedAlready = userJoined?.data?.includes(tournamentData?.id);
 

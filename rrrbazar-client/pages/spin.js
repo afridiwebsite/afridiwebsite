@@ -11,7 +11,7 @@
  */
 import Head from 'next/head';
 import Link from 'next/link';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FaCoins, FaGift, FaHistory } from 'react-icons/fa';
 import {
@@ -147,7 +147,7 @@ function SpinPage() {
   const [lastWin, setLastWin] = useState(null);
   const rotationRef = useRef(0); // tracks the wheel's running rotation across spins
 
-  const load = async (includeOverview = true) => {
+  const load = useCallback(async (includeOverview = true) => {
     if (includeOverview) {
       try {
         const res = await getSpinOverview();
@@ -175,10 +175,11 @@ function SpinPage() {
     } catch (e) {
       /* ignore */
     }
-  };
+  }, [authUser, updateAuthUserInfo]);
+
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const rewards = useMemo(() => overview?.rewards || [], [overview]);
   const segCount = Math.max(rewards.length, 1);

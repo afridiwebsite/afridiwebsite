@@ -37,7 +37,7 @@ function AuthGuard({
     } else {
       setShowView(true);
     }
-  }, [finalRules, disabledFlashMessage]);
+  }, [finalRules, disabledFlashMessage, disabledRedirect, router]);
 
   if (!showView)
     return (

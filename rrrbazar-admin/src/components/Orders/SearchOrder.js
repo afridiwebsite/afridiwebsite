@@ -68,8 +68,8 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
 
     return (
         <form onSubmit={submitHandler} >
-            <div className="flex w-full md:w-auto items-center space-y-4 md:space-x-3 md:space-y-0 justify-end flex-wrap">
-                <div className="w-full md:w-[200px]">
+            <div className="flex w-full md:w-auto items-center gap-2 md:gap-3 justify-end flex-wrap">
+                <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
                     <input type="text" placeholder="User id" className="form_input mb-0"
                         onChange={(e) => {
                             clearTimeout(typingTimer);
@@ -79,14 +79,14 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
 
                     />
                 </div>
-                <div className="w-full md:w-[200px]">
+                <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
                     <input type="text" placeholder="Order id" className="form_input mb-0" onChange={(e) => {
                         clearTimeout(typingTimer);
                         const value = e.target.value
                         typingTimer = setTimeout(() => setOrderId(value), value ? doneTypingInterval : 0);
                     }} />
                 </div>
-                <div className="w-full md:w-[160px]">
+                <div className="flex-1 min-w-0 md:flex-none md:w-[160px]">
                     <input
                         type="text"
                         placeholder="UC code"

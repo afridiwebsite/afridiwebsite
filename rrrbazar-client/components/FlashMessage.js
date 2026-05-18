@@ -38,7 +38,7 @@ function FlashMessage({
     if (showToast && flashMessage) {
       toast.success(flashMessage, toastifyConfig);
     }
-  }, []);
+  }, [flashMessage, showToast]);
 
   return (
     <>

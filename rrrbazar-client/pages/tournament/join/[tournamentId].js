@@ -64,9 +64,12 @@ function JoinTournament() {
   );
   const spotLeft = tournamentData?.user_limit - spotLeftData || 0;
 
-  const playerArray =
-    selectedPlayers &&
-    [...new Array(parseInt(selectedPlayers)).keys()].map((e) => e + 1);
+  const playerArray = useMemo(
+    () =>
+      selectedPlayers &&
+      [...new Array(parseInt(selectedPlayers)).keys()].map((e) => e + 1),
+    [selectedPlayers]
+  );
 
   const isDisabledJoinButton = !selectedPlayers;
 
@@ -98,7 +101,7 @@ function JoinTournament() {
       validationSchema: Yup.object().shape(validationSchema),
       initialValues,
     };
-  }, [selectedPlayers]);
+  }, [selectedPlayers, playerArray]);
 
   return (
     <section className="md:my-7 md:container">

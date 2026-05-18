@@ -44,7 +44,15 @@ function CategorySection({ title, products }) {
 function formatOrderTime(value) {
   if (!value) return "";
   const m = moment(value);
-  return m.isValid() ? m.format("YYYY-MM-DD hh:mm A") : String(value);
+  if (!m.isValid()) return String(value);
+  const now = moment();
+  if (m.isSame(now, "day")) return `Today, ${m.format("h:mm A")}`;
+  if (m.isSame(now.clone().subtract(1, "day"), "day"))
+    return `Yesterday, ${m.format("h:mm A")}`;
+  const fmt = m.isSame(now, "year")
+    ? "MMM D, h:mm A"
+    : "MMM D, YYYY, h:mm A";
+  return m.format(fmt);
 }
 
 function OrderRow({ order }) {
@@ -111,9 +119,9 @@ function OrderRow({ order }) {
         <span className={`topup-status-badge topup-status-badge--${status}`}>
           {order.status || "unknown"}
         </span>
-        {completedAt && (
+        {/* {completedAt && (
           <div className="topup-order-row-stamp">Completed: {completedAt}</div>
-        )}
+        )} */}
       </div>
     </div>
   );
@@ -349,15 +357,15 @@ function Home({
             <SectionTitle>Latest Orders</SectionTitle>
 
             <div
-              class="pointer-events-none mx-auto -mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
+              className="pointer-events-none mx-auto -mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
               aria-hidden="true"
             >
-              <span class="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-r from-transparent via-primary-400/50 to-primary-500/70"></span>
-              <span class="relative shrink-0">
-                <span class="absolute inset-0 scale-150 rounded-full bg-primary-500/20 blur-md"></span>
-                <span class="relative block h-1.5 w-10 rounded-full bg-gradient-to-r from-primary-400 via-primary-600 to-primary-400 shadow-[0_2px_14px_rgba(0,65,194,0.35)]"></span>
+              <span className="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-r from-transparent via-primary-400/50 to-primary-500/70"></span>
+              <span className="relative shrink-0">
+                <span className="absolute inset-0 scale-150 rounded-full bg-primary-500/20 blur-md"></span>
+                <span className="relative block h-1.5 w-10 rounded-full bg-gradient-to-r from-primary-400 via-primary-600 to-primary-400 shadow-[0_2px_14px_rgba(0,65,194,0.35)]"></span>
               </span>
-              <span class="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-l from-transparent via-primary-400/50 to-primary-500/70"></span>
+              <span className="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-l from-transparent via-primary-400/50 to-primary-500/70"></span>
             </div>
 
             <LatestOrdersUpdated orders={product_order} />

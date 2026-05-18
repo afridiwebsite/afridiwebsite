@@ -177,6 +177,7 @@ function SingleProductPage({ product }) {
               <div>
                 <img
                   src={imgPath(product?.image)}
+                  alt={product?.name || 'Product Image'}
                   className="w-full h-full object-cover mb-3"
                 />
               </div>

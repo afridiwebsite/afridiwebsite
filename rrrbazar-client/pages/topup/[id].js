@@ -921,7 +921,7 @@ function TopupOrderPage() {
                                 onClick={handleSubmit}
                                 type="submit"
                                 loading={isSubmitting}
-                                className="primary topup-buy-now px-10 py-3 text-md"
+                                className="primary topup-buy-now px-14 py-3 text-base"
                               >
                                 {selectedPaymentMethod === "auto_payment"
                                   ? "Pay Now"
