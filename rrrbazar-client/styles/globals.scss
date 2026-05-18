@@ -674,6 +674,14 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 12px 28px rgba(20, 30, 60, 0.12);
 }
+.topup-cta-bar--centered { justify-content: center; }
+// Lift the sticky CTA above the mobile app bar so the Buy Now button isn't
+// hidden behind it on small viewports.
+@media (max-width: 767px) {
+  body.has-mobile-appbar .topup-cta-bar {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
 .topup-cta-summary {
   display: flex;
   align-items: baseline;
@@ -1130,11 +1138,6 @@ body {
 // --- Home page polish (pages/index.js) ---
 .home-section-card {
   position: relative;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.home-section-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(20, 30, 60, 0.08);
 }
 .home-section-title {
   display: flex;
@@ -2055,22 +2058,20 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 6px;
   color: inherit;
   position: relative;
-  min-height: 120px;
 }
 
 // Foreground image column — sits above the bottom-row text. `flex: 1` so
 // it expands to fill any free vertical space between the row and the top
 // of the card.
 .topup-pack-card-img {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 56px;
-  max-height: 72px;
   overflow: hidden;
 }
 .topup-pack-card-img img {
@@ -2268,52 +2269,84 @@ body {
   transform: scale(1.08);
   outline: none;
 }
-.topup-pack-card-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: max-content;
-  max-width: 280px;
-  background: var(--theme-secondary, #1B2A4A);
-  color: #fff;
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 10px 12px;
-  border-radius: 10px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-4px);
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
-  pointer-events: none;
-  z-index: 30;
-  text-align: left;
+// Click-to-open description modal (replaces the old hover tooltip).
+.topup-desc-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: topup-desc-fade 0.16s ease;
 }
-.topup-pack-card-tooltip::before {
-  content: '';
-  position: absolute;
-  top: -5px;
-  right: 8px;
-  width: 10px;
-  height: 10px;
-  background: var(--theme-secondary, #1B2A4A);
-  transform: rotate(45deg);
+@keyframes topup-desc-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-.topup-pack-card-tooltip img {
+.topup-desc-modal-card {
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #1f2937;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.35);
+  animation: topup-desc-pop 0.18s ease;
+}
+@keyframes topup-desc-pop {
+  from { transform: translateY(8px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0)   scale(1);    opacity: 1; }
+}
+.topup-desc-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.topup-desc-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--theme-secondary, #1B2A4A);
+}
+.topup-desc-modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 0;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.topup-desc-modal-close:hover { background: #e2e8f0; color: #0f172a; }
+.topup-desc-modal-body {
+  padding: 16px 18px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  overflow: auto;
+}
+.topup-desc-modal-body img {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
-  margin: 4px 0;
+  border-radius: 8px;
+  margin: 6px 0;
 }
-.topup-pack-card-tooltip p { margin: 0 0 6px; }
-.topup-pack-card-tooltip p:last-child { margin-bottom: 0; }
-.topup-pack-card-info-wrap:hover .topup-pack-card-tooltip,
-.topup-pack-card-info:focus + .topup-pack-card-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0s;
-}
+.topup-desc-modal-body p { margin: 0 0 8px; }
+.topup-desc-modal-body p:last-child { margin-bottom: 0; }
 
 .topup-pack-card-name {
   font-size: 14px;
@@ -2537,20 +2570,24 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 .topup-order-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 18px;
+  padding: 18px 20px;
+  min-height: 76px;
   border-radius: 12px;
   background: #fff;
-  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e2e8f0;
+  border-bottom-width: 2px;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .topup-order-row:hover {
   background: #f8fafc;
   transform: translateY(-1px);
+  border-color: #cbd5e1;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 }
 .topup-order-row-avatar {
@@ -2632,25 +2669,46 @@ body {
   flex-shrink: 0;
 }
 .topup-order-row-product { font-weight: 700; color: #475569; }
-.topup-order-row-pack    { color: #334155; }
+.topup-order-row-pack    {
+  color: var(--theme-secondary, #1B2A4A);
+  font-weight: 700;
+  font-size: 13px;
+}
 .topup-order-row-player  { color: #94a3b8; }
+.topup-order-row-sep     { color: #94a3b8; }
+.topup-order-row-price   {
+  color: #16a34a;
+  font-weight: 800;
+}
 .topup-order-row-dot {
   width: 3px;
   height: 3px;
   border-radius: 9999px;
   background: #cbd5e1;
 }
+.topup-order-row-stamp {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
 .topup-order-row-side {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
-.topup-order-row-time {
-  font-size: 11px;
+
+.latest-orders-updated {
+  text-align: center;
+  margin: -16px 0 18px;
+  font-size: 12px;
   color: #94a3b8;
-  white-space: nowrap;
+}
+.latest-orders-updated span {
+  color: #ef4444;
+  font-weight: 700;
 }
 
 @media (max-width: 540px) {
@@ -3624,12 +3682,44 @@ body {
   margin-top: auto;
   color: rgba(255, 255, 255, 0.85);
   isolation: isolate;
-  background: var(--theme-secondary, #1B2A4A);
+  background: linear-gradient(
+    180deg,
+    var(--theme-secondary, #1B2A4A) 0%,
+    color-mix(in srgb, var(--theme-secondary, #1B2A4A) 78%, var(--theme-primary, #3856B5)) 55%,
+    var(--theme-secondary, #1B2A4A) 100%
+  );
+  overflow: hidden;
 }
-// Decorative blobs are kept in the DOM (Footer.js still renders them) but
-// hidden visually — the new flat look doesn't want the glow.
-.footer-decor { display: none; }
-.footer-blob { display: none; }
+// Decorative glow blobs — soft theme-tinted radial smears layered behind
+// the main footer content for depth.
+.footer-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.footer-blob {
+  position: absolute;
+  display: block;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.55;
+}
+.footer-blob-a {
+  top: -120px;
+  left: -80px;
+  width: 360px;
+  height: 360px;
+  background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.55);
+}
+.footer-blob-b {
+  bottom: -140px;
+  right: -100px;
+  width: 420px;
+  height: 420px;
+  background: rgba(var(--theme-accent-rgb, 77 103 216) / 0.45);
+}
 
 .footer-main {
   position: relative;
@@ -3866,6 +3956,88 @@ body {
     bottom: 14px;
     width: 52px;
     height: 52px;
+  }
+  // Lift the FAB above the mobile app bar only when the bar is mounted.
+  body.has-mobile-appbar .telegram-fab {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 14px);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Mobile bottom app bar — visible only under the md breakpoint. Pinned to
+// the viewport bottom so user-popover-style links stay one-tap away.
+.mobile-appbar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .mobile-appbar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    background: var(--theme-secondary, #1B2A4A);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.18);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mobile-appbar-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .mobile-appbar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 4px;
+    background: transparent;
+    border: 0;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+  .mobile-appbar-item:hover,
+  .mobile-appbar-item:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+  }
+  .mobile-appbar-item.is-active {
+    color: #38bdf8;
+  }
+  .mobile-appbar-item.is-active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 2px;
+    border-radius: 2px;
+    background: #38bdf8;
+  }
+  .mobile-appbar-item { position: relative; }
+  .mobile-appbar-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  // Pad the page only when the bar is actually mounted (logged-in users).
+  body.has-mobile-appbar {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }
 

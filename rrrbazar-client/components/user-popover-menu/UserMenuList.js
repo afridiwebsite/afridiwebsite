@@ -21,7 +21,7 @@ function UserMenuList({
     <div
       onClick={onClick && onClick}
       className={`flex items-center px-4 py-2.5 cursor-pointer select-none _subtitle2 text-gray-600 hover:bg-gray-50 duration-75 ${
-        route === link ? 'bg-primary-100/40 text-primary-500' : ''
+        route === link ? 'bg-sky-50 text-sky-600' : ''
       } ${className || ''}`}
     >
       {icon && <div className={`mr-2.5 ${iconClass || ''}`}>{icon}</div>}

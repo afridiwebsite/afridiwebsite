@@ -44,6 +44,8 @@ function TopupOrderPage() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [serverError, setServerError] = useState(null);
+  // Pack whose description modal is currently open. null = closed.
+  const [descPack, setDescPack] = useState(null);
   const { isAuth, updateAuthUserInfo, authUser } = useContext(globalContext);
   const router = useRouter();
   const product_id = router.query.id;
@@ -581,18 +583,13 @@ function TopupOrderPage() {
                                               type="button"
                                               className="topup-pack-card-info"
                                               aria-label="Package details"
-                                              tabIndex={0}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDescPack(pack);
+                                              }}
                                             >
                                               <FaInfo />
                                             </button>
-                                            <span
-                                              role="tooltip"
-                                              className="topup-pack-card-tooltip"
-                                            >
-                                              {ReactHtmlParser(
-                                                pack.description,
-                                              )}
-                                            </span>
                                           </span>
                                         )}
                                       </div>
@@ -762,7 +759,7 @@ function TopupOrderPage() {
                             </div>
 
                             <div className="order_box_body">
-                              <div className="flex w-full  max-w-[450px] gap-2">
+                              <div className="flex w-full max-w-[600px] gap-3">
                                 <button
                                   type="button"
                                   className={`topup-pay-card ${
@@ -878,21 +875,10 @@ function TopupOrderPage() {
                           {/* Show Error After Submit Form --End-- */}
 
                           <div
-                            className="topup-cta-bar animate-fade-in-up"
+                            className="topup-cta-bar topup-cta-bar--centered animate-fade-in-up"
                             style={{ animationDelay: "260ms" }}
                           >
-                            {values.selectedpackage && (
-                              <div className="topup-cta-summary">
-                                <span className="topup-cta-label">Total</span>
-                                <span className="topup-cta-amount">
-                                  ৳ {values.selectedpackage.price}
-                                </span>
-                                <span className="topup-cta-pack">
-                                  {values.selectedpackage.name}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-3 ml-auto">
+                            <div className="flex items-center gap-3">
                               {!isAuth && (
                                 <Link
                                   href={
@@ -935,9 +921,11 @@ function TopupOrderPage() {
                                 onClick={handleSubmit}
                                 type="submit"
                                 loading={isSubmitting}
-                                className="primary topup-buy-now"
+                                className="primary topup-buy-now px-10 py-3 text-md"
                               >
-                                Buy Now
+                                {selectedPaymentMethod === "auto_payment"
+                                  ? "Pay Now"
+                                  : "Buy Now"}
                               </Button>
                             </div>
                           </div>
@@ -988,6 +976,35 @@ function TopupOrderPage() {
             </>
           )}
         </div>
+        {descPack && (
+          <div
+            className="topup-desc-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${descPack.name} details`}
+            onClick={() => setDescPack(null)}
+          >
+            <div
+              className="topup-desc-modal-card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="topup-desc-modal-head">
+                <h4 className="topup-desc-modal-title">{descPack.name}</h4>
+                <button
+                  type="button"
+                  className="topup-desc-modal-close"
+                  aria-label="Close"
+                  onClick={() => setDescPack(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="topup-desc-modal-body">
+                {ReactHtmlParser(descPack.description)}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </>
   );

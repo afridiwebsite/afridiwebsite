@@ -13,6 +13,7 @@ import api, { getSiteSettings } from '../api/api';
 import { googleLogout } from '@react-oauth/google';
 import AuthGuard from '../components/AuthGuard';
 import Layout from '../components/layout/Layout';
+import MobileAppBar from '../components/MobileAppBar';
 import { __access_token_key, __user_key, __site_name_2, __site_name_label } from '../config/globalConfig';
 import routes from '../config/routes';
 import {
@@ -167,6 +168,7 @@ function MyApp({ Component, pageProps }) {
             ) : (
               <Component {...pageProps} />
             )}
+            <MobileAppBar />
           </Layout>
         </QueryClientProvider>
       </globalContext.Provider>

@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
-import moment from 'moment';
-import { Autoplay, Pagination } from 'swiper';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { BrowserView, MobileView } from 'react-device-detect';
-import { FaTelegramPlane, FaTimes } from 'react-icons/fa';
-import api from '../api/api';
-import ActivityIndicator from '../components/ActivityIndicator';
-import Game from '../components/game';
-import { hasData, imgPath } from '../helpers/helpers';
+import { useState, useEffect, useRef } from "react";
+import moment from "moment";
+import { Autoplay, Pagination } from "swiper";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { BrowserView, MobileView } from "react-device-detect";
+import { FaTelegramPlane, FaTimes } from "react-icons/fa";
+import api from "../api/api";
+import ActivityIndicator from "../components/ActivityIndicator";
+import Game from "../components/game";
+import { hasData, imgPath } from "../helpers/helpers";
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="home-section-title !text-3xl !mb-10">
+    <h3 className="home-section-title !text-3xl !mb-8">
       <span className="home-section-title-bar" aria-hidden="true" />
       <span>{children}</span>
       <span className="home-section-title-bar" aria-hidden="true" />
@@ -41,20 +41,30 @@ function CategorySection({ title, products }) {
   );
 }
 
+function formatOrderTime(value) {
+  if (!value) return "";
+  const m = moment(value);
+  return m.isValid() ? m.format("YYYY-MM-DD hh:mm A") : String(value);
+}
+
 function OrderRow({ order }) {
-  const status = String(order.status || '').toLowerCase().trim();
+  const status = String(order.status || "")
+    .toLowerCase()
+    .trim();
   // API now returns the order's User and TopupProduct as nested includes.
   const orderUser = order.User || order.user;
   const orderProduct = order.TopupProduct || order.product;
+  const orderPackage = order.TopupPackage || order.package;
+  const packLogo = orderPackage?.logo;
   const displayName =
     orderUser?.username ||
-    (orderUser?.email ? orderUser.email.split('@')[0] : 'Anonymous Player');
-  const initial = (displayName?.[0] || '?').toUpperCase();
-  const m = moment(order.created_at);
-  const timeLabel = m.isValid() ? m.fromNow() : order.created_at;
-  const timeAbs = m.isValid()
-    ? m.format('MMM D, YYYY · h:mm A')
-    : order.created_at;
+    (orderUser?.email ? orderUser.email.split("@")[0] : "Anonymous Player");
+  const initial = (displayName?.[0] || "?").toUpperCase();
+  const orderedAt = formatOrderTime(order.created_at);
+  const completedAt =
+    status === "completed"
+      ? formatOrderTime(order.updated_at || order.completed_at)
+      : "";
   return (
     <div className="topup-order-row animate-fade-in-up">
       <div className="topup-order-row-avatar">
@@ -64,8 +74,8 @@ function OrderRow({ order }) {
             alt=""
             referrerPolicy="no-referrer"
             onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement.classList.add('is-fallback');
+              e.currentTarget.style.display = "none";
+              e.currentTarget.parentElement.classList.add("is-fallback");
             }}
           />
         ) : null}
@@ -75,42 +85,57 @@ function OrderRow({ order }) {
       <div className="topup-order-row-main">
         <div className="topup-order-row-line">
           <span className="topup-order-row-user">{displayName}</span>
-          <span className="topup-order-row-id">#{order.id}</span>
         </div>
         <div className="topup-order-row-meta">
-          {orderProduct?.logo && (
+          {packLogo && (
             <img
               className="topup-order-row-product-logo"
-              src={imgPath(orderProduct.logo)}
+              src={imgPath(packLogo)}
               alt=""
             />
           )}
-          {orderProduct?.name && (
-            <>
-              <span className="topup-order-row-product">{orderProduct.name}</span>
-              <span className="topup-order-row-dot" />
-            </>
-          )}
           <span className="topup-order-row-pack">{order.name}</span>
-          {order.playerid && (
+          {order.amount != null && (
             <>
-              <span className="topup-order-row-dot" />
-              <span className="topup-order-row-player">ID: {order.playerid}</span>
+              <span className="topup-order-row-sep">-</span>
+              <span className="topup-order-row-price">{order.amount}৳</span>
             </>
           )}
         </div>
+        {orderedAt && (
+          <div className="topup-order-row-stamp">Ordered: {orderedAt}</div>
+        )}
       </div>
 
       <div className="topup-order-row-side">
         <span className={`topup-status-badge topup-status-badge--${status}`}>
-          <span className="topup-status-dot" aria-hidden="true" />
-          {order.status || 'unknown'}
+          {order.status || "unknown"}
         </span>
-        <span className="topup-order-row-time" title={timeAbs}>
-          {timeLabel}
-        </span>
+        {completedAt && (
+          <div className="topup-order-row-stamp">Completed: {completedAt}</div>
+        )}
       </div>
     </div>
+  );
+}
+
+// Small subtitle under "Latest Orders" — re-renders every minute so the
+// "X ago" stays fresh without a refetch.
+function LatestOrdersUpdated({ orders }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  const latest = (orders || []).reduce((acc, o) => {
+    const t = new Date(o.created_at).getTime();
+    return !isFinite(t) ? acc : Math.max(acc, t);
+  }, 0);
+  if (!latest) return null;
+  return (
+    <p className="latest-orders-updated">
+      Last updated <span>{moment(latest).fromNow()}</span>
+    </p>
   );
 }
 
@@ -133,7 +158,7 @@ function Home({
   const marqueeRef = useRef(null);
 
   useEffect(() => {
-    const closed = JSON.parse(localStorage.getItem('closed_notices') || '[]');
+    const closed = JSON.parse(localStorage.getItem("closed_notices") || "[]");
     setClosedNoticeIds(closed);
   }, []);
 
@@ -141,25 +166,32 @@ function Home({
     // Kick the marquee on every render where the element exists so it's
     // running by the time the user sees the page.
     const el = marqueeRef.current;
-    if (el && typeof el.start === 'function') {
-      try { el.start(); } catch (e) { /* old browsers may not support */ }
+    if (el && typeof el.start === "function") {
+      try {
+        el.start();
+      } catch (e) {
+        /* old browsers may not support */
+      }
     }
   });
 
   const handleCloseNotice = (id) => {
     const updated = [...closedNoticeIds, id];
     setClosedNoticeIds(updated);
-    localStorage.setItem('closed_notices', JSON.stringify(updated));
+    localStorage.setItem("closed_notices", JSON.stringify(updated));
   };
 
   const renderNotice = () => {
-    if (!Array.isArray(header_notice) || header_notice.length === 0) return null;
+    if (!Array.isArray(header_notice) || header_notice.length === 0)
+      return null;
 
-    const visibleNotices = header_notice.filter((n) => !closedNoticeIds.includes(n.id));
+    const visibleNotices = header_notice.filter(
+      (n) => !closedNoticeIds.includes(n.id),
+    );
     if (visibleNotices.length === 0) return null;
 
-    const marquees = visibleNotices.filter((n) => n.type === 'marquee');
-    const others = visibleNotices.filter((n) => n.type !== 'marquee');
+    const marquees = visibleNotices.filter((n) => n.type === "marquee");
+    const others = visibleNotices.filter((n) => n.type !== "marquee");
 
     return (
       <>
@@ -186,7 +218,9 @@ function Home({
                   </marquee>
                 </div>
                 <button
-                  onClick={() => marquees.forEach((m) => handleCloseNotice(m.id))}
+                  onClick={() =>
+                    marquees.forEach((m) => handleCloseNotice(m.id))
+                  }
                   className="home-notice-close"
                   aria-label="Close marquee"
                 >
@@ -197,7 +231,10 @@ function Home({
           </section>
         )}
         {others.map((n) => (
-          <section key={n.id} className="mb-2 md:my-3 home_slider_wrapper animate-fade-in">
+          <section
+            key={n.id}
+            className="mb-2 md:my-3 home_slider_wrapper animate-fade-in"
+          >
             <div className="container">
               <div className="home-notice">
                 <span className="home-notice-dot" aria-hidden="true" />
@@ -225,45 +262,45 @@ function Home({
         <section className="my-3 home_slider_wrapper">
           <div className="container">
             <div className="home-banner-wrap">
-             <Swiper
-              autoplay={{ delay: 3000 }}
-              loop={true}
-              modules={[Pagination, Autoplay]}
-              pagination={{
-                el: '.home-banner-dots',
-                clickable: true,
-                bulletClass: 'home-banner-dot',
-                bulletActiveClass: 'is-active',
-              }}
-              slidesPerView={1}
-              className="home-banner shadow-md"
-            >
-              {banners.map((banner, index) => (
-                <SwiperSlide key={index}>
-                  {banner.note === 'mobile' ? (
-                    <MobileView>
-                      <a href={banner.link} target="_blank" rel="noreferrer">
-                        <img
-                          src={imgPath(banner.banner)}
-                          alt={banner.note}
-                          className="w-full h-auto object-cover"
-                        />
-                      </a>
-                    </MobileView>
-                  ) : (
-                    <BrowserView>
-                      <a href={banner.link} target="_blank" rel="noreferrer">
-                        <img
-                          src={imgPath(banner.banner)}
-                          alt={banner.note}
-                          className="w-full h-auto object-cover"
-                        />
-                      </a>
-                    </BrowserView>
-                  )}
-                </SwiperSlide>
-              ))}
-            </Swiper>
+              <Swiper
+                autoplay={{ delay: 3000 }}
+                loop={true}
+                modules={[Pagination, Autoplay]}
+                pagination={{
+                  el: ".home-banner-dots",
+                  clickable: true,
+                  bulletClass: "home-banner-dot",
+                  bulletActiveClass: "is-active",
+                }}
+                slidesPerView={1}
+                className="home-banner shadow-md"
+              >
+                {banners.map((banner, index) => (
+                  <SwiperSlide key={index}>
+                    {banner.note === "mobile" ? (
+                      <MobileView>
+                        <a href={banner.link} target="_blank" rel="noreferrer">
+                          <img
+                            src={imgPath(banner.banner)}
+                            alt={banner.note}
+                            className="w-full h-auto object-cover"
+                          />
+                        </a>
+                      </MobileView>
+                    ) : (
+                      <BrowserView>
+                        <a href={banner.link} target="_blank" rel="noreferrer">
+                          <img
+                            src={imgPath(banner.banner)}
+                            alt={banner.note}
+                            className="w-full h-auto object-cover"
+                          />
+                        </a>
+                      </BrowserView>
+                    )}
+                  </SwiperSlide>
+                ))}
+              </Swiper>
               <div className="home-banner-dots" />
             </div>
           </div>
@@ -289,10 +326,7 @@ function Home({
       )}
 
       {!hasCategories && looseProducts.length === 0 && (
-        <CategorySection
-          title="BD Game Shop"
-          products={topup_products || []}
-        />
+        <CategorySection title="BD Game Shop" products={topup_products || []} />
       )}
 
       {/* Join Telegram CTA */}
@@ -313,6 +347,20 @@ function Home({
         <section className="container my-4 animate-fade-in mt-20">
           <div className="section-card home-section-card">
             <SectionTitle>Latest Orders</SectionTitle>
+
+            <div
+              class="pointer-events-none mx-auto -mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
+              aria-hidden="true"
+            >
+              <span class="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-r from-transparent via-primary-400/50 to-primary-500/70"></span>
+              <span class="relative shrink-0">
+                <span class="absolute inset-0 scale-150 rounded-full bg-primary-500/20 blur-md"></span>
+                <span class="relative block h-1.5 w-10 rounded-full bg-gradient-to-r from-primary-400 via-primary-600 to-primary-400 shadow-[0_2px_14px_rgba(0,65,194,0.35)]"></span>
+              </span>
+              <span class="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-l from-transparent via-primary-400/50 to-primary-500/70"></span>
+            </div>
+
+            <LatestOrdersUpdated orders={product_order} />
             <ul className="topup-orders-list">
               {product_order.slice(0, 12).map((po, i) => (
                 <li
@@ -341,7 +389,7 @@ export async function getServerSideProps(ctx) {
   let product_order = null;
 
   try {
-    const res = await api.get('/topup-products-with-categories');
+    const res = await api.get("/topup-products-with-categories");
     products_by_category = res?.data?.data?.categories || [];
     uncategorized = res?.data?.data?.uncategorized || [];
     topup_products = res?.data?.data?.products || [];
@@ -355,33 +403,33 @@ export async function getServerSideProps(ctx) {
   // show.
   if (!topup_products || topup_products.length === 0) {
     try {
-      const res2 = await api.get('/topupproduct');
+      const res2 = await api.get("/topupproduct");
       topup_products = res2?.data?.data || [];
-      
-      console.log(topup_products)
+
+      console.log(topup_products);
     } catch (e) {
       topup_products = topup_products || [];
     }
   }
 
   try {
-    const bannerRes = await api.get('/banner');
+    const bannerRes = await api.get("/banner");
     banners = bannerRes?.data?.data;
   } catch (error) {
     banners = null;
   }
 
   try {
-    const headerNotice = await api.get('/notice-header');
-  
+    const headerNotice = await api.get("/notice-header");
+
     header_notice = headerNotice?.data?.data;
-    console.log(header_notice,'dsd')
+    console.log(header_notice, "dsd");
   } catch (error) {
     header_notice = null;
   }
 
   try {
-    const res = await api.get('/product-orders');
+    const res = await api.get("/product-orders");
     product_order = res?.data?.data;
   } catch (error) {
     product_order = null;

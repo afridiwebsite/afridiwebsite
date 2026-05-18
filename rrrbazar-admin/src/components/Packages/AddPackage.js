@@ -9,6 +9,7 @@ import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import useGet from '../../hooks/useGet';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
+import { draftToHTMLConfig } from '../../utils/draftEditor.utils';
 import Loader from '../Loader/Loader';
 
 function AddPackage(props) {
@@ -61,7 +62,7 @@ function AddPackage(props) {
             in_stock: in_stock.current.checked ? 1 : 0,
             order_once: order_once.current?.checked ? 1 : 0,
             bot_url: bot_url.current?.value || '',
-            description: convertToHTML(editorState.getCurrentContent()),
+            description: convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent()),
         }).then(res => {
             toast.success('Topup package created successfully', toastDefault)
 
@@ -122,7 +123,7 @@ function AddPackage(props) {
                                         </div>
                                         <div>
                                             <label htmlFor="logo">Logo</label>
-                                            <input ref={logo} id="logo" className="form_input" type="file" required onChange={e => setPaymentLogo(e.target.files[0])} />
+                                            <input ref={logo} id="logo" className="form_input" type="file" onChange={e => setPaymentLogo(e.target.files[0])} />
                                         </div>
                                     </div>
 

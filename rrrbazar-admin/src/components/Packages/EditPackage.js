@@ -9,6 +9,7 @@ import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import useGet from '../../hooks/useGet';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
+import { draftToHTMLConfig, draftFromHTMLConfig } from '../../utils/draftEditor.utils';
 import Loader from '../Loader/Loader';
 
 function EditPackage(props) {
@@ -40,7 +41,7 @@ function EditPackage(props) {
     useEffect(() => {
         if (data?.description) {
             setEditorState(
-                EditorState.createWithContent(convertFromHTML(data.description))
+                EditorState.createWithContent(convertFromHTML(draftFromHTMLConfig)(data.description))
             );
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,7 +70,7 @@ function EditPackage(props) {
             in_stock: in_stock.current.checked ? 1 : 0,
             order_once: order_once.current?.checked ? 1 : 0,
             bot_url: bot_url.current?.value || '',
-            description: convertToHTML(editorState.getCurrentContent()),
+            description: convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent()),
         }).then(res => {
             toast.success('Topup package updated successfully', toastDefault)
 
