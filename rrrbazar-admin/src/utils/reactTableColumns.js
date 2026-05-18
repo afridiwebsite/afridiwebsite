@@ -55,8 +55,33 @@ export const ordersTableColumns = [
         accessor: 'amount',
     },
     {
-        Header: 'uc',
+        // "UC" column. For voucher-pool orders the allocated voucher code
+        // lives on the joined Voucher row, so render that first and fall
+        // back to the legacy `uc` field (UniPin / bot path).
+        Header: 'UC / Voucher',
         accessor: 'uc',
+        Cell: (e) => {
+            const row = e.row.original;
+            const voucher = row?.Voucher?.data || row?.voucher?.data;
+            if (voucher) {
+                return (
+                    <span
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold text-xs font-mono cursor-pointer hover:bg-green-200 max-w-[220px] truncate"
+                        title="Click to copy voucher"
+                        onClick={() => {
+                            navigator.clipboard.writeText(String(voucher));
+                            toast.info(`Copied voucher: ${voucher}`, toastDefault);
+                        }}
+                    >
+                        {voucher}
+                    </span>
+                );
+            }
+            const uc = row?.uc;
+            if (uc === null || uc === undefined || uc === '')
+                return <span className="text-gray-400">---</span>;
+            return uc;
+        },
     },
     {
         Header: 'Created at',

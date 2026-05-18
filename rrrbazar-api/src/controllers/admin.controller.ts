@@ -28,6 +28,7 @@ const {
   AutoServer,
   CoinTransaction,
   OrderComment,
+  Voucher,
 } = Schema;
 
 // Crude HTML → plaintext for the saved-comment picker. Doesn't try to be
@@ -80,7 +81,24 @@ class AdminController {
       }
 
       if (uc) {
-        filter.uc = { [Op.like]: `%${uc}%` }
+        // Match either the legacy `Order.uc` field OR a voucher code on the
+        // joined Voucher table. Pre-resolving the matching voucher order_ids
+        // keeps the filter compatible with `Order.count` (which can't OR
+        // across joined columns directly).
+        const voucherOrderIds = (
+          await Voucher.findAll({
+            where: { data: { [Op.like]: `%${uc}%` } },
+            attributes: ['order_id'],
+            raw: true,
+          })
+        )
+          .map((v: any) => v.order_id)
+          .filter((id: any) => id != null);
+        const orClauses: any[] = [{ uc: { [Op.like]: `%${uc}%` } }];
+        if (voucherOrderIds.length) {
+          orClauses.push({ id: { [Op.in]: voucherOrderIds } });
+        }
+        filter[Op.or] = orClauses;
       }
 
       // Qualify with `Order` so MySQL doesn't see the joined Admin.status / id
@@ -105,7 +123,14 @@ class AdminController {
           {
             model: Admin,
             attributes: ['first_name', 'last_name']
-          }
+          },
+          {
+            // Voucher (when allocated for is_voucher products) — surfaced
+            // in the admin orders table so it can be shown in the UC column.
+            model: Voucher,
+            required: false,
+            attributes: ['id', 'data'],
+          },
         ]
       })
 
