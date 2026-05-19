@@ -81,10 +81,11 @@ class AdminController {
       }
 
       if (uc) {
-        // Match either the legacy `Order.uc` field OR a voucher code on the
-        // joined Voucher table. Pre-resolving the matching voucher order_ids
-        // keeps the filter compatible with `Order.count` (which can't OR
-        // across joined columns directly).
+        // Single search box on the admin orders page: matches the legacy
+        // `Order.uc` field, the `Order.playerid` field, OR a voucher code
+        // on the joined Voucher table. Pre-resolving the matching voucher
+        // order_ids keeps the filter compatible with `Order.count` (which
+        // can't OR across joined columns directly).
         const voucherOrderIds = (
           await Voucher.findAll({
             where: { data: { [Op.like]: `%${uc}%` } },
@@ -94,7 +95,10 @@ class AdminController {
         )
           .map((v: any) => v.order_id)
           .filter((id: any) => id != null);
-        const orClauses: any[] = [{ uc: { [Op.like]: `%${uc}%` } }];
+        const orClauses: any[] = [
+          { uc: { [Op.like]: `%${uc}%` } },
+          { playerid: { [Op.like]: `%${uc}%` } },
+        ];
         if (voucherOrderIds.length) {
           orClauses.push({ id: { [Op.in]: voucherOrderIds } });
         }

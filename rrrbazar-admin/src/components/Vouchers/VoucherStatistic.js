@@ -82,7 +82,7 @@ export default function VoucherStatistic() {
                     <h4 className="text-base font-bold text-gray-800">
                       {group.product_name}
                     </h4>
-                    <div className="flex gap-2 text-xs">
+                    {/* <div className="flex gap-2 text-xs">
                       <span className="px-2 py-0.5 rounded bg-gray-100">
                         Total: <strong>{group.totals.total}</strong>
                       </span>
@@ -92,7 +92,7 @@ export default function VoucherStatistic() {
                       <span className="px-2 py-0.5 rounded bg-red-100 text-red-700">
                         Used: <strong>{group.totals.used}</strong>
                       </span>
-                    </div>
+                    </div> */}
                   </div>
 
                   <div className="overflow-auto">

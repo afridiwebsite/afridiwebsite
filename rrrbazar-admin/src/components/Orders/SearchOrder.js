@@ -67,47 +67,70 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
 
 
     return (
-        <form onSubmit={submitHandler} >
-            <div className="flex w-full md:w-auto items-center gap-2 md:gap-3 justify-end flex-wrap">
-                <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
-                    <input type="text" placeholder="User id" className="form_input mb-0"
-                        onChange={(e) => {
-                            clearTimeout(typingTimer);
-                            const value = e.target.value
-                            typingTimer = setTimeout(() => setUserId(value), value ? doneTypingInterval : 0);
-                        }}
+        <form onSubmit={submitHandler}>
+            <div className="flex flex-col gap-2 md:gap-3 w-full md:w-auto">
+                {/* Row 1 — User id, Order id, Status. */}
+                <div className="flex w-full items-center gap-2 md:gap-3 justify-end flex-wrap">
+                    <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
+                        <input
+                            type="text"
+                            placeholder="User id"
+                            className="form_input mb-0"
+                            onChange={(e) => {
+                                clearTimeout(typingTimer);
+                                const value = e.target.value;
+                                typingTimer = setTimeout(
+                                    () => setUserId(value),
+                                    value ? doneTypingInterval : 0,
+                                );
+                            }}
+                        />
+                    </div>
+                    <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
+                        <input
+                            type="text"
+                            placeholder="Order id"
+                            className="form_input mb-0"
+                            onChange={(e) => {
+                                clearTimeout(typingTimer);
+                                const value = e.target.value;
+                                typingTimer = setTimeout(
+                                    () => setOrderId(value),
+                                    value ? doneTypingInterval : 0,
+                                );
+                            }}
+                        />
+                    </div>
+                    <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
+                        <Select
+                            placeholder="Select status"
+                            isSearchable={false}
+                            isClearable={true}
+                            options={colourOptions}
+                            onChange={(e) => setOrderStatus(e?.value || null)}
+                        />
+                    </div>
+                </div>
 
-                    />
+                {/* Row 2 — combined UC / player id search. The backend `uc`
+                    filter now matches either column (or a voucher code). */}
+                <div className="flex w-full items-center gap-2 md:gap-3 justify-end flex-wrap">
+                    <div className="flex-1 min-w-0 md:flex-none md:w-[320px]">
+                        <input
+                            type="text"
+                            placeholder="UC code or Player ID"
+                            className="form_input mb-0"
+                            onChange={(e) => {
+                                clearTimeout(typingTimer);
+                                const value = e.target.value;
+                                typingTimer = setTimeout(
+                                    () => setUc(value),
+                                    value ? doneTypingInterval : 0,
+                                );
+                            }}
+                        />
+                    </div>
                 </div>
-                <div className="flex-1 min-w-0 md:flex-none md:w-[200px]">
-                    <input type="text" placeholder="Order id" className="form_input mb-0" onChange={(e) => {
-                        clearTimeout(typingTimer);
-                        const value = e.target.value
-                        typingTimer = setTimeout(() => setOrderId(value), value ? doneTypingInterval : 0);
-                    }} />
-                </div>
-                <div className="flex-1 min-w-0 md:flex-none md:w-[160px]">
-                    <input
-                        type="text"
-                        placeholder="UC code"
-                        className="form_input mb-0"
-                        onChange={(e) => {
-                            clearTimeout(typingTimer);
-                            const value = e.target.value
-                            typingTimer = setTimeout(() => setUc(value), value ? doneTypingInterval : 0);
-                        }}
-                    />
-                </div>
-                <div className="w-full md:w-[150px]">
-                    <Select
-                        placeholder="Select status"
-                        isSearchable={false}
-                        isClearable={true}
-                        options={colourOptions}
-                        onChange={(e) => setOrderStatus(e?.value || null)}
-                    />
-                </div>
-                {/* <button type="submit" className="cstm_btn !py-1.5">Search</button> */}
             </div>
         </form>
     )
