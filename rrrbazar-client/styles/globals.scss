@@ -3977,9 +3977,9 @@ body {
     right: 0;
     bottom: 0;
     z-index: 70;
-    background: var(--theme-secondary, #1B2A4A);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.18);
+    background: #ffffff;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.05);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .mobile-appbar-list {
@@ -3987,7 +3987,7 @@ body {
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   .mobile-appbar-item {
     display: flex;
@@ -4000,7 +4000,7 @@ body {
     padding: 8px 4px;
     background: transparent;
     border: 0;
-    color: rgba(255, 255, 255, 0.65);
+    color: #64748b;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -4010,12 +4010,12 @@ body {
   }
   .mobile-appbar-item:hover,
   .mobile-appbar-item:focus-visible {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--theme-primary, #38bdf8);
+    background: rgba(var(--theme-primary-rgb), 0.06);
     outline: none;
   }
   .mobile-appbar-item.is-active {
-    color: #38bdf8;
+    color: var(--theme-primary, #38bdf8);
   }
   .mobile-appbar-item.is-active::before {
     content: '';
@@ -4026,7 +4026,7 @@ body {
     width: 24px;
     height: 2px;
     border-radius: 2px;
-    background: #38bdf8;
+    background: var(--theme-primary, #38bdf8);
   }
   .mobile-appbar-item { position: relative; }
   .mobile-appbar-item span {

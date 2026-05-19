@@ -425,206 +425,211 @@ function TopupOrderPage() {
                           )}
 
                           {/* Select Recharge --Start-- */}
-                          {hasPackages && (() => {
-                            const selectedCoin = Number(
-                              values.selectedpackage?.coin_value || 0,
-                            );
-                            return (
-                            <div
-                              className="_order_box_wrapper animate-fade-in-up"
-                              style={{ animationDelay: "80ms" }}
-                            >
-                              <div className="_order_box_header">
-                                <div className="_order_header_step_circle">
-                                  {rechargeStep}
-                                </div>
-                                <h5 className="_order_header_title">
-                                  Select Recharge
-                                </h5>
-                                {/* Coin reward only surfaces here when a
+                          {hasPackages &&
+                            (() => {
+                              const selectedCoin = Number(
+                                values.selectedpackage?.coin_value || 0,
+                              );
+                              return (
+                                <div
+                                  className="_order_box_wrapper animate-fade-in-up"
+                                  style={{ animationDelay: "80ms" }}
+                                >
+                                  <div className="_order_box_header">
+                                    <div className="_order_header_step_circle">
+                                      {rechargeStep}
+                                    </div>
+                                    <h5 className="_order_header_title">
+                                      Select Recharge
+                                    </h5>
+                                    {/* Coin reward only surfaces here when a
                                     package is selected — pulled out of the
                                     cards so they stay clean. */}
-                                {selectedCoin > 0 && (
-                                  <span className="topup-pack-header-coin">
-                                    <GiTwoCoins /> +{selectedCoin} coins
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="order_box_body">
-                                {productInfo?.is_offer == 1 && (
-                                  <div className="topup-stock-badge animate-fade-in">
-                                    <span
-                                      className="topup-stock-dot"
-                                      aria-hidden="true"
-                                    />
-                                    Available Stock:{" "}
-                                    <strong>{productInfo?.offer_items}</strong>
+                                    {selectedCoin > 0 && (
+                                      <span className="topup-pack-header-coin">
+                                        <GiTwoCoins /> +{selectedCoin} coins
+                                      </span>
+                                    )}
                                   </div>
-                                )}
 
-                                <div className="topup-pack-grid">
-                                  {/* Single Recharge --Start-- */}
-                                  {packages.map((pack, index) => {
-                                    const outOfStock =
-                                      parseInt(pack?.in_stock) === 0;
-                                    const alreadyOrdered =
-                                      pack?.order_once == 1 &&
-                                      orderedOnceIds.has(Number(pack?.id));
-                                    const isDisabled =
-                                      outOfStock || alreadyOrdered;
-                                    const isSelected =
-                                      parseInt(selectedPackage) === index;
-                                    const packCoin = Number(
-                                      pack?.coin_value || 0,
-                                    );
-                                    const hasPackDescription =
-                                      !!pack?.description
-                                        ?.replace(/<[^>]*>/g, "")
-                                        .replace(/&nbsp;/gi, "")
-                                        .trim();
-                                    return (
-                                      <div
-                                        key={index}
-                                        className={`topup-pack-card animate-fade-in-up ${
-                                          isSelected ? "is-selected" : ""
-                                        } ${isDisabled ? "is-out" : ""} ${
-                                          alreadyOrdered ? "is-claimed" : ""
-                                        } ${
-                                          isPackageIdError && !isSelected
-                                            ? "is-error"
-                                            : ""
-                                        }`}
-                                        style={{
-                                          animationDelay: `${
-                                            Math.min(index, 10) * 50
-                                          }ms`,
-                                        }}
-                                      >
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (isDisabled) return;
-                                            setSelectedPackage(index);
-                                            setFieldValue(
-                                              "selectedpackage",
-                                              pack,
-                                            );
-                                            setSelectedPaymentMethod("pay");
-                                            setFieldValue(
-                                              "payment_mathod",
-                                              "pay",
-                                            );
-                                          }}
-                                          disabled={isDisabled}
-                                          className="topup-pack-card-btn h-full"
-                                        >
-                                          {outOfStock && (
-                                            <span className="topup-pack-card-stock">
-                                              Out of stock
-                                            </span>
-                                          )}
-                                          {!outOfStock && alreadyOrdered && (
-                                            <span className="topup-pack-card-stock topup-pack-card-stock--claimed">
-                                              Already claimed
-                                            </span>
-                                          )}
-                                          {isSelected && (
-                                            <span
-                                              className="topup-pack-card-check"
-                                              aria-hidden="true"
+                                  <div className="order_box_body">
+                                    {productInfo?.is_offer == 1 && (
+                                      <div className="topup-stock-badge animate-fade-in">
+                                        <span
+                                          className="topup-stock-dot"
+                                          aria-hidden="true"
+                                        />
+                                        Available Stock:{" "}
+                                        <strong>
+                                          {productInfo?.offer_items}
+                                        </strong>
+                                      </div>
+                                    )}
+
+                                    <div className="topup-pack-grid">
+                                      {/* Single Recharge --Start-- */}
+                                      {packages.map((pack, index) => {
+                                        const outOfStock =
+                                          parseInt(pack?.in_stock) === 0;
+                                        const alreadyOrdered =
+                                          pack?.order_once == 1 &&
+                                          orderedOnceIds.has(Number(pack?.id));
+                                        const isDisabled =
+                                          outOfStock || alreadyOrdered;
+                                        const isSelected =
+                                          parseInt(selectedPackage) === index;
+                                        const packCoin = Number(
+                                          pack?.coin_value || 0,
+                                        );
+                                        const hasPackDescription =
+                                          !!pack?.description
+                                            ?.replace(/<[^>]*>/g, "")
+                                            .replace(/&nbsp;/gi, "")
+                                            .trim();
+                                        return (
+                                          <div
+                                            key={index}
+                                            className={`topup-pack-card animate-fade-in-up ${
+                                              isSelected ? "is-selected" : ""
+                                            } ${isDisabled ? "is-out" : ""} ${
+                                              alreadyOrdered ? "is-claimed" : ""
+                                            } ${
+                                              isPackageIdError && !isSelected
+                                                ? "is-error"
+                                                : ""
+                                            }`}
+                                            style={{
+                                              animationDelay: `${
+                                                Math.min(index, 10) * 50
+                                              }ms`,
+                                            }}
+                                          >
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (isDisabled) return;
+                                                setSelectedPackage(index);
+                                                setFieldValue(
+                                                  "selectedpackage",
+                                                  pack,
+                                                );
+                                                setSelectedPaymentMethod("pay");
+                                                setFieldValue(
+                                                  "payment_mathod",
+                                                  "pay",
+                                                );
+                                              }}
+                                              disabled={isDisabled}
+                                              className="topup-pack-card-btn h-full"
                                             >
-                                              ✓
-                                            </span>
-                                          )}
-                                          {/* Foreground image column — sits
+                                              {outOfStock && (
+                                                <span className="topup-pack-card-stock">
+                                                  Out of stock
+                                                </span>
+                                              )}
+                                              {!outOfStock &&
+                                                alreadyOrdered && (
+                                                  <span className="topup-pack-card-stock topup-pack-card-stock--claimed">
+                                                    Already claimed
+                                                  </span>
+                                                )}
+                                              {isSelected && (
+                                                <span
+                                                  className="topup-pack-card-check"
+                                                  aria-hidden="true"
+                                                >
+                                                  ✓
+                                                </span>
+                                              )}
+                                              {/* Foreground image column — sits
                                               above the bottom-row text. Falls
                                               back to a text-only placeholder
                                               (product's first name) so cards
                                               keep the same shape even when a
                                               package has no logo. */}
-                                          {pack?.logo ? (
-                                            <span
-                                              className="topup-pack-card-img"
-                                              aria-hidden="true"
-                                            >
-                                              <img
-                                                src={imgPath(pack.logo)}
-                                                alt=""
-                                              />
-                                            </span>
-                                          ) : (
-                                            <span
-                                              className="topup-pack-card-img is-placeholder"
-                                              aria-hidden="true"
-                                            >
-                                              {(
-                                                String(pack?.name || "?").trim()
-                                                  .charAt(0) || "?"
-                                              ).toUpperCase()}
-                                            </span>
-                                          )}
-                                          {/* Single bottom row: name + price
+                                              {pack?.logo ? (
+                                                <span
+                                                  className="topup-pack-card-img"
+                                                  aria-hidden="true"
+                                                >
+                                                  <img
+                                                    src={imgPath(pack.logo)}
+                                                    alt=""
+                                                  />
+                                                </span>
+                                              ) : (
+                                                <span
+                                                  className="topup-pack-card-img is-placeholder"
+                                                  aria-hidden="true"
+                                                >
+                                                  {(
+                                                    String(pack?.name || "?")
+                                                      .trim()
+                                                      .charAt(0) || "?"
+                                                  ).toUpperCase()}
+                                                </span>
+                                              )}
+                                              {/* Single bottom row: name + price
                                               side by side. No coin reward
                                               badge — that surfaces in the
                                               section header on selection. */}
-                                          <span className="topup-pack-card-row">
-                                            <span className="topup-pack-card-name">
-                                              {pack?.name}
-                                            </span>
-                                            <span className="topup-pack-card-price">
-                                              ৳ {pack?.price}
-                                            </span>
-                                          </span>
-                                        </button>
-                                        {hasPackDescription && (
-                                          <span className="topup-pack-card-info-wrap">
-                                            <button
-                                              type="button"
-                                              className="topup-pack-card-info"
-                                              aria-label="Package details"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setDescPack(pack);
-                                              }}
-                                            >
-                                              <FaInfo />
+                                              <span className="topup-pack-card-row">
+                                                <span className="topup-pack-card-name">
+                                                  {pack?.name}
+                                                </span>
+                                                <span className="topup-pack-card-price">
+                                                  ৳ {pack?.price}
+                                                </span>
+                                              </span>
                                             </button>
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                  {/* Single Recharge --End-- */}
+                                            {hasPackDescription && (
+                                              <span className="topup-pack-card-info-wrap">
+                                                <button
+                                                  type="button"
+                                                  className="topup-pack-card-info"
+                                                  aria-label="Package details"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDescPack(pack);
+                                                  }}
+                                                >
+                                                  <FaInfo />
+                                                </button>
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                      {/* Single Recharge --End-- */}
+                                    </div>
+                                    <FormikErrorMessage name="selectedpackage" />
+                                    <FormikErrorMessage
+                                      showError={
+                                        isNotEnoughMoney &&
+                                        selectedPaymentMethod != "auto_payment"
+                                      }
+                                      msg={
+                                        <p>
+                                          You do not have enough money to order
+                                          this package, Please{" "}
+                                          {
+                                            <Link
+                                              href={
+                                                routes.addMoney.name +
+                                                addRedirectQuery(router)
+                                              }
+                                            >
+                                              <a className="_link">Add Money</a>
+                                            </Link>
+                                          }{" "}
+                                          or choose another package.
+                                        </p>
+                                      }
+                                    />
+                                  </div>
                                 </div>
-                                <FormikErrorMessage name="selectedpackage" />
-                                <FormikErrorMessage
-                                  showError={
-                                    isNotEnoughMoney &&
-                                    selectedPaymentMethod != "auto_payment"
-                                  }
-                                  msg={
-                                    <p>
-                                      You do not have enough money to order this
-                                      package, Please{" "}
-                                      {
-                                        <Link
-                                          href={
-                                            routes.addMoney.name +
-                                            addRedirectQuery(router)
-                                          }
-                                        >
-                                          <a className="_link">Add Money</a>
-                                        </Link>
-                                      }{" "}
-                                      or choose another package.
-                                    </p>
-                                  }
-                                />
-                              </div>
-                            </div>
-                            );
-                          })()}
+                              );
+                            })()}
                           {/* Select Recharge --End-- */}
 
                           {/* Account Info Form --Start-- */}
@@ -779,7 +784,7 @@ function TopupOrderPage() {
                                 >
                                   <div className="topup-pay-card-body">
                                     <img
-                                      src="/logo.png"
+                                      src="/logo.jpeg"
                                       alt=""
                                       className="topup-pay-card-img"
                                     />

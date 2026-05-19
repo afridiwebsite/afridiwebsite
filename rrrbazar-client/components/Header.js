@@ -242,49 +242,55 @@ function Header() {
             {/* Nav --Start-- */}
             <nav className="hidden md:block">
               <ul className="flex items-center justify-end gap-2">
-                {mounted && navlinks.map((navLink, index) => {
-                  const { disabled_for_desktop, component, text, link, auth } =
-                    navLink;
+                {mounted &&
+                  navlinks.map((navLink, index) => {
+                    const {
+                      disabled_for_desktop,
+                      component,
+                      text,
+                      link,
+                      auth,
+                    } = navLink;
 
-                  if (disabled_for_desktop) return null;
-                  if (auth !== undefined && auth !== isAuth) return null;
+                    if (disabled_for_desktop) return null;
+                    if (auth !== undefined && auth !== isAuth) return null;
 
-                  // Skip login/register/user-menu as we handle them separately now
-                  if (
-                    link === routes.login.name ||
-                    link === routes.register.name ||
-                    text === "Login" ||
-                    text === "Register"
-                  )
+                    // Skip login/register/user-menu as we handle them separately now
+                    if (
+                      link === routes.login.name ||
+                      link === routes.register.name ||
+                      text === "Login" ||
+                      text === "Register"
+                    )
+                      return null;
+                    if (navLink.isUserMenu) return null;
+
+                    if (component) return <li key={index}>{component}</li>;
+                    if (text && link)
+                      return (
+                        <li key={index}>
+                          <Link href={link || "#"}>
+                            <a
+                              className={`_body2 font-semibold text-gray-500 hover:text-primary-600 duration-150 ${
+                                router.route === link ? "text-primary-600" : ""
+                              }`}
+                            >
+                              {text}
+                            </a>
+                          </Link>
+                        </li>
+                      );
+
                     return null;
-                  if (navLink.isUserMenu) return null;
-
-                  if (component) return <li key={index}>{component}</li>;
-                  if (text && link)
-                    return (
-                      <li key={index}>
-                        <Link href={link || "#"}>
-                          <a
-                            className={`_body2 font-semibold text-gray-500 hover:text-primary-600 duration-150 ${
-                              router.route === link ? "text-primary-600" : ""
-                            }`}
-                          >
-                            {text}
-                          </a>
-                        </Link>
-                      </li>
-                    );
-
-                  return null;
-                })}
+                  })}
               </ul>
             </nav>
             {/* Nav --End-- */}
 
             {/* User Avatar or hamburger menu --Start-- */}
             <div className="flex items-center gap-2 md:gap-3 min-h-[40px]">
-              {mounted && (
-                isAuth ? (
+              {mounted &&
+                (isAuth ? (
                   <>
                     {/* Wallet pill — links to Add Money */}
                     <Link href={routes.addMoney.name}>
@@ -318,8 +324,7 @@ function Header() {
                       </a>
                     </Link>
                   </div>
-                )
-              )}
+                ))}
             </div>
             {/* User Avatar or hamburger menu --End-- */}
           </div>

@@ -214,7 +214,7 @@ function LoginPage() {
         <header className="login-logo-bar">
           <Link href="/">
             <a aria-label="Go to home">
-              <img src="/logo.png" alt="Logo" className="login-logo" />
+              <img src="/logo.jpeg" alt="Logo" className="login-logo" />
             </a>
           </Link>
         </header>

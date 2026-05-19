@@ -169,19 +169,6 @@ function Footer() {
         </div>
       </div>
 
-      {/* Floating Telegram FAB — always visible on the storefront. */}
-      {telegramLink && (
-        <a
-          href={telegramLink}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Chat on Telegram"
-          className="telegram-fab"
-        >
-          <FaTelegramPlane size={26} />
-          <span className="telegram-fab-pulse" aria-hidden="true" />
-        </a>
-      )}
     </footer>
   );
 }

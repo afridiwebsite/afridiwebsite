@@ -3,46 +3,64 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
   AiOutlineDollarCircle,
-  AiOutlinePoweroff,
-  AiOutlineTransaction,
+  AiOutlineHome,
   AiOutlineUser,
 } from 'react-icons/ai';
 import { GiShoppingCart } from 'react-icons/gi';
 import { MdBorderAll } from 'react-icons/md';
+import { FaTelegramPlane } from 'react-icons/fa';
 import routes from '../config/routes';
 import { globalContext } from '../pages/_app';
 
-// Mobile-only bottom app bar. Mirrors the items from the desktop user
-// popover so logged-in users get one-tap access on phones.
+// Build a t.me link from an admin-provided value.
+function buildTelegramLink(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const stripped = raw.replace(/^@/, '');
+  const digits = stripped.replace(/[^0-9]/g, '');
+  const looksLikePhone = /^\+?\d[\d\s-]*$/.test(stripped);
+  if (looksLikePhone && digits) return `https://t.me/+${digits}`;
+  return `https://t.me/${stripped}`;
+}
+
+// Mobile-only bottom app bar. Always visible on mobile to provide
+// consistent navigation and support access.
 function MobileAppBar() {
   const router = useRouter();
-  const { isAuth, signOut } = useContext(globalContext) || {};
+  const { isAuth, siteSettings } = useContext(globalContext) || {};
 
-  // Toggle a body class so the CSS can shift the Telegram FAB upward and add
-  // page padding only when the bar is actually rendered.
+  // Toggle a body class so the CSS can add page padding on mobile.
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    if (isAuth) document.body.classList.add('has-mobile-appbar');
-    else document.body.classList.remove('has-mobile-appbar');
+    document.body.classList.add('has-mobile-appbar');
     return () => document.body.classList.remove('has-mobile-appbar');
-  }, [isAuth]);
+  }, []);
 
-  if (!isAuth) return null;
+  const telegramRaw = siteSettings?.telegram_number || '';
+  const telegramLink = buildTelegramLink(telegramRaw);
 
-  const items = [
-    { href: routes.profile.name, label: 'Profile', icon: AiOutlineUser },
-    { href: routes.addMoney.name, label: 'Wallet', icon: AiOutlineDollarCircle },
-    { href: routes.myOrder.name, label: 'Orders', icon: MdBorderAll },
-    { href: routes.myTransaction.name, label: 'Txns', icon: AiOutlineTransaction },
-    { href: routes.spin.name, label: 'Spin', icon: GiShoppingCart },
-  ];
+  const items = isAuth
+    ? [
+        { href: '/', label: 'Home', icon: AiOutlineHome },
+        { href: routes.profile.name, label: 'Profile', icon: AiOutlineUser },
+        
+        { href: routes.myOrder.name, label: 'Orders', icon: MdBorderAll },
+        { href: routes.spin.name, label: 'Spin', icon: GiShoppingCart },
+      ]
+    : [
+        { href: '/', label: 'Home', icon: AiOutlineHome },
+        { href: routes.shop.name, label: 'Shop', icon: GiShoppingCart },
+        { href: routes.tournament.name, label: 'Play', icon: MdBorderAll },
+   
+        { href: routes.login.name, label: 'Login', icon: AiOutlineUser },
+      ];
 
   // Pick the single best-matching item: the one whose href is the longest
-  // prefix of the current pathname. This avoids "Profile" lighting up at the
-  // same time as "Orders" or "Txns" on /profile/order, /profile/transaction.
+  // prefix of the current pathname.
   const activeHref = items
-    .filter(({ href }) =>
-      router.pathname === href || router.pathname.startsWith(href + '/'),
+    .filter(
+      ({ href }) =>
+        router.pathname === href || router.pathname.startsWith(href + '/'),
     )
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
@@ -54,7 +72,9 @@ function MobileAppBar() {
           return (
             <li key={href}>
               <Link href={href}>
-                <a className={`mobile-appbar-item ${isActive ? 'is-active' : ''}`}>
+                <a
+                  className={`mobile-appbar-item ${isActive ? 'is-active' : ''}`}
+                >
                   <Icon size={20} />
                   <span>{label}</span>
                 </a>
@@ -62,17 +82,20 @@ function MobileAppBar() {
             </li>
           );
         })}
-        <li>
-          <button
-            type="button"
-            onClick={signOut}
-            className="mobile-appbar-item mobile-appbar-item--btn"
-            aria-label="Logout"
-          >
-            <AiOutlinePoweroff size={20} />
-            <span>Logout</span>
-          </button>
-        </li>
+        {telegramLink && (
+          <li>
+            <a
+              href={telegramLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mobile-appbar-item"
+              aria-label="Message Support"
+            >
+              <FaTelegramPlane size={20} />
+              <span>Message</span>
+            </a>
+          </li>
+        )}
       </ul>
     </nav>
   );
