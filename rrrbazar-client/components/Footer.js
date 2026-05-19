@@ -76,7 +76,9 @@ function Footer() {
                 className="footer-support-card"
               >
                 <span className="footer-support-icon footer-support-icon--telegram">
-                  <FaTelegramPlane size={18} />
+                  <span className="footer-support-icon-circle">
+                    <FaTelegramPlane size={18} />
+                  </span>
                 </span>
                 <div className="footer-support-text">
                   <div className="footer-support-label">9AM – 11PM Daily</div>
@@ -92,7 +94,9 @@ function Footer() {
                 className="footer-support-card"
               >
                 <span className="footer-support-icon footer-support-icon--telegram">
-                  <FaTelegramPlane size={18} />
+                  <span className="footer-support-icon-circle">
+                    <FaTelegramPlane size={18} />
+                  </span>
                 </span>
                 <div className="footer-support-text">
                   <div className="footer-support-label">Telegram Group</div>
@@ -144,7 +148,7 @@ function Footer() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="YouTube"
-                    className="footer-social footer-social--youtube"
+                    className="footer-social footer-social--youtube is-red"
                   >
                     <FaYoutube size={18} />
                   </a>

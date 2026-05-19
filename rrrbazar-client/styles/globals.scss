@@ -3801,9 +3801,19 @@ body {
   color: #fff;
 }
 .footer-support-icon--telegram {
-  background: rgba(34, 158, 217, 0.18);
-  border-color: rgba(34, 158, 217, 0.5);
-  color: #6dd1ff;
+  background: rgba(34, 158, 217, 0.22);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.footer-support-icon-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #229ED9; // Telegram blue
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 .footer-support-icon--mail {
   background: rgba(234, 67, 53, 0.18);
@@ -3994,40 +4004,107 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
     width: 100%;
-    min-height: 56px;
-    padding: 8px 4px;
+    min-height: 64px;
+    padding: 6px 2px;
     background: transparent;
     border: 0;
     color: #64748b;
     font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-weight: 700;
+    letter-spacing: 0.01em;
     line-height: 1.1;
     cursor: pointer;
-    transition: color 0.15s ease, background-color 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .mobile-appbar-item:hover,
-  .mobile-appbar-item:focus-visible {
-    color: var(--theme-primary, #38bdf8);
-    background: rgba(var(--theme-primary-rgb), 0.06);
-    outline: none;
+
+  .mobile-appbar-icon-box {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    background: #f1f5f9;
+    color: #64748b;
   }
-  .mobile-appbar-item.is-active {
-    color: var(--theme-primary, #38bdf8);
+
+  // Scheme colors for AppBar
+  $schemes: (
+    'blue': #3b82f6,
+    'emerald': #10b981,
+    'indigo': #6366f1,
+    'amber': #f59e0b,
+    'purple': #8b5cf6,
+    'rose': #f43f5e,
+    'sky': #0ea5e9,
+    'teal': #14b8a6
+  );
+
+  @each $name, $color in $schemes {
+    .mobile-appbar-item--#{$name} {
+      .mobile-appbar-icon-box {
+        background: rgba($color, 0.08);
+        color: $color;
+      }
+      &.is-active {
+        color: $color;
+        .mobile-appbar-icon-box {
+          background: $color;
+          color: #fff;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 14px rgba($color, 0.3);
+        }
+      }
+      &:hover .mobile-appbar-icon-box {
+        background: rgba($color, 0.15);
+        color: $color;
+      }
+    }
+
+    .mobile-sidebar-box--#{$name} {
+      background: rgba($color, 0.04);
+      border: 1px solid rgba($color, 0.1);
+      color: #334155;
+      .mobile-sidebar-icon-wrap {
+        background: $color;
+        color: #fff;
+        box-shadow: 0 4px 10px rgba($color, 0.25);
+      }
+      &:active {
+        background: rgba($color, 0.08);
+        transform: scale(0.98);
+      }
+    }
   }
+
+  .mobile-sidebar-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-sidebar-icon-wrap {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+
   .mobile-appbar-item.is-active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 24px;
-    height: 2px;
-    border-radius: 2px;
-    background: var(--theme-primary, #38bdf8);
+    display: none; // Remove the old top bar
   }
+
   .mobile-appbar-item { position: relative; }
   .mobile-appbar-item span {
     max-width: 100%;
