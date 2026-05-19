@@ -38,8 +38,13 @@ function MobileAppBar() {
     return () => document.body.classList.remove('has-mobile-appbar');
   }, []);
 
-  const telegramRaw = siteSettings?.telegram_number || '';
-  const telegramLink = buildTelegramLink(telegramRaw);
+  // "Message" item points at the dedicated 1:1 support contact; falls
+  // back to the general Telegram channel when no support number is set.
+  const telegramSupportRaw = siteSettings?.telegram_support_number || '';
+  const telegramChannelRaw = siteSettings?.telegram_number || '';
+  const telegramLink =
+    buildTelegramLink(telegramSupportRaw) ||
+    buildTelegramLink(telegramChannelRaw);
 
   const items = isAuth
     ? [

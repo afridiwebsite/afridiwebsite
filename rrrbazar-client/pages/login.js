@@ -147,9 +147,12 @@ const FLOATING_ICONS = [
 ];
 
 function LoginPage() {
-  const { saveAuthUser } = useContext(globalContext);
+  const { saveAuthUser, siteSettings } = useContext(globalContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isError, setIsError] = useState(false);
+  // Same source the Header uses — admin-managed site logo, with a static
+  // fallback when settings haven't loaded yet or no logo is configured.
+  const logoSrc = siteSettings?.logo_full_url || '/logo.jpeg';
 
   const failedGoogleLogin = () => {
     setIsError("Something went wrong. Try again");
@@ -214,7 +217,7 @@ function LoginPage() {
         <header className="login-logo-bar">
           <Link href="/">
             <a aria-label="Go to home">
-              <img src="/logo.jpeg" alt="Logo" className="login-logo" />
+              <img src={logoSrc} alt="Logo" className="login-logo" />
             </a>
           </Link>
         </header>
