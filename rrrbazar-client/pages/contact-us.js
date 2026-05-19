@@ -34,7 +34,7 @@ function ContactUsPage() {
             <h1 className="legal-page-title mb-4">Contact Us</h1>
             <p className="_body1 max-w-xl mx-auto">
               Have questions or need help? Our support team is here for you. 
-              Contact us through any of the channels below and we'll get back to you as soon as possible.
+              Contact us through any of the channels below and we&apos;ll get back to you as soon as possible.
             </p>
             <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-600 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

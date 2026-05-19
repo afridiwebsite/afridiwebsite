@@ -33,7 +33,7 @@ function AboutUsPage() {
                 and the frustration of waiting for credits.
               </p>
               <p className="_body1">
-                Whether it's Free Fire Diamonds, PUBG Mobile UC, or any other in-game currency, we strive to 
+                Whether it&apos;s Free Fire Diamonds, PUBG Mobile UC, or any other in-game currency, we strive to 
                 be the bridge that keeps you in the game with zero downtime.
               </p>
             </div>
