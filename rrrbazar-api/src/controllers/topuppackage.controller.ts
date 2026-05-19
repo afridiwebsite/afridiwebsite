@@ -61,6 +61,7 @@ class TopupPackageController {
             description,
             order_once,
             bot_url,
+            auto_delivery,
         } = req.body
 
         try {
@@ -77,9 +78,11 @@ class TopupPackageController {
                 description: description || '',
                 order_once: order_once == 1 ? 1 : 0,
                 bot_url: String(bot_url || '').trim(),
+                auto_delivery: auto_delivery == 1 ? 1 : 0,
             })
 
             response.message = 'Created successfully'
+            response.data = topupPackage
             res.send(response.response)
 
         } catch (error) {
@@ -107,6 +110,7 @@ class TopupPackageController {
             description,
             order_once,
             bot_url,
+            auto_delivery,
         } = req.body
 
         try {
@@ -136,6 +140,9 @@ class TopupPackageController {
             }
             if (bot_url !== undefined) {
                 topupPackage.bot_url = String(bot_url || '').trim();
+            }
+            if (auto_delivery !== undefined) {
+                topupPackage.auto_delivery = auto_delivery == 1 ? 1 : 0;
             }
             await topupPackage.save()
 

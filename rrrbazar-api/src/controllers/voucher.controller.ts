@@ -3,7 +3,7 @@ import { Op, Sequelize } from 'sequelize';
 import Schema from '../models';
 import responseUtils from '../utils/response.utils';
 
-const { Voucher, TopupPackage, TopupProduct } = Schema;
+const { Voucher, TopupPackage, TopupProduct, PackageVoucherMap } = Schema;
 
 /**
  * Admin-side CRUD for the voucher pool. One row per redemption code,
@@ -183,6 +183,144 @@ class VoucherController {
       res.send(response.response);
     } catch (error) {
       console.log('voucher.bulkRemove error', error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
+  // GET /admin/voucher-products-with-packages
+  // Returns voucher-type products (is_voucher = 1) with their packages —
+  // used to populate the autodelivery mapping modal.
+  voucherProductsWithPackages = async (
+    req: express.Request,
+    res: express.Response,
+  ) => {
+    const response = new responseUtils();
+    try {
+      const products = await TopupProduct.findAll({
+        where: { is_voucher: 1 },
+        attributes: ['id', 'name', 'logo'],
+        order: [['serial', 'ASC']],
+        raw: true,
+      });
+      if (products.length === 0) {
+        response.data = [];
+        return res.send(response.response);
+      }
+      const packs = await TopupPackage.findAll({
+        where: { product_id: { [Op.in]: products.map((p: any) => p.id) } },
+        attributes: ['id', 'name', 'product_id'],
+        order: [['serial', 'ASC']],
+        raw: true,
+      });
+      const byProduct = new Map<number, any[]>();
+      for (const p of packs as any[]) {
+        const arr = byProduct.get(p.product_id) || [];
+        arr.push({ id: p.id, name: p.name });
+        byProduct.set(p.product_id, arr);
+      }
+      response.data = (products as any[]).map((p) => ({
+        id: p.id,
+        name: p.name,
+        logo: p.logo,
+        packages: byProduct.get(p.id) || [],
+      }));
+      res.send(response.response);
+    } catch (error) {
+      console.log('voucher.voucherProductsWithPackages error', error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
+  // GET /admin/topup-package/:id/voucher-maps
+  // Returns the list of mappings for a package, enriched with the voucher
+  // package + product names for display.
+  listMaps = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const package_id = req.params.id as any;
+      const maps = await PackageVoucherMap.findAll({
+        where: { topup_package_id: package_id },
+        order: [['id', 'ASC']],
+        raw: true,
+      });
+      if (maps.length === 0) {
+        response.data = [];
+        return res.send(response.response);
+      }
+      const voucherPackIds = (maps as any[]).map((m) => m.voucher_package_id);
+      const packs = await TopupPackage.findAll({
+        where: { id: { [Op.in]: voucherPackIds } },
+        attributes: ['id', 'name', 'product_id'],
+        raw: true,
+      });
+      const productIds = Array.from(
+        new Set(packs.map((p: any) => p.product_id).filter(Boolean)),
+      );
+      const products = productIds.length
+        ? await TopupProduct.findAll({
+            where: { id: { [Op.in]: productIds } },
+            attributes: ['id', 'name'],
+            raw: true,
+          })
+        : [];
+      const packById = new Map((packs as any[]).map((p) => [p.id, p]));
+      const productById = new Map(
+        (products as any[]).map((p) => [p.id, p]),
+      );
+      response.data = (maps as any[]).map((m) => {
+        const pack = packById.get(m.voucher_package_id);
+        const product = pack ? productById.get(pack.product_id) : null;
+        return {
+          id: m.id,
+          voucher_package_id: m.voucher_package_id,
+          voucher_package_name: pack?.name || `Package #${m.voucher_package_id}`,
+          voucher_product_id: pack?.product_id || null,
+          voucher_product_name: product?.name || '—',
+        };
+      });
+      res.send(response.response);
+    } catch (error) {
+      console.log('voucher.listMaps error', error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
+  // POST /admin/topup-package/:id/voucher-maps
+  // Body: { voucher_package_ids: number[] } — replaces the full mapping set.
+  saveMaps = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const package_id = Number(req.params.id);
+      if (!package_id) {
+        response.message = 'package_id is required';
+        return res.status(400).send(response.internalError);
+      }
+      const raw = req.body?.voucher_package_ids;
+      const voucherIds = Array.isArray(raw)
+        ? Array.from(
+            new Set(
+              raw
+                .map((x: any) => Number(x))
+                .filter((n: number) => Number.isFinite(n) && n > 0),
+            ),
+          )
+        : [];
+      await PackageVoucherMap.destroy({
+        where: { topup_package_id: package_id },
+      });
+      if (voucherIds.length > 0) {
+        await PackageVoucherMap.bulkCreate(
+          voucherIds.map((vid) => ({
+            topup_package_id: package_id,
+            voucher_package_id: vid,
+          })),
+        );
+      }
+      response.message = `${voucherIds.length} mapping(s) saved`;
+      response.data = { count: voucherIds.length };
+      res.send(response.response);
+    } catch (error) {
+      console.log('voucher.saveMaps error', error);
       res.status(400).send(response.internalError);
     }
   };

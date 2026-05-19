@@ -85,6 +85,9 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/packages/delete-voucher/:id', method: 'POST' },
     { path: '/packages/bulk-delete-voucher', method: 'POST' },
     { path: '/voucher/available-voucher-by-package', method: 'GET' },
+    { path: '/voucher-products-with-packages',       method: 'GET' },
+    { path: '/topup-package/:id/voucher-maps',       method: 'GET' },
+    { path: '/topup-package/:id/voucher-maps',       method: 'POST' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

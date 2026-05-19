@@ -189,6 +189,9 @@ router.post('/packages/add-voucher', auth, voucherController.bulkAdd)
 router.post('/packages/delete-voucher/:id', auth, voucherController.remove)
 router.post('/packages/bulk-delete-voucher', auth, voucherController.bulkRemove)
 router.get('/voucher/available-voucher-by-package', auth, userController.getVoucherStatsByPackage)
+router.get('/voucher-products-with-packages', auth, voucherController.voucherProductsWithPackages)
+router.get('/topup-package/:id/voucher-maps', auth, voucherController.listMaps)
+router.post('/topup-package/:id/voucher-maps', auth, voucherController.saveMaps)
 // Voucher pool apis ----END----
 
 // Dashboard stats apis ----START----

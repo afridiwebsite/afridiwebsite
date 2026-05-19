@@ -34,6 +34,7 @@ import SpinReward from './SpinReward'
 import SpinResult from './SpinResult'
 import OrderComment from './OrderComment'
 import Voucher from './Voucher'
+import PackageVoucherMap from './PackageVoucherMap'
 
 
 
@@ -88,4 +89,5 @@ export const Schema = {
   SpinResult: SpinResult(sequelize),
   OrderComment: OrderComment(sequelize),
   Voucher: Voucher(sequelize),
+  PackageVoucherMap: PackageVoucherMap(sequelize),
 }

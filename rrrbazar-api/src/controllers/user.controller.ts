@@ -32,6 +32,7 @@ const {
   CoinTransaction,
   SiteSetting,
   Voucher,
+  PackageVoucherMap,
 } = Schema;
 
 // Allocate one unused voucher to an order. Wraps the find+assign so the
@@ -47,6 +48,15 @@ async function emitProductVoucher(packageId: number, orderId: number) {
   voucher.order_id = orderId;
   await voucher.save();
   return voucher;
+}
+
+// Release a previously emitted voucher back to the pool. Used when an
+// auto-delivery order partially allocates and we need to roll back.
+async function releaseVoucher(voucher: any) {
+  if (!voucher) return;
+  voucher.is_used = 0;
+  voucher.order_id = null;
+  await voucher.save();
 }
 /******************************************************************************
  *                              User Controller
@@ -1141,6 +1151,77 @@ class UserController {
       } catch (e) {
         // never block order on coin rewarding failure
       }
+
+      // AUTO-DELIVERY START — when the ordered package has auto_delivery on,
+      // its `PackageVoucherMap` rows determine how many vouchers to allocate
+      // (one per mapping) and how many times the auto-bot runs. All-or-
+      // nothing: if any pool is empty we release the ones we already
+      // grabbed, refund the wallet and abort.
+      if ((topupPackage as any).auto_delivery == 1) {
+        const maps = await PackageVoucherMap.findAll({
+          where: { topup_package_id: topupPackage.id },
+          raw: true,
+        });
+        if (maps.length > 0) {
+          const emitted: any[] = [];
+          let pool_exhausted = false;
+          for (const m of maps as any[]) {
+            const v = await emitProductVoucher(m.voucher_package_id, order.id);
+            if (!v) { pool_exhausted = true; break; }
+            emitted.push(v);
+          }
+          if (pool_exhausted) {
+            for (const v of emitted) await releaseVoucher(v);
+            if (payment_mathod === 'pay') {
+              user.wallet = Number(user.wallet) + Number(amount);
+              await user.save();
+            }
+            await order.destroy();
+            response.message =
+              "Sorry — one of the linked voucher pools is empty. Your wallet has not been charged.";
+            response.success = false;
+            response.status = 400;
+            return res.status(400).send(response.response);
+          }
+
+          // Fire the bot once per emitted voucher. Failures are logged but
+          // we don't roll back the vouchers; admin can retry / refund.
+          const botUrl = String((topupPackage as any).bot_url || '').trim();
+          let bot_failures = 0;
+          if (botUrl) {
+            for (const v of emitted) {
+              try {
+                const ok = await autoOrder(
+                  order.id,
+                  playerid,
+                  topupPackage.uc,
+                  v.data,
+                  botUrl,
+                );
+                if (!ok) bot_failures += 1;
+              } catch (e) {
+                bot_failures += 1;
+              }
+            }
+          }
+
+          order.status = bot_failures > 0 && botUrl ? 'In Progress' : 'completed';
+          order.brief_note = `Auto-delivered ${emitted.length} voucher(s)` +
+            (bot_failures > 0 ? ` (${bot_failures} bot retr${bot_failures === 1 ? 'y' : 'ies'} pending)` : '');
+          await order.save();
+
+          const {
+            uc: ucAliasAd,
+            ingamepassword: ingamepasswordAliasAd,
+            bprice: bpriceAliasAd,
+            ...filteredOrderAd
+          } = order.get({ plain: true });
+          response.message = 'Order placed successfully';
+          response.data = filteredOrderAd;
+          return res.send(response.response);
+        }
+      }
+      // AUTO-DELIVERY END
 
       // AUTO BOT SET IN CODE START
       if (order.status == "pending" && topupPackage.uc > 0) {

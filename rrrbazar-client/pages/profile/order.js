@@ -98,23 +98,39 @@ function OrderPage() {
                       </p>
 
                       {hasVouchers && (
-                        <div className="pt-1">
-                          <div className="font-semibold mb-1">
-                            Voucher{vouchers.length > 1 ? 's' : ''}:
+                        <div className="pt-2 mt-1 border-t border-gray-100">
+                          <div className="flex items-center gap-2 mb-2 text-[13px]">
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">
+                              {vouchers.length}
+                            </span>
+                            <span className="font-semibold text-gray-700">
+                              Voucher{vouchers.length > 1 ? 's' : ''}
+                            </span>
+                            {vouchers.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copy(vouchers.map((v) => v.data).join('\n'))
+                                }
+                                className="ml-auto text-xs text-gray-500 hover:text-gray-800 underline"
+                              >
+                                Copy all
+                              </button>
+                            )}
                           </div>
                           <div className="flex flex-col gap-1.5">
                             {vouchers.map((v) => (
                               <div
                                 key={v.id}
-                                className="inline-flex items-center gap-2 px-2 py-1 rounded bg-gray-50 border border-gray-200 max-w-full"
+                                className="group flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-50 to-white border border-emerald-200 max-w-full"
                               >
-                                <span className="font-mono text-sm break-all">
+                                <span className="font-mono text-[13px] font-semibold text-emerald-800 break-all flex-1 min-w-0">
                                   {v.data}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => copy(v.data)}
-                                  className="text-gray-500 hover:text-blue-600 shrink-0"
+                                  className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md bg-white text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-200 transition"
                                   aria-label="Copy voucher code"
                                   title="Copy code"
                                 >
@@ -170,7 +186,12 @@ function OrderPage() {
                         href={redeemLink}
                         target="_blank"
                         rel="noreferrer"
-                        className="absolute bottom-3 right-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-4 rounded text-sm shadow"
+                        style={{
+                          background: 'var(--theme-primary)',
+                          boxShadow:
+                            '0 2px 8px rgba(var(--theme-primary-rgb, 0 0 0) / 0.35)',
+                        }}
+                        className="absolute bottom-3 right-3 hover:brightness-110 active:brightness-95 text-white font-bold py-1.5 px-4 rounded text-sm transition"
                       >
                         Redeem
                       </a>

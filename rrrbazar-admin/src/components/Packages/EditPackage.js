@@ -33,6 +33,67 @@ function EditPackage(props) {
     const coin_value = useRef(null);
     const order_once = useRef(null);
     const bot_url = useRef(null);
+    const auto_delivery = useRef(null);
+
+    // Auto-delivery mapping — hydrated from /voucher-maps on load.
+    const [autoDeliveryOn, setAutoDeliveryOn] = useState(false);
+    const [mappings, setMappings] = useState([]);
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+    const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
+    const [existingMaps, mapsLoading] = useGet(
+        `admin/topup-package/${packageId}/voucher-maps`,
+    );
+    const [pickedProductId, setPickedProductId] = useState('');
+    const [pickedPackageId, setPickedPackageId] = useState('');
+
+    useEffect(() => {
+        if (data?.auto_delivery == 1) setAutoDeliveryOn(true);
+    }, [data?.id]);
+    useEffect(() => {
+        if (Array.isArray(existingMaps)) {
+            setMappings(
+                existingMaps.map((m) => ({
+                    voucher_package_id: m.voucher_package_id,
+                    voucher_package_name: m.voucher_package_name,
+                    voucher_product_name: m.voucher_product_name,
+                })),
+            );
+        }
+    }, [existingMaps]);
+
+    const pickedProduct =
+        (voucherProducts || []).find((p) => String(p.id) === String(pickedProductId)) || null;
+    const availablePackages = pickedProduct?.packages || [];
+
+    const openMapModal = () => {
+        setPickedProductId('');
+        setPickedPackageId('');
+        setIsMapModalOpen(true);
+    };
+    const closeMapModal = () => setIsMapModalOpen(false);
+    const addMapping = () => {
+        if (!pickedProductId || !pickedPackageId) {
+            toast.error('Select a product and a package', toastDefault);
+            return;
+        }
+        const pid = Number(pickedPackageId);
+        if (mappings.some((m) => m.voucher_package_id === pid)) {
+            toast.error('That package is already mapped', toastDefault);
+            return;
+        }
+        const pack = availablePackages.find((p) => p.id === pid);
+        setMappings((prev) => [
+            ...prev,
+            {
+                voucher_package_id: pid,
+                voucher_package_name: pack?.name || `Package #${pid}`,
+                voucher_product_name: pickedProduct?.name || '—',
+            },
+        ]);
+        setIsMapModalOpen(false);
+    };
+    const removeMapping = (idx) =>
+        setMappings((prev) => prev.filter((_, i) => i !== idx));
 
     const [editorState, setEditorState] = useState(EditorState.createEmpty());
 
@@ -71,7 +132,22 @@ function EditPackage(props) {
             order_once: order_once.current?.checked ? 1 : 0,
             bot_url: bot_url.current?.value || '',
             description: convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent()),
-        }).then(res => {
+            auto_delivery: autoDeliveryOn ? 1 : 0,
+        }).then(async () => {
+            // Replace voucher-map rows. When auto_delivery is off we still
+            // push an empty list to clear any stale entries.
+            try {
+                await axiosInstance.post(
+                    `/admin/topup-package/${packageId}/voucher-maps`,
+                    {
+                        voucher_package_ids: autoDeliveryOn
+                            ? mappings.map((m) => m.voucher_package_id)
+                            : [],
+                    },
+                );
+            } catch (e) {
+                /* package update already saved; ignore */
+            }
             toast.success('Topup package updated successfully', toastDefault)
 
             setTimeout(() => {
@@ -184,6 +260,75 @@ function EditPackage(props) {
                                         </div>
                                     </div>
 
+                                    {/* Auto-delivery — maps voucher packages to this package. */}
+                                    <div className="form_grid">
+                                        <div>
+                                            <label className="inline-flex items-center cursor-pointer select-none">
+                                                <input
+                                                    ref={auto_delivery}
+                                                    id="auto_delivery"
+                                                    type="checkbox"
+                                                    className="form-checkbox"
+                                                    checked={autoDeliveryOn}
+                                                    onChange={(e) => setAutoDeliveryOn(e.target.checked)}
+                                                />
+                                                <span className="ml-2">Auto-delivery</span>
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                When on, each linked voucher package emits one code per order
+                                                and the auto-bot runs once per voucher.
+                                            </p>
+
+                                            {autoDeliveryOn && (
+                                                <div className="mt-3 border border-gray-200 rounded p-3 bg-gray-50">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-sm font-semibold">
+                                                            Mapped voucher packages ({mappings.length})
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={openMapModal}
+                                                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                                                        >
+                                                            + Add new
+                                                        </button>
+                                                    </div>
+                                                    {mapsLoading && (
+                                                        <p className="text-xs text-gray-500 italic">Loading…</p>
+                                                    )}
+                                                    {!mapsLoading && mappings.length === 0 && (
+                                                        <p className="text-xs text-gray-500 italic">
+                                                            No voucher packages mapped yet. Click "Add new" to pick one.
+                                                        </p>
+                                                    )}
+                                                    {mappings.length > 0 && (
+                                                        <ul className="flex flex-col gap-1.5">
+                                                            {mappings.map((m, i) => (
+                                                                <li
+                                                                    key={`${m.voucher_package_id}-${i}`}
+                                                                    className="flex items-center justify-between bg-white border border-gray-200 rounded px-3 py-1.5 text-sm"
+                                                                >
+                                                                    <span>
+                                                                        <strong>{m.voucher_product_name}</strong>
+                                                                        <span className="text-gray-400 mx-1">›</span>
+                                                                        {m.voucher_package_name}
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeMapping(i)}
+                                                                        className="text-red-600 hover:text-red-800 text-xs"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="my-4">
                                         <label className="block mb-2 font-semibold">
                                             Description{' '}
@@ -219,6 +364,95 @@ function EditPackage(props) {
                     </div>
                 </div>
             </div>
+
+            {isMapModalOpen && (
+                <div
+                    className="fixed inset-0 z-[9999999] bg-black/50 flex items-center justify-center p-4"
+                    onClick={closeMapModal}
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl w-full max-w-xs flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
+                            <h4 className="text-base font-bold text-black">Map voucher package</h4>
+                            <button
+                                type="button"
+                                onClick={closeMapModal}
+                                className="text-gray-500 hover:text-gray-800 text-xl leading-none"
+                                aria-label="Close"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="px-4 py-3 flex flex-col gap-3">
+                            <div>
+                                <label className="text-xs text-gray-600 block mb-1">Voucher product</label>
+                                <select
+                                    className="form_input !mb-0 !py-1.5"
+                                    value={pickedProductId}
+                                    onChange={(e) => {
+                                        setPickedProductId(e.target.value);
+                                        setPickedPackageId('');
+                                    }}
+                                >
+                                    <option value="">-- Select product --</option>
+                                    {(voucherProducts || []).map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                                {voucherProducts === null && (
+                                    <p className="text-xs text-gray-500 mt-1">Loading…</p>
+                                )}
+                                {Array.isArray(voucherProducts) && voucherProducts.length === 0 && (
+                                    <p className="text-xs text-amber-700 mt-1">
+                                        No voucher-type products yet. Mark a product as
+                                        <em> "Is voucher product"</em> first.
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-600 block mb-1">Package</label>
+                                <select
+                                    className="form_input !mb-0 !py-1.5"
+                                    value={pickedPackageId}
+                                    onChange={(e) => setPickedPackageId(e.target.value)}
+                                    disabled={!pickedProductId}
+                                >
+                                    <option value="">-- Select package --</option>
+                                    {availablePackages.map((pk) => (
+                                        <option key={pk.id} value={pk.id}>{pk.name}</option>
+                                    ))}
+                                </select>
+                                {pickedProductId && availablePackages.length === 0 && (
+                                    <p className="text-xs text-red-600 mt-1">
+                                        This product has no packages.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="px-4 py-2.5 border-t border-gray-200 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closeMapModal}
+                                className="cstm_btn_small !bg-gray-200 !text-gray-700 hover:!bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={addMapping}
+                                disabled={!pickedProductId || !pickedPackageId}
+                                className="cstm_btn_small disabled:opacity-60"
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     )
 }

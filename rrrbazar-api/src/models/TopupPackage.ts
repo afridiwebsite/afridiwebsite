@@ -22,6 +22,7 @@ export default (sequelize: Sequelize) => {
         public description!: string;
         public order_once!: number;
         public bot_url!: string;
+        public auto_delivery!: number;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -98,6 +99,15 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING(512),
             allowNull: true,
             defaultValue: '',
+        },
+        auto_delivery: {
+            // 1 = on order, draw one voucher from each mapped voucher
+            // package (see PackageVoucherMap) and run the auto-bot once
+            // per voucher. The bot count is therefore = number of mapped
+            // voucher packages.
+            type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
         },
         created_at: {
             type: DataTypes.DATE,
