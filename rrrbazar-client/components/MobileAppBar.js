@@ -41,18 +41,28 @@ function MobileAppBar() {
 
   const items = isAuth
     ? [
-        { href: '/', label: 'Home', icon: AiOutlineHome },
-        { href: routes.profile.name, label: 'Profile', icon: AiOutlineUser },
-        
-        { href: routes.myOrder.name, label: 'Orders', icon: MdBorderAll },
-        { href: routes.spin.name, label: 'Spin', icon: GiShoppingCart },
+        { href: '/', label: 'Home', icon: AiOutlineHome, scheme: 'blue' },
+        { href: routes.profile.name, label: 'Profile', icon: AiOutlineUser, scheme: 'indigo' },
+        {
+          href: routes.addMoney.name,
+          label: 'Add Money',
+          icon: AiOutlineDollarCircle,
+          scheme: 'emerald'
+        },
+        { href: routes.myOrder.name, label: 'Orders', icon: MdBorderAll, scheme: 'amber' },
+        { href: routes.spin.name, label: 'Spin', icon: GiShoppingCart, scheme: 'purple' },
       ]
     : [
-        { href: '/', label: 'Home', icon: AiOutlineHome },
-        { href: routes.shop.name, label: 'Shop', icon: GiShoppingCart },
-        { href: routes.tournament.name, label: 'Play', icon: MdBorderAll },
-   
-        { href: routes.login.name, label: 'Login', icon: AiOutlineUser },
+        { href: '/', label: 'Home', icon: AiOutlineHome, scheme: 'blue' },
+        { href: routes.shop.name, label: 'Shop', icon: GiShoppingCart, scheme: 'indigo' },
+        { href: routes.tournament.name, label: 'Play', icon: MdBorderAll, scheme: 'emerald' },
+        {
+          href: routes.addMoney.name,
+          label: 'Add Money',
+          icon: AiOutlineDollarCircle,
+          scheme: 'amber'
+        },
+        { href: routes.login.name, label: 'Login', icon: AiOutlineUser, scheme: 'purple' },
       ];
 
   // Pick the single best-matching item: the one whose href is the longest
@@ -67,15 +77,17 @@ function MobileAppBar() {
   return (
     <nav className="mobile-appbar" aria-label="Quick navigation">
       <ul className="mobile-appbar-list">
-        {items.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon, scheme }) => {
           const isActive = href === activeHref;
           return (
             <li key={href}>
               <Link href={href}>
                 <a
-                  className={`mobile-appbar-item ${isActive ? 'is-active' : ''}`}
+                  className={`mobile-appbar-item mobile-appbar-item--${scheme} ${isActive ? 'is-active' : ''}`}
                 >
-                  <Icon size={20} />
+                  <div className="mobile-appbar-icon-box">
+                    <Icon size={20} />
+                  </div>
                   <span>{label}</span>
                 </a>
               </Link>
@@ -88,10 +100,12 @@ function MobileAppBar() {
               href={telegramLink}
               target="_blank"
               rel="noreferrer"
-              className="mobile-appbar-item"
+              className="mobile-appbar-item mobile-appbar-item--rose"
               aria-label="Message Support"
             >
-              <FaTelegramPlane size={20} />
+              <div className="mobile-appbar-icon-box">
+                <FaTelegramPlane size={20} />
+              </div>
               <span>Message</span>
             </a>
           </li>
