@@ -11,13 +11,26 @@ const { Voucher, TopupPackage, TopupProduct } = Schema;
  * `user.controller.ts` (see `emitProductVoucher`).
  */
 class VoucherController {
-  // GET /admin/packages/:id/voucher  → { product, package, vouchers, stats }
+  // GET /admin/packages/:id/voucher
+  //   query: q, status (used|unused), start_date, end_date,
+  //          order_by (id|status), order_dir (ASC|DESC),
+  //          page, limit
+  //   → { product, package, vouchers, stats, total, page, limit }
   listByPackage = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils();
     try {
       const package_id = req.params.id as any;
       const search = (req.query.q as string) || '';
       const status = (req.query.status as string) || ''; // 'used' | 'unused' | ''
+      const startDate = (req.query.start_date as string) || '';
+      const endDate = (req.query.end_date as string) || '';
+      const orderBy = ((req.query.order_by as string) || 'id').toLowerCase();
+      const orderDir = ((req.query.order_dir as string) || 'DESC').toUpperCase();
+      const page = Math.max(parseInt((req.query.page as string) || '1', 10), 1);
+      const limit = Math.min(
+        Math.max(parseInt((req.query.limit as string) || '25', 10), 1),
+        200,
+      );
 
       const pack = await TopupPackage.findByPk(package_id);
       if (!pack) {
@@ -31,14 +44,32 @@ class VoucherController {
       if (status === 'used') where.is_used = 1;
       else if (status === 'unused') where.is_used = 0;
 
-      const vouchers = await Voucher.findAll({
+      // Date range — created_at is the only timestamp that makes sense for
+      // filtering "when was the code seeded". Inclusive on both ends.
+      const createdAtRange: any = {};
+      if (startDate) createdAtRange[Op.gte] = new Date(startDate + 'T00:00:00');
+      if (endDate) createdAtRange[Op.lte] = new Date(endDate + 'T23:59:59');
+      if (Object.getOwnPropertySymbols(createdAtRange).length) {
+        where.created_at = createdAtRange;
+      }
+
+      // Sort: by `is_used` (status) or by `id` (insertion order proxy).
+      const dir = orderDir === 'ASC' ? 'ASC' : 'DESC';
+      const order: any[] =
+        orderBy === 'status'
+          ? [['is_used', dir], ['id', 'DESC']]
+          : [['id', dir]];
+
+      const { rows: vouchers, count: total } = await Voucher.findAndCountAll({
         where,
-        order: [['id', 'DESC']],
-        limit: 500,
+        order,
+        offset: (page - 1) * limit,
+        limit,
       });
 
       // Pool-level stats so the admin sees how many codes are left without
-      // having to count rows on the client.
+      // having to count rows on the client. These are NOT scoped by filters —
+      // they always reflect the whole pool.
       const counts = await Voucher.findAll({
         where: { package_id },
         attributes: [
@@ -56,7 +87,15 @@ class VoucherController {
         else stats.unused += c;
       }
 
-      response.data = { product, package: pack, vouchers, stats };
+      response.data = {
+        product,
+        package: pack,
+        vouchers,
+        stats,
+        total,
+        page,
+        limit,
+      };
       res.send(response.response);
     } catch (error) {
       console.log('voucher.listByPackage error', error);
@@ -104,6 +143,10 @@ class VoucherController {
   };
 
   // POST /admin/packages/delete-voucher/:id
+  // Note: used vouchers can be deleted as well — admins may want to purge
+  // codes whose orders are already settled. The link to the order remains
+  // discoverable via `Voucher.order_id` on the order side until the row is
+  // physically removed.
   remove = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils();
     try {
@@ -113,17 +156,33 @@ class VoucherController {
         response.message = 'Voucher not found';
         return res.status(400).send(response.internalError);
       }
-      // Refuse to delete codes that have already been emitted — that record
-      // is the only link between an order and the code we shipped.
-      if (voucher.is_used === 1) {
-        response.message = 'Cannot delete a voucher that has already been used';
-        return res.status(400).send(response.internalError);
-      }
       await voucher.destroy();
       response.message = 'Voucher deleted';
       res.send(response.response);
     } catch (error) {
       console.log('voucher.remove error', error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
+  // POST /admin/packages/bulk-delete-voucher  body: { ids: number[] }
+  bulkRemove = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const raw = req.body?.ids;
+      const ids = Array.isArray(raw)
+        ? raw.map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n) && n > 0)
+        : [];
+      if (ids.length === 0) {
+        response.message = 'No voucher ids provided';
+        return res.status(400).send(response.internalError);
+      }
+      const removed = await Voucher.destroy({ where: { id: { [Op.in]: ids } } });
+      response.message = `${removed} voucher(s) deleted`;
+      response.data = { deleted: removed };
+      res.send(response.response);
+    } catch (error) {
+      console.log('voucher.bulkRemove error', error);
       res.status(400).send(response.internalError);
     }
   };

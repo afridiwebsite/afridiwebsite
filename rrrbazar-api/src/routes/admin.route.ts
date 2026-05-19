@@ -187,6 +187,7 @@ router.post('/topup-package/update-dollar', auth, updateDollarSchema, topuppacka
 router.get('/packages/:id/voucher', auth, voucherController.listByPackage)
 router.post('/packages/add-voucher', auth, voucherController.bulkAdd)
 router.post('/packages/delete-voucher/:id', auth, voucherController.remove)
+router.post('/packages/bulk-delete-voucher', auth, voucherController.bulkRemove)
 router.get('/voucher/available-voucher-by-package', auth, userController.getVoucherStatsByPackage)
 // Voucher pool apis ----END----
 

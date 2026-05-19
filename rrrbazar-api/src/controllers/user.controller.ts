@@ -381,16 +381,43 @@ class UserController {
     }
   };
 
-  // Admin voucher-pool overview. One row per package that has any
-  // associated voucher rows, with totals split by used/unused so the
-  // sidebar stats page can render an at-a-glance pool inventory.
+  // Admin voucher-pool overview. One row per package belonging to a
+  // voucher-type product (is_voucher = 1), including packages whose pool
+  // is still empty so the admin can see what needs seeding. Each row is
+  // augmented with its product name and current Ready/Used/Total counts.
   getVoucherStatsByPackage = async (
     req: express.Request,
     res: express.Response,
   ) => {
     const response = new responseUtils();
     try {
-      const rows = await Voucher.findAll({
+      const products = await TopupProduct.findAll({
+        where: { is_voucher: 1 },
+        attributes: ['id', 'name'],
+        raw: true,
+      });
+      if (products.length === 0) {
+        response.data = [];
+        return res.send(response.response);
+      }
+      const productById = new Map(products.map((p: any) => [p.id, p]));
+
+      console.log(productById,'Li')
+
+      const packs = await TopupPackage.findAll({
+        where: { product_id: { [Op.in]: products.map((p: any) => p.id) } },
+        attributes: ['id', 'name', 'product_id'],
+        raw: true,
+      });
+      if (packs.length === 0) {
+        response.data = [];
+        return res.send(response.response);
+      }
+
+      console.log(packs,'Li pa')
+
+      const stats = await Voucher.findAll({
+        where: { package_id: { [Op.in]: packs.map((p: any) => p.id) } },
         attributes: [
           'package_id',
           [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_used = 0 THEN 1 ELSE 0 END')), 'unused'],
@@ -400,39 +427,20 @@ class UserController {
         group: ['package_id'],
         raw: true,
       });
+      const statsByPackage = new Map<number, any>();
+      for (const s of stats as any[]) statsByPackage.set(s.package_id, s);
 
-      const packageIds = (rows as any[]).map((r) => r.package_id);
-      const packs = packageIds.length
-        ? await TopupPackage.findAll({
-            where: { id: { [Op.in]: packageIds } },
-            attributes: ['id', 'name', 'product_id'],
-            raw: true,
-          })
-        : [];
-      const productIds = Array.from(
-        new Set(packs.map((p: any) => p.product_id).filter(Boolean)),
-      );
-      const products = productIds.length
-        ? await TopupProduct.findAll({
-            where: { id: { [Op.in]: productIds } },
-            attributes: ['id', 'name'],
-            raw: true,
-          })
-        : [];
-      const packById = new Map(packs.map((p: any) => [p.id, p]));
-      const productById = new Map(products.map((p: any) => [p.id, p]));
-
-      const data = (rows as any[]).map((r) => {
-        const pack = packById.get(r.package_id);
-        const product = pack ? productById.get(pack.product_id) : null;
+      const data = (packs as any[]).map((p) => {
+        const product = productById.get(p.product_id);
+        const stat = statsByPackage.get(p.id);
         return {
-          package_id: r.package_id,
-          package_name: pack?.name || `Package #${r.package_id}`,
-          product_id: pack?.product_id || null,
-          product_name: product?.name || '—',
-          total: Number(r.total) || 0,
-          used: Number(r.used) || 0,
-          unused: Number(r.unused) || 0,
+          package_id: p.id,
+          package_name: p.name || `Package #${p.id}`,
+          product_id: p.product_id || null,
+          product_name: (product as any)?.name || '—',
+          total: Number(stat?.total) || 0,
+          used: Number(stat?.used) || 0,
+          unused: Number(stat?.unused) || 0,
         };
       });
       // Most-depleted at the top so the admin sees what needs restocking.
