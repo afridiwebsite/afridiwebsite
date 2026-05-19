@@ -90,7 +90,7 @@ function MobileAppBar() {
               href={telegramLink}
               target="_blank"
               rel="noreferrer"
-              className="mobile-appbar-item mobile-appbar-item--rose"
+              className="mobile-appbar-item mobile-appbar-item"
               aria-label="Message Support"
             >
               <div className="mobile-appbar-icon-box">

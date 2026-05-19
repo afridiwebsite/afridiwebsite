@@ -11,10 +11,10 @@ import { hasData, imgPath } from "../helpers/helpers";
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="home-section-title !text-3xl !mb-8">
-      <span className="home-section-title-bar" aria-hidden="true" />
+    <h3 className="home-section-title font-bold text-xl  md:text-2xl !mb-8">
+      {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
       <span>{children}</span>
-      <span className="home-section-title-bar" aria-hidden="true" />
+      {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
     </h3>
   );
 }

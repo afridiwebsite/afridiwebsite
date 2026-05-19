@@ -6,7 +6,7 @@ import { useContext, useEffect, useState } from "react";
 import moment from "moment";
 import ReactHtmlParser from "react-html-parser";
 import { HiOutlineExternalLink } from "react-icons/hi";
-import { FaCoins, FaInfo } from "react-icons/fa";
+import { FaCoins, FaInfo, FaPlay } from "react-icons/fa";
 import { GiTwoCoins } from "react-icons/gi";
 import { useQuery } from "react-query";
 //import ShowMoreText from 'react-show-more-text';
@@ -156,6 +156,7 @@ function TopupOrderPage() {
   const rechargeStep = hasPackages ? ++_step : null;
   const accountInfoStep = accountInfoVisible ? ++_step : null;
   const paymentStep = ++_step;
+  const rulesStep = ++_step;
 
   // Form Initial values. payment_mathod defaults to "pay" because the
   // Wallet radio is pre-selected visually on mount via `selectedPaymentMethod`;
@@ -764,10 +765,10 @@ function TopupOrderPage() {
                             </div>
 
                             <div className="order_box_body">
-                              <div className="flex w-full max-w-[600px] gap-3">
+                              <div className="flex w-full max-w-[600px] max-h-[110px] gap-3">
                                 <button
                                   type="button"
-                                  className={`topup-pay-card ${
+                                  className={`topup-pay-card h-full ${
                                     selectedPaymentMethod === "pay"
                                       ? "is-selected"
                                       : ""
@@ -935,9 +936,18 @@ function TopupOrderPage() {
                             </div>
                           </div>
 
-                          <br />
-                          <br />
-                          <br />
+                          {productInfo?.youtube_link && (
+                            <a
+                              href={productInfo.youtube_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="topup-watch-tutorial-btn animate-fade-in-up"
+                              style={{ animationDelay: "290ms" }}
+                            >
+                              <span>Watch Now</span>
+                              <FaPlay className="play-icon" />
+                            </a>
+                          )}
 
                           {/* Rules & Conditions Section --Start-- */}
                           {hasDescription && (
@@ -947,21 +957,11 @@ function TopupOrderPage() {
                             >
                               <div className="_order_box_header">
                                 <div className="_order_header_step_circle">
-                                  i
+                                {rulesStep}
                                 </div>
                                 <h5 className="_order_header_title">
                                   Rules &amp; Conditions
                                 </h5>
-                                {productInfo?.youtube_link && (
-                                  <a
-                                    href={productInfo.youtube_link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="break-words-none text-xs font-bold text-red-600 underline mb-2"
-                                  >
-                                    Watch tutorial
-                                  </a>
-                                )}
                               </div>
                               <div className="order_box_body">
                                 <div className="_body2 text-[13px]">

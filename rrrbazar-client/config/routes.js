@@ -43,6 +43,9 @@ const routes = Object.freeze({
   contactUs: {
     name: '/contact-us',
   },
+  aboutUs: {
+    name: '/about-us',
+  },
   myOrder: {
     name: '/profile/order',
   },
