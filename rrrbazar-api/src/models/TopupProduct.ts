@@ -22,6 +22,7 @@ export default (sequelize: Sequelize) => {
         public product_link!: string;
         public youtube_link!: string;
         public is_voucher!: number;
+        public redeem_link!: string;
 
         static associate({ Category, ProductCategory, TopupProductInput }: typeof Schema) {
             this.belongsToMany(Category, {
@@ -114,6 +115,13 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.TINYINT,
             allowNull: true,
             defaultValue: 0,
+        },
+        redeem_link: {
+            // External redemption URL surfaced to the buyer once a voucher
+            // product order is completed. Empty string when not set.
+            type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
         },
         created_at: {
             type: DataTypes.DATE,

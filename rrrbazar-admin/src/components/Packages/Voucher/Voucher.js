@@ -1,3 +1,4 @@
+import moment from 'moment';
 import { useEffect, useMemo, useState } from 'react';
 import { withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -288,12 +289,12 @@ function Voucher(props) {
             </div>
 
             {/* Bulk delete sits under the search row */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {!bulkMode ? (
                 <button
                   type="button"
                   onClick={enterBulk}
-                  className="text-sm text-red-600 underline hover:text-red-700"
+                  className="cstm_btn_small !py-1 !px-3 !bg-red-600 hover:!bg-red-700"
                 >
                   Bulk Delete
                 </button>
@@ -303,14 +304,14 @@ function Voucher(props) {
                     type="button"
                     onClick={bulkDelete}
                     disabled={selectedIds.size === 0}
-                    className="text-sm text-red-600 underline hover:text-red-700 disabled:opacity-50"
+                    className="cstm_btn_small !py-1 !px-3 !bg-red-600 hover:!bg-red-700 disabled:opacity-50"
                   >
                     Delete Selected ({selectedIds.size})
                   </button>
                   <button
                     type="button"
                     onClick={exitBulk}
-                    className="text-sm text-gray-600 underline hover:text-gray-800"
+                    className="cstm_btn_small !py-1 !px-3 !bg-gray-500 hover:!bg-gray-600"
                   >
                     Cancel
                   </button>
@@ -343,7 +344,7 @@ function Voucher(props) {
                       </th>
                     )}
                     <th className="px-3 py-2">ID</th>
-                    <th className="px-3 py-2 w-[260px]">Code</th>
+                    <th className="px-3 py-2 w-[400px]">Code</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Order</th>
                     <th className="px-3 py-2">Created</th>
@@ -369,11 +370,20 @@ function Voucher(props) {
                           </td>
                         )}
                         <td className="px-3 py-2 text-gray-500">{v.id}</td>
-                        <td
-                          className="px-3 py-2 font-mono text-gray-800 truncate w-[260px] max-w-[260px]"
-                          title={v.data}
-                        >
-                          {v.data}
+                        <td className="px-3 py-2 ">
+                          <div
+                            className="font-mono text-gray-800 truncate cursor-pointer hover:text-blue-600 transition-colors"
+                            title="Click to copy"
+                            onClick={() => {
+                              navigator.clipboard.writeText(v.data);
+                              toast.success('Copied!', {
+                                ...toastDefault,
+                                autoClose: 1000,
+                              });
+                            }}
+                          >
+                            {v.data}
+                          </div>
                         </td>
                         <td className="px-3 py-2">
                           {v.is_used ? (
@@ -389,9 +399,9 @@ function Voucher(props) {
                         <td className="px-3 py-2 text-gray-500">
                           {v.order_id ? `#${v.order_id}` : '—'}
                         </td>
-                        <td className="px-3 py-2 text-gray-500">
+                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
                           {v.created_at
-                            ? new Date(v.created_at).toLocaleString()
+                            ? moment(v.created_at).format('MMM D, YYYY h:mm A')
                             : '—'}
                         </td>
                         {!bulkMode && (

@@ -33,6 +33,9 @@ function EditTopupProduct(props) {
   const serial = useRef(null);
   const is_active_product = useRef(null);
   const is_voucher = useRef(null);
+  // Mirrors the `is_voucher` checkbox so we can gate the Redeem link input.
+  const [isVoucherChecked, setIsVoucherChecked] = useState(false);
+  const [redeemLinkValue, setRedeemLinkValue] = useState("");
 
   // Passthrough product link + tutorial youtube link. When productLinkValue
   // is non-empty, the form hides everything that doesn't make sense for an
@@ -43,6 +46,8 @@ function EditTopupProduct(props) {
     if (data) {
       if (typeof data.product_link === "string") setProductLinkValue(data.product_link);
       if (typeof data.youtube_link === "string") setYoutubeLinkValue(data.youtube_link);
+      if (typeof data.redeem_link === "string") setRedeemLinkValue(data.redeem_link);
+      setIsVoucherChecked(data.is_voucher == 1);
     }
   }, [data]);
   const isPassthrough = !!productLinkValue.trim();
@@ -228,6 +233,7 @@ function EditTopupProduct(props) {
         product_link: productLinkValue.trim(),
         youtube_link: youtubeLinkValue.trim(),
         is_voucher: is_voucher.current?.checked ? 1 : 0,
+        redeem_link: is_voucher.current?.checked ? redeemLinkValue.trim() : '',
       })
       .then(async () => {
         try {
@@ -533,7 +539,7 @@ function EditTopupProduct(props) {
                                     })
                                   }
                                 />
-                                <span className="text-sm">Verify player name</span>
+                                <span className="text-sm">Check player name</span>
                               </label>
                               {row.verify_player_name && (
                                 <div className="mt-2">
@@ -644,6 +650,7 @@ function EditTopupProduct(props) {
                         defaultChecked={data?.is_voucher == 1}
                         ref={is_voucher}
                         className="mr-2"
+                        onChange={(e) => setIsVoucherChecked(e.target.checked)}
                       />
                       Is voucher product{" "}
                       <span className="text-xs font-normal text-gray-500">
@@ -652,6 +659,25 @@ function EditTopupProduct(props) {
                       </span>
                     </label>
                   </div>
+                  {isVoucherChecked && (
+                    <div className="my-2">
+                      <label htmlFor="redeem_link" className="block font-semibold">
+                        Redeem link{" "}
+                        <span className="text-xs font-normal text-gray-500">
+                          (optional — surfaced on the buyer's completed order as
+                          a Redeem button)
+                        </span>
+                      </label>
+                      <input
+                        id="redeem_link"
+                        type="url"
+                        className="form_input mt-1"
+                        placeholder="https://example.com/redeem"
+                        value={redeemLinkValue}
+                        onChange={(e) => setRedeemLinkValue(e.target.value)}
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <button

@@ -696,6 +696,11 @@ class UserController {
             required: false,
             attributes: ['id', 'data'],
           },
+          {
+            model: TopupProduct,
+            required: false,
+            attributes: ['id', 'name', 'logo', 'redeem_link', 'is_voucher'],
+          },
         ],
         order: [["created_at", "DESC"]],
         attributes: { exclude: ["uc", "ingamepassword", "bprice"] },

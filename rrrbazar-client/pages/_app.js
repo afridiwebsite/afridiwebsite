@@ -145,6 +145,7 @@ function MyApp({ Component, pageProps }) {
 
   const isDisabledHeader = Component?.disabledHeader;
   const isDisabledFooter = Component?.disabledFooter;
+  const isDisabledMobileAppBar = Component?.disabledMobileAppBar;
 
   return (
     <>
@@ -168,7 +169,7 @@ function MyApp({ Component, pageProps }) {
             ) : (
               <Component {...pageProps} />
             )}
-            <MobileAppBar />
+            {!isDisabledMobileAppBar && <MobileAppBar />}
           </Layout>
         </QueryClientProvider>
       </globalContext.Provider>

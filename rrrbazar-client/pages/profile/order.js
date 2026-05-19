@@ -2,6 +2,8 @@ import Head from 'next/head';
 import { useQuery } from 'react-query';
 import ReactHtmlParser from 'react-html-parser';
 import { BiErrorCircle } from 'react-icons/bi';
+import { FiCopy } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import { getUserOrders } from '../../api/api';
 import ActivityIndicator from '../../components/ActivityIndicator';
 import Badge from '../../components/Badge';
@@ -9,6 +11,26 @@ import FlashMessage from '../../components/FlashMessage';
 import { __page_title_end } from '../../config/globalConfig';
 import reactQueryConfig from '../../config/reactQueryConfig';
 import { hasData } from '../../helpers/helpers';
+
+// Pull vouchers off the order regardless of whether the API returned the
+// hasMany shape (Vouchers: []) or the older hasOne shape (Voucher: {…}).
+function vouchersOf(order) {
+  if (Array.isArray(order?.Vouchers)) return order.Vouchers;
+  if (Array.isArray(order?.vouchers)) return order.vouchers;
+  if (order?.Voucher) return [order.Voucher];
+  if (order?.voucher) return [order.voucher];
+  return [];
+}
+
+function copy(value) {
+  if (!value) return;
+  try {
+    navigator.clipboard.writeText(String(value));
+    toast.info('Copied to clipboard');
+  } catch (e) {
+    /* clipboard may be unavailable on insecure origin */
+  }
+}
 
 function OrderPage() {
   const {
@@ -29,74 +51,133 @@ function OrderPage() {
           <h1 className="_section_title">My Orders</h1>
           <div className="space-y-5">
             {hasData(orders) &&
-              orders.map((order, index) => (
-                <div
-                  style={{ background: '#ffffff'}}
-                  key={order?.id || index}
-                  className="border border-gray-200 p-3 md:p-4 rounded-md overflow-hidden flex justify-between"
-                >
-                  <div className="space-y-1.5">
-                    <p className="_subtitle1">
-                      <span className="font-semibold mr-1.5">Order Id:</span>{' '}
-                      {order?.id}
-                    </p>
-                    <p className="_subtitle1">
-                      <span className="font-semibold mr-1.5">Date:</span>{' '}
-                      {order?.created_at}
-                    </p>
-                    <p className="_subtitle1">
-                      <span className="font-semibold mr-1.5">Total Price:</span>{' '}
-                      {order?.amount}
-                    </p>
-                    <p className="_subtitle1">
-                      <span className="font-semibold mr-1.5">Player Id:</span>{' '}
-                      {order?.playerid}
-                    </p>
-                    <p className="_subtitle1">
-                      <span className="font-semibold mr-1.5">
-                        Package Name:
-                      </span>{' '}
-                      {order?.name}
-                    </p>
-                    {order?.brief_note && order?.brief_note.substring(0, 6) == 'UniPin' && (
+              orders.map((order, index) => {
+                const vouchers = vouchersOf(order);
+                const hasVouchers = vouchers.length > 0;
+                const product =
+                  order?.TopupProduct || order?.topup_product || null;
+                const isCompleted = String(order?.status || '')
+                  .toLowerCase()
+                  .trim() === 'completed';
+                const redeemLink = product?.redeem_link || '';
+                const showRedeemBtn = isCompleted && !!redeemLink;
+                const isUniPin =
+                  order?.brief_note &&
+                  order.brief_note.substring(0, 6) === 'UniPin';
+                const hasFreeformNote =
+                  order?.brief_note && !isUniPin && !hasVouchers;
+
+                return (
+                  <div
+                    style={{ background: '#ffffff' }}
+                    key={order?.id || index}
+                    className="relative border border-gray-200 p-3 md:p-4 rounded-md overflow-hidden flex justify-between gap-3"
+                  >
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <p className="_subtitle1">
+                        <span className="font-semibold mr-1.5">Order Id:</span>{' '}
+                        {order?.id}
+                      </p>
+                      <p className="_subtitle1">
+                        <span className="font-semibold mr-1.5">Date:</span>{' '}
+                        {order?.created_at}
+                      </p>
+                      <p className="_subtitle1">
+                        <span className="font-semibold mr-1.5">Total Price:</span>{' '}
+                        {order?.amount}
+                      </p>
+                      <p className="_subtitle1">
+                        <span className="font-semibold mr-1.5">Player Id:</span>{' '}
+                        {order?.playerid}
+                      </p>
                       <p className="_subtitle1">
                         <span className="font-semibold mr-1.5">
-                          Voucher:
+                          Package Name:
                         </span>{' '}
-                        {order?.brief_note.substring(8)}
+                        {order?.name}
                       </p>
-                    )}
-                    {order?.brief_note && order?.brief_note.substring(0, 6) != 'UniPin' && (
-                      <div className="order-note">
-                        <span className="order-note-icon" aria-hidden="true">
-                          <BiErrorCircle />
-                        </span>
-                        <div className="order-note-body">
-                          <div className="order-note-label">Note</div>
-                          <div className="order-note-html">
-                            {ReactHtmlParser(order.brief_note)}
+
+                      {hasVouchers && (
+                        <div className="pt-1">
+                          <div className="font-semibold mb-1">
+                            Voucher{vouchers.length > 1 ? 's' : ''}:
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            {vouchers.map((v) => (
+                              <div
+                                key={v.id}
+                                className="inline-flex items-center gap-2 px-2 py-1 rounded bg-gray-50 border border-gray-200 max-w-full"
+                              >
+                                <span className="font-mono text-sm break-all">
+                                  {v.data}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => copy(v.data)}
+                                  className="text-gray-500 hover:text-blue-600 shrink-0"
+                                  aria-label="Copy voucher code"
+                                  title="Copy code"
+                                >
+                                  <FiCopy size={14} />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0">
-                    {order?.brief_note && order?.brief_note.substring(0, 6) == 'UniPin' && (
+                      )}
+
+                      {isUniPin && (
+                        <p className="_subtitle1">
+                          <span className="font-semibold mr-1.5">Voucher:</span>{' '}
+                          {order.brief_note.substring(8)}
+                        </p>
+                      )}
+
+                      {hasFreeformNote && (
+                        <div className="order-note">
+                          <span className="order-note-icon" aria-hidden="true">
+                            <BiErrorCircle />
+                          </span>
+                          <div className="order-note-body">
+                            <div className="order-note-label">Note</div>
+                            <div className="order-note-html">
+                              {ReactHtmlParser(order.brief_note)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                      {isUniPin ? (
+                        <a
+                          target="_blank"
+                          rel="noreferrer"
+                          href="https://shop.garena.my/app"
+                          className="bg-primary-500 hover:bg-blue-700 block text-white font-bold py-2 px-4 rounded"
+                        >
+                          Reedem Code
+                        </a>
+                      ) : (
+                        <Badge type={order.status} />
+                      )}
+                    </div>
+
+                    {/* Redeem button — corner-pinned. Only renders for completed
+                        voucher orders whose product has a redeem_link set. */}
+                    {showRedeemBtn && (
                       <a
+                        href={redeemLink}
                         target="_blank"
                         rel="noreferrer"
-                        href="https://shop.garena.my/app"
-                        className="bg-primary-500 hover:bg-blue-700 block text-white font-bold py-2 px-4 rounded"
+                        className="absolute bottom-3 right-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-4 rounded text-sm shadow"
                       >
-                        Reedem Code
+                        Redeem
                       </a>
                     )}
-                    {order?.brief_note.substring(0, 6) != 'UniPin' && (
-                      <Badge type={order.status} />
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
           <ActivityIndicator
             data={orders}

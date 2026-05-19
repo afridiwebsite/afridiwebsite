@@ -21,6 +21,7 @@ export default (sequelize: Sequelize) => {
         public spin_daily_limit!: number;
         public support_email!: string;
         public telegram_number!: string;
+        public telegram_support_number!: string;
         public youtube_link!: string;
     }
 
@@ -67,7 +68,10 @@ export default (sequelize: Sequelize) => {
         support_email:    { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         // Telegram contact — admin enters either a phone (with country code,
         // e.g. +8801234567890) or a username. The client builds the t.me link.
-        telegram_number:  { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
+        // `telegram_number` is the channel/group; `telegram_support_number`
+        // is the dedicated 1:1 support contact surfaced in the footer.
+        telegram_number:         { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
+        telegram_support_number: { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         youtube_link:     { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         created_at: {
             type: DataTypes.DATE,

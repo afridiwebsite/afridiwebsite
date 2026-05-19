@@ -326,5 +326,6 @@ function LoginPage() {
 // this page — the login screen has its own logo bar and no chrome.
 LoginPage.disabledHeader = true;
 LoginPage.disabledFooter = true;
+LoginPage.disabledMobileAppBar = true;
 
 export default LoginPage;

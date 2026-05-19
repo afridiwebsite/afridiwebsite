@@ -2,13 +2,15 @@ import { useContext, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
-  AiOutlineDollarCircle,
-  AiOutlineHome,
-  AiOutlineUser,
-} from 'react-icons/ai';
-import { GiShoppingCart } from 'react-icons/gi';
-import { MdBorderAll } from 'react-icons/md';
-import { FaTelegramPlane } from 'react-icons/fa';
+  FaHome,
+  FaWallet,
+  FaHistory,
+  FaDice,
+  FaShoppingBag,
+  FaGamepad,
+  FaUser,
+  FaTelegramPlane,
+} from 'react-icons/fa';
 import routes from '../config/routes';
 import { globalContext } from '../pages/_app';
 
@@ -41,19 +43,17 @@ function MobileAppBar() {
 
   const items = isAuth
     ? [
-        { href: '/', label: 'Home', icon: AiOutlineHome, scheme: 'blue' },
-        { href: routes.profile.name, label: 'Profile', icon: AiOutlineUser, scheme: 'indigo' },
-        
-        { href: routes.myOrder.name, label: 'Orders', icon: MdBorderAll, scheme: 'amber' },
-        { href: routes.spin.name, label: 'Spin', icon: GiShoppingCart, scheme: 'purple' },
+        { href: '/', label: 'Home', icon: FaHome, scheme: 'blue' },
+        { href: routes.addMoney.name, label: 'Add Wallet', icon: FaWallet, scheme: 'emerald' },
+        { href: routes.myOrder.name, label: 'Orders', icon: FaHistory, scheme: 'amber' },
+        { href: routes.spin.name, label: 'Spin', icon: FaDice, scheme: 'purple' },
       ]
     : [
-        { href: '/', label: 'Home', icon: AiOutlineHome, scheme: 'blue' },
-        { href: routes.shop.name, label: 'Shop', icon: GiShoppingCart, scheme: 'indigo' },
-        { href: routes.tournament.name, label: 'Play', icon: MdBorderAll, scheme: 'emerald' },
-        
-        { href: routes.login.name, label: 'Login', icon: AiOutlineUser, scheme: 'purple' },
+        { href: '/', label: 'Home', icon: FaHome, scheme: 'blue' },
+        { href: routes.login.name, label: 'Login', icon: FaUser, scheme: 'purple' },
       ];
+
+  const totalItems = items.length + (telegramLink ? 1 : 0);
 
   // Pick the single best-matching item: the one whose href is the longest
   // prefix of the current pathname.
@@ -66,7 +66,12 @@ function MobileAppBar() {
 
   return (
     <nav className="mobile-appbar" aria-label="Quick navigation">
-      <ul className="mobile-appbar-list">
+      <ul
+        className="mobile-appbar-list"
+        style={{
+          gridTemplateColumns: `repeat(${totalItems}, minmax(0, 1fr))`,
+        }}
+      >
         {items.map(({ href, label, icon: Icon, scheme }) => {
           const isActive = href === activeHref;
           return (

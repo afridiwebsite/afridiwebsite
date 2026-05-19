@@ -62,19 +62,31 @@ export const ordersTableColumns = [
         accessor: 'uc',
         Cell: (e) => {
             const row = e.row.original;
-            const voucher = row?.Voucher?.data || row?.voucher?.data;
-            if (voucher) {
+            // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
+            // the legacy hasOne shape (`Voucher: {…}`) so older payloads still
+            // render correctly.
+            const list = Array.isArray(row?.Vouchers)
+                ? row.Vouchers
+                : row?.Voucher
+                  ? [row.Voucher]
+                  : [];
+            if (list.length > 0) {
                 return (
-                    <span
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold text-xs font-mono cursor-pointer hover:bg-green-200 max-w-[220px] truncate"
-                        title="Click to copy voucher"
-                        onClick={() => {
-                            navigator.clipboard.writeText(String(voucher));
-                            toast.info(`Copied voucher: ${voucher}`, toastDefault);
-                        }}
-                    >
-                        {voucher}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                        {list.map((v) => (
+                            <span
+                                key={v.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold text-xs font-mono cursor-pointer hover:bg-green-200 max-w-[220px] truncate"
+                                title="Click to copy voucher"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(String(v.data));
+                                    toast.info(`Copied voucher: ${v.data}`, toastDefault);
+                                }}
+                            >
+                                {v.data}
+                            </span>
+                        ))}
+                    </div>
                 );
             }
             const uc = row?.uc;

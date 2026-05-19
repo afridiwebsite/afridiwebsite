@@ -23,6 +23,7 @@ function SiteSettings() {
     const spin_daily_limit = useRef(null)
     const support_email = useRef(null)
     const telegram_number = useRef(null)
+    const telegram_support_number = useRef(null)
     const youtube_link = useRef(null)
 
     const [logoFile, setLogoFile] = useState(null)
@@ -75,6 +76,7 @@ function SiteSettings() {
             spin_daily_limit: parseInt(spin_daily_limit.current?.value || 0, 10),
             support_email: support_email.current?.value || '',
             telegram_number: telegram_number.current?.value || '',
+            telegram_support_number: telegram_support_number.current?.value || '',
             youtube_link: youtube_link.current?.value || '',
         }
         axiosInstance
@@ -210,11 +212,26 @@ function SiteSettings() {
                                             className="form_input"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
+                                            Used for the storefront's Telegram channel / group link.
                                             Phone (with country code) opens t.me/+&lt;number&gt;; plain text opens t.me/&lt;username&gt;.
                                         </p>
                                     </div>
                                 </div>
                                 <div className="form_grid">
+                                    <div>
+                                        <label>Support number</label>
+                                        <input
+                                            ref={telegram_support_number}
+                                            defaultValue={data.telegram_support_number || ''}
+                                            type="text"
+                                            placeholder="+8801234567890 or username"
+                                            className="form_input"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Dedicated 1:1 Telegram support contact — surfaced as
+                                            the "Telegram Support" card in the storefront footer.
+                                        </p>
+                                    </div>
                                     <div>
                                         <label>YouTube channel link</label>
                                         <input

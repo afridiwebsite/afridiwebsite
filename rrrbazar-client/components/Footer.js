@@ -56,6 +56,11 @@ function Footer() {
   const supportEmail = siteSettings?.support_email || __email_name;
   const telegramRaw = siteSettings?.telegram_number || '';
   const telegramLink = buildTelegramLink(telegramRaw);
+  // Dedicated 1:1 support contact. Falls back to the general telegram link
+  // when the admin hasn't filled in a separate support number.
+  const telegramSupportRaw = siteSettings?.telegram_support_number || '';
+  const telegramSupportLink =
+    buildTelegramLink(telegramSupportRaw) || telegramLink;
   const youtubeLink = siteSettings?.youtube_link || __youtube_link || '';
 
   return (
@@ -68,9 +73,9 @@ function Footer() {
       <div className="container footer-main">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
           <FooterColumn title="Customer Support">
-            {telegramLink && (
+            {telegramSupportLink && (
               <a
-                href={telegramLink}
+                href={telegramSupportLink}
                 target="_blank"
                 rel="noreferrer"
                 className="footer-support-card"
@@ -99,7 +104,7 @@ function Footer() {
                   </span>
                 </span>
                 <div className="footer-support-text">
-                  <div className="footer-support-label">Telegram Group</div>
+                  <div className="footer-support-label">Telegram Channel</div>
                   <div className="footer-support-value">Join Now</div>
                 </div>
               </a>
@@ -130,16 +135,13 @@ function Footer() {
             <div className="footer-connect-card">
               <div className="footer-brand">{siteName}</div>
               {supportEmail && (
-                <a
-                  href={`mailto:${supportEmail}`}
-                  className="footer-connect-row"
-                >
+                <div className="footer-connect-row">
                   <FaEnvelope size={14} className="footer-connect-row-icon" />
                   <span className="footer-connect-row-label">Email:</span>
                   <span className="footer-connect-row-value">
                     {supportEmail}
                   </span>
-                </a>
+                </div>
               )}
               {youtubeLink && (
                 <div className="footer-socials">
@@ -162,7 +164,7 @@ function Footer() {
       <div className="footer-bottom">
         <div className="container py-4 flex flex-col md:flex-row items-center justify-between gap-2">
           <p className="footer-bottom-text">
-            © {new Date().getFullYear()} {siteName}. All rights reserved.
+            © 2020 {siteName}. All rights reserved.
           </p>
           <p className="footer-bottom-text">
             Built with{' '}

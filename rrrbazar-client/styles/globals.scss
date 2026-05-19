@@ -2028,7 +2028,7 @@ body {
 .topup-pack-card {
   position: relative;
   overflow: visible; // let the tooltip escape
-  border-radius: 16px;
+  border-radius: 7px;
   background: #fff;
   // Keep the border width constant across all states so flipping between
   // unselected/hover/selected doesn't reflow the card and shift surrounding
@@ -2051,10 +2051,36 @@ body {
 // changes the card's box dimensions).
 .topup-pack-card.is-selected {
   border-color: var(--theme-primary, #3856B5);
+  color: var(--theme-primary, #3856B5);
   box-shadow:
     0 0 0 3px rgba(var(--theme-primary-rgb, 56 86 181) / 0.18),
     0 14px 28px rgba(var(--theme-primary-rgb, 56 86 181) / 0.18);
   transform: translateY(-3px);
+  
+  // Apply gradient to the checkmark if it exists
+  .topup-pack-card-check {
+    background: linear-gradient(
+      135deg,
+      var(--theme-primary, #2563eb) 0%,
+      var(--theme-accent, #4D67D8) 100%
+    ) !important;
+  }
+
+  .topup-pack-card-price {
+    background: linear-gradient(
+      135deg,
+      var(--theme-primary, #2563eb) 0%,
+      var(--theme-accent, #4D67D8) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent !important;
+  }
+}
+
+.topup-pack-card.is-selected > .topup-pack-card-btn{
+  padding-left: 30px;
 }
 
 // Faded package logo as a card background. Sits below the content with a
@@ -2126,7 +2152,7 @@ body {
   text-align: left;
   border-radius: inherit;
   // Image takes the top column, the name+price row sits at the bottom.
-  padding: 10px 10px 8px;
+  padding: 10px 8px 10px 8px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -2135,6 +2161,8 @@ body {
   color: inherit;
   position: relative;
 }
+
+
 
 // Foreground image column — sits above the bottom-row text. `flex: 1` so
 // it expands to fill any free vertical space between the row and the top
@@ -2176,6 +2204,7 @@ body {
   gap: 8px;
   flex-wrap: nowrap;
   min-width: 0;
+  font-size: 12px;
   width: 100%;
 }
 .topup-pack-card-row .topup-pack-card-name {
@@ -2194,13 +2223,11 @@ body {
 // badge. The other two corners are flush.
 .topup-pack-card-check {
   position: absolute;
-  // -2px bleeds past the 2px border so there's no hairline gap between the
-  // check and the card's outer edge on either axis.
   top: -2px;
   left: -2px;
   width: 28px;
   height: 28px;
-  border-radius: 16px 0 14px 0;
+  border-radius: 8px 0 14px 0;
   background: var(--theme-primary, #3856B5);
   color: #fff;
   display: inline-flex;
@@ -2608,9 +2635,17 @@ body {
   transition: background-color 0.18s ease, color 0.18s ease;
 }
 .topup-pay-card.is-selected .topup-pay-card-cta {
-  background: var(--theme-primary, #3856B5);
+  background: linear-gradient(
+    135deg,
+    var(--theme-primary, #2563eb) 0%,
+    var(--theme-accent, #4D67D8) 100%
+  );
   color: #fff;
   border-top-color: var(--theme-primary, #3856B5);
+}
+
+.is-red {
+  background: #ff0000 !important;
 }
 
 // Info rows under the payment cards — i-icon + label + bold value.
@@ -3789,14 +3824,16 @@ body {
   margin-top: auto;
   color: rgba(255, 255, 255, 0.85);
   isolation: isolate;
+  overflow: hidden;
+
   background: linear-gradient(
     180deg,
-    var(--theme-primary, #1B2A4A) 0%,
-    var(--theme-secondary, #1B2A4A) 100%
+    var(--theme-secondary, #1B2A4A) 0%,
+    var(--theme-secondary, #1B2A4A) 35%,
+    var(--theme-primary, #243B6B) 100%
   );
-  overflow: hidden;
 }
-// Decorative glow blobs — soft theme-tinted radial smears layered behind
+//Decorative glow blobs — soft theme-tinted radial smears layered behind
 // the main footer content for depth.
 .footer-decor {
   position: absolute;
@@ -3879,7 +3916,7 @@ body {
     rgba(var(--theme-primary-rgb, 56 86 181) / 0.18) 0%,
     rgba(0, 0, 0, 0.18) 100%
   );
-  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
+  border: 2px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
   border-radius: 14px;
   text-decoration: none;
   color: #fff;
@@ -3960,7 +3997,7 @@ body {
     rgba(var(--theme-primary-rgb, 56 86 181) / 0.18) 0%,
     rgba(0, 0, 0, 0.18) 100%
   );
-  border: 1px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
+  border: 2px solid rgba(var(--theme-primary-rgb, 56 86 181) / 0.28);
   border-radius: 14px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   display: flex;
@@ -3974,9 +4011,7 @@ body {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.82);
   text-decoration: none;
-  transition: color 0.15s ease;
 }
-.footer-connect-row:hover { color: #fff; }
 .footer-connect-row-icon {
   color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
@@ -4103,8 +4138,8 @@ body {
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
+
   .mobile-appbar-item {
     display: flex;
     flex-direction: column;
@@ -4373,8 +4408,17 @@ body {
 
       ._order_header_title {
         @extend ._h5;
-        color: var(--theme-primary, #3856B5) !important;
+        background: linear-gradient(
+          135deg,
+          var(--theme-primary, #2563eb) 0%,
+          var(--theme-accent, #4D67D8) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: transparent !important;
         letter-spacing: 0.01em;
+        font-weight: 800;
       }
     }
 

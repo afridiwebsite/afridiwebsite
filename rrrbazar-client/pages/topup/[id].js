@@ -559,23 +559,14 @@ function TopupOrderPage() {
                                                   />
                                                 </span>
                                               ) : (
-                                                <span
-                                                  className="topup-pack-card-img is-placeholder"
-                                                  aria-hidden="true"
-                                                >
-                                                  {(
-                                                    String(pack?.name || "?")
-                                                      .trim()
-                                                      .charAt(0) || "?"
-                                                  ).toUpperCase()}
-                                                </span>
+                                               <> </>
                                               )}
                                               {/* Single bottom row: name + price
                                               side by side. No coin reward
                                               badge — that surfaces in the
                                               section header on selection. */}
                                               <span className="topup-pack-card-row">
-                                                <span className="topup-pack-card-name">
+                                                <span className="">
                                                   {pack?.name}
                                                 </span>
                                                 <span className="topup-pack-card-price">
@@ -768,7 +759,7 @@ function TopupOrderPage() {
                               <div className="flex w-full max-w-[600px] max-h-[110px] gap-3">
                                 <button
                                   type="button"
-                                  className={`topup-pay-card h-full ${
+                                  className={`topup-pay-card ${
                                     selectedPaymentMethod === "pay"
                                       ? "is-selected"
                                       : ""
@@ -881,7 +872,7 @@ function TopupOrderPage() {
                           {/* Show Error After Submit Form --End-- */}
 
                           <div
-                            className="topup-cta-bar topup-cta-bar--centered animate-fade-in-up"
+                            className="topup-cta-bar topup-cta-bar--centered animate-fade-in-up mb-2"
                             style={{ animationDelay: "260ms" }}
                           >
                             <div className="flex items-center gap-3">
@@ -952,7 +943,7 @@ function TopupOrderPage() {
                           {/* Rules & Conditions Section --Start-- */}
                           {hasDescription && (
                             <div
-                              className="_order_box_wrapper animate-fade-in-up"
+                              className="_order_box_wrapper animate-fade-in-up mt-2"
                               style={{ animationDelay: "320ms" }}
                             >
                               <div className="_order_box_header">

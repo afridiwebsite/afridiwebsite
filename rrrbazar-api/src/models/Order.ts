@@ -41,7 +41,7 @@ export default (sequelize: Sequelize) => {
                 foreignKey: "product_id",
                 constraints: false,
             });
-            this.hasOne(Voucher, {
+            this.hasMany(Voucher, {
                 foreignKey: "order_id",
                 constraints: false,
             });

@@ -43,6 +43,7 @@ class SiteSettingController {
             spin_daily_limit,
             support_email,
             telegram_number,
+            telegram_support_number,
             youtube_link,
         } = req.body;
 
@@ -65,6 +66,8 @@ class SiteSettingController {
         if (spin_daily_limit !== undefined) settings.spin_daily_limit = Number(spin_daily_limit) || 0;
         if (support_email !== undefined)    settings.support_email    = String(support_email || '').trim();
         if (telegram_number !== undefined)  settings.telegram_number  = String(telegram_number || '').trim();
+        if (telegram_support_number !== undefined)
+            settings.telegram_support_number = String(telegram_support_number || '').trim();
         if (youtube_link !== undefined)     settings.youtube_link     = String(youtube_link || '').trim();
 
         await settings.save();

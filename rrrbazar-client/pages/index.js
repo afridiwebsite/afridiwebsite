@@ -285,27 +285,15 @@ function Home({
               >
                 {banners.map((banner, index) => (
                   <SwiperSlide key={index}>
-                    {banner.note === "mobile" ? (
-                      <MobileView>
-                        <a href={banner.link} target="_blank" rel="noreferrer">
-                          <img
-                            src={imgPath(banner.banner)}
-                            alt={banner.note}
-                            className="w-full h-auto object-cover"
-                          />
-                        </a>
-                      </MobileView>
-                    ) : (
-                      <BrowserView>
-                        <a href={banner.link} target="_blank" rel="noreferrer">
-                          <img
-                            src={imgPath(banner.banner)}
-                            alt={banner.note}
-                            className="w-full h-auto object-cover"
-                          />
-                        </a>
-                      </BrowserView>
-                    )}
+                    <div className={banner.note === "mobile" ? "md:hidden" : "hidden md:block"}>
+                      <a href={banner.link} target="_blank" rel="noreferrer">
+                        <img
+                          src={imgPath(banner.banner)}
+                          alt={banner.note}
+                          className="w-full h-auto object-cover"
+                        />
+                      </a>
+                    </div>
                   </SwiperSlide>
                 ))}
               </Swiper>

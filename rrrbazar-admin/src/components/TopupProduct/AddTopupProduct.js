@@ -22,6 +22,10 @@ function AddTopupProduct() {
   // /topup-package/:id/voucher) and orders allocate one code from the pool
   // instead of going through the UC/bot path.
   const is_voucher = useRef(null);
+  // Toggled state used to gate the Redeem link input below — the ref alone
+  // isn't enough since it doesn't trigger a re-render.
+  const [isVoucherChecked, setIsVoucherChecked] = useState(false);
+  const [redeemLinkValue, setRedeemLinkValue] = useState("");
 
   // When a product_link is set, the product is a passthrough — clicking it on
   // the home page goes straight to that URL. We hide all the non-essential
@@ -201,6 +205,7 @@ function AddTopupProduct() {
           product_link: productLinkValue.trim(),
           youtube_link: youtubeLinkValue.trim(),
           is_voucher: is_voucher.current?.checked ? 1 : 0,
+          redeem_link: is_voucher.current?.checked ? redeemLinkValue.trim() : '',
         })
         .then(async (res) => {
           const newId = res?.data?.data?.id;
@@ -488,7 +493,7 @@ function AddTopupProduct() {
                                   })
                                 }
                               />
-                              <span className="text-sm">Verify player name</span>
+                              <span className="text-sm">Check player name</span>
                             </label>
                             {row.verify_player_name && (
                               <div className="mt-2">
@@ -598,6 +603,7 @@ function AddTopupProduct() {
                       type="checkbox"
                       ref={is_voucher}
                       className="mr-2"
+                      onChange={(e) => setIsVoucherChecked(e.target.checked)}
                     />
                     Is voucher product{" "}
                     <span className="text-xs font-normal text-gray-500">
@@ -606,6 +612,25 @@ function AddTopupProduct() {
                     </span>
                   </label>
                 </div>
+                {isVoucherChecked && (
+                  <div className="my-2">
+                    <label htmlFor="redeem_link" className="block font-semibold">
+                      Redeem link{" "}
+                      <span className="text-xs font-normal text-gray-500">
+                        (optional — surfaced on the buyer's completed order as a
+                        Redeem button)
+                      </span>
+                    </label>
+                    <input
+                      id="redeem_link"
+                      type="url"
+                      className="form_input mt-1"
+                      placeholder="https://example.com/redeem"
+                      value={redeemLinkValue}
+                      onChange={(e) => setRedeemLinkValue(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <button
