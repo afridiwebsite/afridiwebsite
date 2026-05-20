@@ -11,7 +11,7 @@ import { hasData, imgPath } from "../helpers/helpers";
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="home-section-title font-bold text-xl  md:text-2xl !mb-1">
+    <h3 className="home-section-title font-bold text-xl  md:text-2xl !mb-2">
       {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
       <span>{children}</span>
       {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
@@ -345,7 +345,7 @@ function Home({
             <SectionTitle>Latest Orders</SectionTitle>
 
             <div
-              className="pointer-events-none mx-auto -mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
+              className="pointer-events-none mx-auto mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
               aria-hidden="true"
             >
               <span className="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-r from-transparent via-primary-400/50 to-primary-500/70"></span>

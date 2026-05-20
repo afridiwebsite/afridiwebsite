@@ -22,7 +22,7 @@ function buildTelegramLink(value) {
   const digits = stripped.replace(/[^0-9]/g, '');
   const looksLikePhone = /^\+?\d[\d\s-]*$/.test(stripped);
   if (looksLikePhone && digits) return `https://t.me/+${digits}`;
-  return `https://t.me/${stripped}`;
+  return stripped;
 }
 
 // Mobile-only bottom app bar. Always visible on mobile to provide
