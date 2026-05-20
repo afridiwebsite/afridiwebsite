@@ -319,7 +319,7 @@ function Header() {
                       <a>
                         <Button
                           text="Login"
-                          className="bg-primary-500 hover:bg-primary-600 text-white font-bold small"
+                          className="header-cta-btn font-bold small"
                         />
                       </a>
                     </Link>
