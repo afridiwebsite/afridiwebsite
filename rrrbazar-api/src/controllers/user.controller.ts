@@ -1157,7 +1157,7 @@ class UserController {
           emitted.length === 1
             ? `Voucher: ${emitted[0].data}`
             : `Vouchers (${emitted.length}) delivered`;
-        (order as any).details = `Allocated: ${emitted.map((v) => v.data).join(", ")}`;
+        (order as any).details = `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${emitted.map((v) => `<li>${v.data}</li>`).join("")}</ul>`;
         await order.save();
 
         // Coin reward still applies to voucher purchases (multiplied by
@@ -1292,12 +1292,18 @@ class UserController {
 
           // Internal context for the admin: reports why the delivery might
           // be stuck or skipped.
-          let detail = `Bot failures: ${bot_failures}`;
-          if (!botUrl) detail += " (URL missing)";
+          let detailHtml = `<strong>Bot failures: ${bot_failures}</strong>`;
+          if (!botUrl)
+            detailHtml += "<br/><span style='color:red;'>URL missing</span>";
           if (botErrors.length > 0) {
-            detail += ` | ${botErrors.join("; ")}`;
+            detailHtml +=
+              "<ul style='text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;'>";
+            for (const err of botErrors) {
+              detailHtml += `<li>${err}</li>`;
+            }
+            detailHtml += "</ul>";
           }
-          (order as any).details = detail;
+          (order as any).details = detailHtml;
 
           await order.save();
 
@@ -1326,7 +1332,7 @@ class UserController {
         if (!store_unipin_auto) {
           // No voucher in stock for this UC tier — record the reason on the
           // order so the admin sees it without trawling logs.
-          (order as any).details = `Auto-bot skipped: no UniPin voucher in stock for UC tier ${topupPackage.uc}.`;
+          (order as any).details = `<span style="color:orange;"><strong>Auto-bot skipped:</strong> No UniPin voucher in stock for UC tier ${topupPackage.uc}.</span>`;
           await order.save();
           const {
             uc: ucAlias,
@@ -1385,7 +1391,7 @@ class UserController {
           order.status = "pending";
           order.uc = "";
           if (botError) {
-            (order as any).details = `Auto-bot failed: ${botError}.`;
+            (order as any).details = `<span style="color:red;"><strong>Auto-bot failed:</strong> ${botError}</span>`;
           }
         }
         await order.save();
@@ -2298,7 +2304,7 @@ class UserController {
                   order.brief_note = `Voucher: ${voucher.data}`;
                   await order.save();
                 } else {
-                  (order as any).details = "Voucher pool empty — needs manual fulfilment";
+                  (order as any).details = "<span style='color:red;'><strong>Voucher pool empty</strong> — needs manual fulfilment</span>";
                   await order.save();
                 }
               }

@@ -115,7 +115,7 @@ export const ordersTableColumns = [
                     onClick={() => {
                         require('sweetalert2').default.fire({
                             title: 'Order Details (Internal)',
-                            text: val,
+                            html: `<div style="text-align:left; font-size:14px;">${val}</div>`,
                             icon: 'info',
                             confirmButtonText: 'Close',
                         });
