@@ -40,16 +40,17 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-table",
 
       submenu: [
+              {
+          text: "Categories",
+          path: "/categories",
+          icon: "fas fa-tags",
+        },
         {
           text: "Top Product",
           path: "/topup-product",
           icon: "fab fa-product-hunt",
         },
-        {
-          text: "Categories",
-          path: "/categories",
-          icon: "fas fa-tags",
-        },
+
         {
           text: "Topup Packages",
           path: "/topup-packages",

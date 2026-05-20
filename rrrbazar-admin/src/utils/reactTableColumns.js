@@ -60,7 +60,9 @@ export const ordersTableColumns = [
         // back to the legacy `uc` field (UniPin / bot path).
         Header: 'UC / Voucher',
         accessor: 'uc',
-        className: 'w-[300px]',
+        // Wide column so multi-voucher orders (auto-delivery / bulk) can
+        // show every code without truncation.
+        className: 'w-[520px] min-w-[400px]',
         Cell: (e) => {
             const row = e.row.original;
             // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
@@ -73,11 +75,11 @@ export const ordersTableColumns = [
                   : [];
             if (list.length > 0) {
                 return (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 max-w-[500px]">
                         {list.map((v) => (
                             <span
                                 key={v.id}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold text-xs font-mono cursor-pointer hover:bg-green-200 max-w-[220px] truncate"
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold text-xs font-mono cursor-pointer hover:bg-green-200 break-all whitespace-normal"
                                 title="Click to copy voucher"
                                 onClick={() => {
                                     navigator.clipboard.writeText(String(v.data));

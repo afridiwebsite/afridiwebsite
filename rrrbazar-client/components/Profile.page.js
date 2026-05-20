@@ -15,10 +15,16 @@ import {
   FaClipboardList,
   FaCoins,
   FaSignOutAlt,
+  FaPlusCircle,
 } from 'react-icons/fa';
 import { GiTwoCoins, GiCoins } from 'react-icons/gi';
 import { HiSparkles } from 'react-icons/hi';
-import { getMyCoins, getUserOrders, getUserProfile } from '../api/api';
+import {
+  getMyAddedTotal,
+  getMyCoins,
+  getUserOrders,
+  getUserProfile,
+} from '../api/api';
 import reactQueryConfig from '../config/reactQueryConfig';
 import Avatar from './Avatar';
 import OnlyIconActivityIndicator from './OnlyIconActivityIndicator';
@@ -70,8 +76,39 @@ function ProfilePage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Lifetime total this user has topped up their wallet with (sum of all
+  // completed transactions for them).
+  const [totalAdded, setTotalAdded] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getMyAddedTotal();
+        if (!cancelled) setTotalAdded(Number(res?.data?.data?.total) || 0);
+      } catch (e) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Per-card accent + icon animation. Tinting the card border/background
+  // and the icon glyph itself keeps the row visually distinct without
+  // disturbing the existing `profile-stat-card` skeleton.
+  const PROFILE_ANIM_CSS = `
+    @keyframes pp-float  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @keyframes pp-pulse  { 0%,100% { transform: scale(1); }       50% { transform: scale(1.12); } }
+    @keyframes pp-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes pp-spin   { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+    @keyframes pp-shake  { 0%,100% { transform: translateX(0) rotate(0); }
+                           25%     { transform: translateX(-2px) rotate(-6deg); }
+                           75%     { transform: translateX(2px)  rotate(6deg); } }
+    @keyframes pp-swing  { 0%,100% { transform: rotate(0); }
+                           25%     { transform: rotate(15deg); }
+                           75%     { transform: rotate(-15deg); } }
+  `;
+
   return (
     <section className="mb-7">
+      <style dangerouslySetInnerHTML={{ __html: PROFILE_ANIM_CSS }} />
       {/* Hero banner */}
       <div className="relative md:container animate-fade-in h-[200px] md:h-[140px] md:mt-2">
         <div
@@ -124,9 +161,45 @@ function ProfilePage() {
       <div className="container mt-14">
         <div className="grid grid-cols-1 xxs:grid-cols-2 lg:!grid-cols-5 gap-5 md:gap-7">
           {[
-            { label: 'User Id',     value: authUser?.id,           delay: 60,  icon: <FaIdBadge /> },
-            { label: 'Total Wallet', value: `৳ ${wallet || 0}`,    delay: 120, icon: <FaWallet />, path: routes.addMoney.name },
-            { label: 'Total Coins', value: coins,                  delay: 180, icon: <FaCoins />,  path: routes.spin.name, accent: 'coin' },
+            {
+              label: 'User Id',
+              value: authUser?.id,
+              delay: 60,
+              icon: <FaIdBadge />,
+              color: '#3b82f6', // blue
+              anim: 'pp-float 3s ease-in-out infinite',
+            },
+            {
+              label: 'Total Wallet',
+              value: `৳ ${wallet || 0}`,
+              delay: 120,
+              icon: <FaWallet />,
+              path: routes.addMoney.name,
+              color: '#10b981', // emerald
+              anim: 'pp-pulse 2s ease-in-out infinite',
+            },
+            {
+              label: 'Total Added',
+              value:
+                totalAdded === null
+                  ? '...'
+                  : `৳ ${Number(totalAdded).toFixed(2)}`,
+              delay: 150,
+              icon: <FaPlusCircle />,
+              path: routes.addMoney.name,
+              color: '#8b5cf6', // violet
+              anim: 'pp-bounce 1.6s ease-in-out infinite',
+            },
+            {
+              label: 'Total Coins',
+              value: coins,
+              delay: 180,
+              icon: <FaCoins />,
+              path: routes.spin.name,
+              accent: 'coin',
+              color: '#f59e0b', // amber — also the coin-card brand
+              anim: 'pp-spin 8s linear infinite',
+            },
             {
               label: 'Total Spent',
               value: (
@@ -142,6 +215,8 @@ function ProfilePage() {
               delay: 240,
               icon: <FaShoppingCart />,
               path: routes.myOrder.name,
+              color: '#ef4444', // red
+              anim: 'pp-shake 2.6s ease-in-out infinite',
             },
             {
               label: 'Total Order',
@@ -158,6 +233,8 @@ function ProfilePage() {
               delay: 300,
               icon: <FaClipboardList />,
               path: routes.myOrder.name,
+              color: '#06b6d4', // cyan
+              anim: 'pp-swing 2.4s ease-in-out infinite',
             },
           ].map((stat) => {
             const isCoin = stat.accent === 'coin';
@@ -165,7 +242,10 @@ function ProfilePage() {
               <div
                 key={stat.label}
                 className={`profile-stat-card animate-fade-in-up ${stat.path ? 'cursor-pointer' : ''} ${isCoin ? 'profile-stat-card-coin' : ''}`}
-                style={{ animationDelay: `${stat.delay}ms` }}
+                style={{
+                  animationDelay: `${stat.delay}ms`,
+                  borderTop: `3px solid ${stat.color}`,
+                }}
                 onClick={() => stat.path && router.push(stat.path)}
               >
                 {/* Floating coin / sparkle layer — only on the coin card. */}
@@ -190,7 +270,18 @@ function ProfilePage() {
                 )}
                 <div className="profile-stat-shine" aria-hidden="true" />
                 <div className="relative flex flex-col items-center gap-3 py-6">
-                  <div className={`profile-stat-icon ${isCoin ? 'is-coin' : ''}`}>
+                  <div
+                    className={`profile-stat-icon ${isCoin ? 'is-coin' : ''}`}
+                    style={
+                      isCoin
+                        ? { animation: stat.anim }
+                        : {
+                            color: stat.color,
+                            background: `${stat.color}1a`,
+                            animation: stat.anim,
+                          }
+                    }
+                  >
                     {stat.icon}
                   </div>
                   <p className="profile-stat-value !text-2xl !mb-1">{stat.value}</p>

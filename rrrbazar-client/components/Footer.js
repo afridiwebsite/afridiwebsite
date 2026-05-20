@@ -27,8 +27,8 @@ function buildTelegramLink(value) {
   const stripped = raw.replace(/^@/, '');
   const digits = stripped.replace(/[^0-9]/g, '');
   const looksLikePhone = /^\+?\d[\d\s-]*$/.test(stripped);
-  if (looksLikePhone && digits) return `https://t.me/+${digits}`;
-  return `https://t.me/${stripped}`;
+
+  return stripped;
 }
 
 // Section title with the small underline accent from the reference.

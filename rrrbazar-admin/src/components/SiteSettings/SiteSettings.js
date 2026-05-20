@@ -188,9 +188,7 @@ function SiteSettings() {
                                 </div>
 
                                 <h4 className="font-bold mt-6 mb-2">Support contact</h4>
-                                <p className="text-sm text-gray-500 mb-3">
-                                    Shown in the footer and the floating Telegram button on the storefront.
-                                </p>
+                          
                                 <div className="form_grid">
                                     <div>
                                         <label>Support email</label>
@@ -203,7 +201,7 @@ function SiteSettings() {
                                         />
                                     </div>
                                     <div>
-                                        <label>Telegram number / username</label>
+                                        <label>Telegram group</label>
                                         <input
                                             ref={telegram_number}
                                             defaultValue={data.telegram_number || ''}
@@ -211,15 +209,12 @@ function SiteSettings() {
                                             placeholder="+8801234567890 or username"
                                             className="form_input"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Used for the storefront's Telegram channel / group link.
-                                            Phone (with country code) opens t.me/+&lt;number&gt;; plain text opens t.me/&lt;username&gt;.
-                                        </p>
+                                       
                                     </div>
                                 </div>
                                 <div className="form_grid">
                                     <div>
-                                        <label>Support number</label>
+                                        <label>Telegram support</label>
                                         <input
                                             ref={telegram_support_number}
                                             defaultValue={data.telegram_support_number || ''}
@@ -227,10 +222,7 @@ function SiteSettings() {
                                             placeholder="+8801234567890 or username"
                                             className="form_input"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Dedicated 1:1 Telegram support contact — surfaced as
-                                            the "Telegram Support" card in the storefront footer.
-                                        </p>
+                                        
                                     </div>
                                     <div>
                                         <label>YouTube channel link</label>

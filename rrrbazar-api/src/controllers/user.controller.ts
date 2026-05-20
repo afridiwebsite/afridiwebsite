@@ -690,6 +690,26 @@ class UserController {
     }
   };
 
+  // Sum of money the current user has added to their wallet — every
+  // completed Transaction row counts. Used by the profile page.
+  myAddedTotal = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const id = req.user.id;
+      const total = await Transaction.sum('amount', {
+        where: {
+          user_id: id,
+          status: 'completed',
+        },
+      });
+      response.data = { total: Number(total) || 0 };
+      res.send(response.response);
+    } catch (error) {
+      console.log('myAddedTotal error', error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
   myOrder = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils();
 

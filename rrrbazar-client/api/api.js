@@ -82,6 +82,9 @@ export const doSpin = async () => api.post('/spin/spin');
 export const getSpinHistory = async () => api.get('/spin/history');
 export const getGlobalSpinHistory = async () => api.get('/spin/global-history');
 
+// Sum of completed wallet top-ups for the current user.
+export const getMyAddedTotal = async () => api.get('/me/added-total');
+
 // Global search (products + packages)
 export const searchGlobal = async (q, limit = 8) =>
   api.get(`/search?q=${encodeURIComponent(q)}&limit=${limit}`);
