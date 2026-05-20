@@ -75,7 +75,7 @@ export const ordersTableColumns = [
                   : [];
             if (list.length > 0) {
                 return (
-                    <div className="flex flex-wrap gap-1 max-w-[500px]">
+                    <div className="flex flex-wrap gap-1 min-w-[500px]">
                         {list.map((v) => (
                             <span
                                 key={v.id}
