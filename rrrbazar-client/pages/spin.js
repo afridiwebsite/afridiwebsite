@@ -488,7 +488,7 @@ function SpinPage() {
                   </thead>
                   <tbody>
                     {mySpinHistory.length === 0 && (
-                      <tr><td colSpan={4} className="profile-history-empty">You haven't spun yet.</td></tr>
+                      <tr><td colSpan={4} className="profile-history-empty">You haven&apos;t spun yet.</td></tr>
                     )}
                     {mySpinHistory.map((h, i) => (
                       <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
