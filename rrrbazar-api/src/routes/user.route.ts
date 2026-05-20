@@ -72,6 +72,7 @@ router.get('/coins/history', userAuth, coinController.history)
 router.get('/spin/overview', userAuth, spinController.overview)
 router.post('/spin/spin', userAuth, spinController.spin)
 router.get('/spin/history', userAuth, spinController.history)
+router.get('/spin/global-history', userAuth, spinController.globalHistory)
 // Spin apis ----END----
 
 // Search ----START----

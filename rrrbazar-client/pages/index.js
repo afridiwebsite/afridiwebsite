@@ -204,7 +204,7 @@ function Home({
     return (
       <>
         {marquees.length > 0 && (
-          <section className="mb-2 md:my-3 home_slider_wrapper animate-fade-in">
+          <section className="mb-2 mt-1 md:my-3 home_slider_wrapper animate-fade-in">
             <div className="container">
               <div className="home-notice home-notice--marquee">
                 <span className="home-notice-dot" aria-hidden="true" />

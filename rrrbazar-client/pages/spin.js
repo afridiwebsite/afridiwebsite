@@ -20,6 +20,7 @@ import {
   getCoinHistory,
   getMyCoins,
   getSpinHistory,
+  getGlobalSpinHistory,
   getSpinOverview,
 } from '../api/api';
 import DailyLoginBonus from '../components/DailyLoginBonus';
@@ -142,8 +143,9 @@ function SpinPage() {
   const [coinBusy, setCoinBusy] = useState(false);
   const [convertAmount, setConvertAmount] = useState("");
   const [coinHistory, setCoinHistory] = useState([]);
-  const [spinHistory, setSpinHistory] = useState([]);
-  const [tab, setTab] = useState("spin"); // 'spin' | 'coin'
+  const [spinHistory, setSpinHistory] = useState([]); // global feed
+  const [mySpinHistory, setMySpinHistory] = useState([]); // current user
+  const [tab, setTab] = useState("spin"); // 'spin' | 'mySpin' | 'coin'
   const [lastWin, setLastWin] = useState(null);
   const rotationRef = useRef(0); // tracks the wheel's running rotation across spins
 
@@ -164,8 +166,14 @@ function SpinPage() {
       }
     }
     try {
-      const h = await getSpinHistory();
-      setSpinHistory(h?.data?.data || []);
+      const gh = await getGlobalSpinHistory();
+      setSpinHistory(gh?.data?.data || []);
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      const mh = await getSpinHistory();
+      setMySpinHistory(mh?.data?.data || []);
     } catch (e) {
       /* ignore */
     }
@@ -424,6 +432,13 @@ function SpinPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab('mySpin')}
+              className={`spin-tab ${tab === 'mySpin' ? 'is-active' : ''}`}
+            >
+              <FaHistory /> My spins
+            </button>
+            <button
+              type="button"
               onClick={() => setTab('coin')}
               className={`spin-tab ${tab === 'coin' ? 'is-active' : ''}`}
             >
@@ -438,16 +453,44 @@ function SpinPage() {
                   <thead>
                     <tr>
                       <th>Date</th>
+                      <th>User</th>
                       <th>Reward</th>
                       <th>Type</th>
-                      <th className="text-right">Amount</th>
+                      <th className="!text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {spinHistory.length === 0 && (
-                      <tr><td colSpan={4} className="profile-history-empty">No spins yet.</td></tr>
+                      <tr><td colSpan={5} className="profile-history-empty">No spins yet.</td></tr>
                     )}
                     {spinHistory.map((h, i) => (
+                      <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                        <td>{new Date(h.created_at).toLocaleString()}</td>
+                        <td className="text-gray-700">{h.player_name || `User #${h.user_id}`}</td>
+                        <td className="font-semibold text-gray-800">{h.label}</td>
+                        <td className="capitalize">{h.type}</td>
+                        <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                          {h.amount > 0 ? `+${h.amount}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : tab === 'mySpin' ? (
+                <table className="profile-history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Reward</th>
+                      <th>Type</th>
+                      <th className="!text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mySpinHistory.length === 0 && (
+                      <tr><td colSpan={4} className="profile-history-empty">You haven't spun yet.</td></tr>
+                    )}
+                    {mySpinHistory.map((h, i) => (
                       <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
                         <td>{new Date(h.created_at).toLocaleString()}</td>
                         <td className="font-semibold text-gray-800">{h.label}</td>
@@ -465,7 +508,7 @@ function SpinPage() {
                     <tr>
                       <th>Date</th>
                       <th>Type</th>
-                      <th className="text-right">Amount</th>
+                      <th className="!text-right">Amount</th>
                       <th>Note</th>
                     </tr>
                   </thead>

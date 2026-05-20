@@ -205,13 +205,14 @@ class SpinController {
         }
     }
 
+    // Personal spin history — scoped to the requesting user.
     async history(req: express.Request, res: express.Response) {
         const response = new responseUtils();
         try {
             const data = await SpinResult.findAll({
                 where: { user_id: (req as any).user.id },
                 order: [['id', 'DESC']],
-                limit: 100,
+                limit: 10,
             });
             response.data = data;
             res.send(response.response);
@@ -220,6 +221,55 @@ class SpinController {
             response.status = 400;
             response.success = false;
             response.message = 'Could not load spin history';
+            return res.status(400).send(response.response);
+        }
+    }
+
+    // Global feed — every user's recent spins. Joined with the User row so
+    // the storefront can show the player's name. Lightweight projection,
+    // never returns email/phone/etc.
+    async globalHistory(req: express.Request, res: express.Response) {
+        const response = new responseUtils();
+        try {
+            const rows = await SpinResult.findAll({
+                order: [['id', 'DESC']],
+                limit: 10,
+                raw: true,
+            });
+            const userIds = Array.from(
+                new Set((rows as any[]).map((r) => r.user_id).filter(Boolean)),
+            );
+            const users = userIds.length
+                ? await User.findAll({
+                      where: { id: userIds },
+                      attributes: ['id', 'username', 'email', 'avatar'],
+                      raw: true,
+                  })
+                : [];
+            const userById = new Map((users as any[]).map((u) => [u.id, u]));
+            response.data = (rows as any[]).map((r) => {
+                const u = userById.get(r.user_id);
+                const displayName =
+                    u?.username ||
+                    (u?.email ? String(u.email).split('@')[0] : 'Anonymous Player');
+                return {
+                    id: r.id,
+                    user_id: r.user_id,
+                    player_name: displayName,
+                    avatar: u?.avatar || null,
+                    label: r.label,
+                    type: r.type,
+                    amount: r.amount,
+                    note: r.note,
+                    created_at: r.created_at,
+                };
+            });
+            res.send(response.response);
+        } catch (e) {
+            console.log(e);
+            response.status = 400;
+            response.success = false;
+            response.message = 'Could not load global spin history';
             return res.status(400).send(response.response);
         }
     }

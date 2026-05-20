@@ -80,6 +80,7 @@ export const getCoinHistory = async () => api.get('/coins/history');
 export const getSpinOverview = async () => api.get('/spin/overview');
 export const doSpin = async () => api.post('/spin/spin');
 export const getSpinHistory = async () => api.get('/spin/history');
+export const getGlobalSpinHistory = async () => api.get('/spin/global-history');
 
 // Global search (products + packages)
 export const searchGlobal = async (q, limit = 8) =>

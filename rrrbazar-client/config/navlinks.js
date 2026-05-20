@@ -16,6 +16,7 @@ import Devider from '../components/Devider';
 import RenderGuard from '../components/RenderGuard';
 import UserPopoverMenu from '../components/user-popover-menu/UserPopoverMenu';
 import routes from './routes';
+import { FaDiceSix } from 'react-icons/fa';
 
 export default [
   {
@@ -47,9 +48,9 @@ export default [
     auth: true,
   },
   {
-    icon: <GiShoppingCart size={20} />,
-    text: 'My Shop',
-    link: routes.myShop.name,
+    icon: <FaDiceSix size={20} />,
+    text: 'Spin',
+    link: routes.spin.name,
     disabled_for_desktop: true,
     auth: true,
   },
