@@ -1156,7 +1156,8 @@ class UserController {
         order.brief_note =
           emitted.length === 1
             ? `Voucher: ${emitted[0].data}`
-            : `Vouchers (${emitted.length}): ${emitted.map((v) => v.data).join(", ")}`;
+            : `Vouchers (${emitted.length}) delivered`;
+        (order as any).details = `Allocated: ${emitted.map((v) => v.data).join(", ")}`;
         await order.save();
 
         // Coin reward still applies to voucher purchases (multiplied by
@@ -1286,20 +1287,18 @@ class UserController {
             botUrl === "" || (bot_failures > 0 && botUrl)
               ? "In Progress"
               : "completed";
-          // Compose a single brief_note that always reports the success
-          // count, plus any error context the admin needs to retry/refund.
-          let note = `Auto-delivered ${emitted.length} voucher(s)`;
-          if (!botUrl) {
-            note += " — auto-bot URL missing; vouchers issued but not dispatched";
-          } else if (bot_failures > 0) {
-            note += ` (${bot_failures} bot retr${bot_failures === 1 ? "y" : "ies"} pending)`;
-          }
+          // User-facing note only reports the successful allocation.
+
+
+          // Internal context for the admin: reports why the delivery might
+          // be stuck or skipped.
+          let detail = `Bot failures: ${bot_failures}`;
+          if (!botUrl) detail += " (URL missing)";
           if (botErrors.length > 0) {
-            // Cap at first 3 distinct messages so the column doesn't blow up.
-            const trimmed = Array.from(new Set(botErrors)).slice(0, 3);
-            note += ` | errors: ${trimmed.join("; ")}`;
+            detail += ` | ${botErrors.join("; ")}`;
           }
-          order.brief_note = note;
+          (order as any).details = detail;
+
           await order.save();
 
           const {
@@ -1327,8 +1326,7 @@ class UserController {
         if (!store_unipin_auto) {
           // No voucher in stock for this UC tier — record the reason on the
           // order so the admin sees it without trawling logs.
-          order.brief_note =
-            `Auto-bot skipped: no UniPin voucher in stock for UC tier ${topupPackage.uc}.`;
+          (order as any).details = `Auto-bot skipped: no UniPin voucher in stock for UC tier ${topupPackage.uc}.`;
           await order.save();
           const {
             uc: ucAlias,
@@ -1381,13 +1379,13 @@ class UserController {
           // Bot didn't accept the job — return the reserved voucher to the
           // pool so it can be re-sold, and leave the order pending for the
           // admin to either retry or refund. Capture the specific failure
-          // reason in brief_note.
+          // reason in details.
           store_unipin_auto.status = 1;
           await store_unipin_auto.save();
           order.status = "pending";
           order.uc = "";
           if (botError) {
-            order.brief_note = `Auto-bot failed: ${botError}.`;
+            (order as any).details = `Auto-bot failed: ${botError}.`;
           }
         }
         await order.save();
@@ -2300,8 +2298,7 @@ class UserController {
                   order.brief_note = `Voucher: ${voucher.data}`;
                   await order.save();
                 } else {
-                  order.brief_note =
-                    "Voucher pool empty — needs manual fulfilment";
+                  (order as any).details = "Voucher pool empty — needs manual fulfilment";
                   await order.save();
                 }
               }

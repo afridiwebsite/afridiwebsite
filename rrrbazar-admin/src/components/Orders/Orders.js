@@ -47,9 +47,10 @@ function Orders() {
             const order = e.row.original
             const status = order.status
             const canEdit = status === 'pending' || status === 'In Progress'
+            const hasPlayerId = !!(order.playerid && order.playerid !== 'UNIPIN_VOUCHER')
             return (
                 <ul className="flex space-x-2">
-                    <ViewOrderModal order={order} />
+                    {!hasPlayerId && <ViewOrderModal order={order} />}
                     {canEdit && (
                         <li className="cstm_btn_small" onClick={() => openChangeStatusModal(e.value)}>
                             Edit

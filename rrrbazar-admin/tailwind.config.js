@@ -1,4 +1,6 @@
 const plugin = require('tailwindcss/plugin')
+const colors = require('tailwindcss/colors')
+
 module.exports = {
   mode: "jit",
   purge: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
@@ -6,6 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        ...colors,
         blueGray: {
           50: "#ebecee",
           100: "#d6d9dd",

@@ -6,13 +6,13 @@ import UiHandler from '../UiHandler';
 // Color palette for row coding.
 const ROW_COLORS = [
   "bg-blue-50 border-blue-200",
-  "bg-emerald-50 border-emerald-200",
-  "bg-violet-50 border-violet-200",
-  "bg-amber-50 border-amber-200",
-  "bg-rose-50 border-rose-200",
-  "bg-cyan-50 border-cyan-200",
-  "bg-fuchsia-50 border-fuchsia-200",
-  "bg-lime-50 border-lime-200",
+  "bg-green-50 border-green-200",
+  "bg-indigo-50 border-indigo-200",
+  "bg-yellow-50 border-yellow-200",
+  "bg-pink-50 border-pink-200",
+  "bg-purple-50 border-purple-200",
+  "bg-gray-50 border-gray-200",
+  "bg-blue-100/30 border-blue-300/50",
 ];
 
 // Voucher Statistics — packages from voucher-type products grouped under

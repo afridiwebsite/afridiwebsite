@@ -8,6 +8,7 @@ import PlayerKillEditForm from '../components/PlayerKillEditForm';
 import PlayerRankingEditForm from '../components/PlayerRankingEditForm';
 import ProductDescriptionSeeMore from '../components/ProductDescriptionSeeMore';
 import { imgPath } from './handler.utils';
+import Swal from 'sweetalert2';
 
 // Shared helper: copies on click and toasts. Renders '---' if empty.
 const copyableCell = (label, accessor) => (e) => {
@@ -101,6 +102,29 @@ export const ordersTableColumns = [
     {
         Header: 'Created at',
         accessor: 'created_at',
+    },
+    {
+        Header: 'Details',
+        accessor: 'details',
+        Cell: (e) => {
+            const val = e.row.original['details'];
+            if (!val) return <span className="text-gray-400">---</span>;
+            return (
+                <button
+                    className="cstm_btn_small !bg-gray-600 hover:!bg-gray-700"
+                    onClick={() => {
+                        require('sweetalert2').default.fire({
+                            title: 'Order Details (Internal)',
+                            text: val,
+                            icon: 'info',
+                            confirmButtonText: 'Close',
+                        });
+                    }}
+                >
+                    Details
+                </button>
+            );
+        },
     },
     {
         Header: 'Status',

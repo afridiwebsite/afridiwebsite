@@ -12,9 +12,8 @@ function Badge({ type }) {
       ? 'bg-green-100 text-green-600'
       : (type === 'cancel' || type === 'cancelled' || type === 'ended')
         ? 'bg-red-100 text-red-600'
-        : (type === 'in_progress' || type === 'running')
-          ? 'bg-yellow-100 text-yellow-600'
-          : 'bg-gray-200 text-gray-600';
+        : (type === 'in_progress' || type === 'running' || type === 'In Progress')
+          ? 'bg-yellow-100 text-yellow-600'          : 'bg-gray-200 text-gray-600';
 
   return (
     <div

@@ -25,6 +25,7 @@ export default (sequelize: Sequelize) => {
         public amount!: number;
         public bprice!: Float64Array;
         public uc!: string;
+        public details!: string;
         public completed_by!: number;
 
 
@@ -134,6 +135,11 @@ export default (sequelize: Sequelize) => {
         },
         uc: {
             type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: '',
+        },
+        details: {
+            type: DataTypes.TEXT,
             allowNull: true,
             defaultValue: '',
         },
