@@ -2050,6 +2050,43 @@ class AdminController {
     }
   }
 
+  // Aggregate stats for a single user — used by the admin EditUser page to
+  // mirror the storefront's Profile cards (Total Added, Spent, Orders…).
+  userStats = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const id = req.params.id as any
+      const user = await User.findByPk(id)
+      if (!user) {
+        response.message = 'User not found'
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+
+      const total_added = await Transaction.sum('amount', {
+        where: { user_id: id, status: 'completed' },
+      })
+      const total_spent = await Order.sum('amount', {
+        where: { user_id: id, status: 'completed' },
+      })
+      const total_order = await Order.count({ where: { user_id: id } })
+
+      response.data = {
+        id: user.id,
+        wallet: Number(user.wallet) || 0,
+        coins: Number(user.coins) || 0,
+        total_added: Number(total_added) || 0,
+        total_spent: Number(total_spent) || 0,
+        total_order: Number(total_order) || 0,
+      }
+      res.send(response.response)
+    } catch (error) {
+      console.log('userStats error', error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
   // -------- Order comment templates --------
   // Admins save reusable comment templates with rich text. The Orders edit
   // modal lets the admin pick from the saved list or type a custom note;

@@ -553,20 +553,12 @@ function TopupOrderPage() {
                                                     Already claimed
                                                   </span>
                                                 )}
-                                              {isSelected && (
-                                                <span
-                                                  className="topup-pack-card-check"
-                                                  aria-hidden="true"
-                                                >
-                                                  ✓
-                                                </span>
-                                              )}
                                               {/* Foreground image column — sits
-                                              above the bottom-row text. Falls
-                                              back to a text-only placeholder
-                                              (product's first name) so cards
-                                              keep the same shape even when a
-                                              package has no logo. */}
+                                              above the bottom-row text. When
+                                              the package has no logo, render
+                                              a same-height empty placeholder
+                                              so cards in a row keep an even
+                                              shape. */}
                                               {pack?.logo ? (
                                                 <span
                                                   className="topup-pack-card-img"
@@ -578,22 +570,40 @@ function TopupOrderPage() {
                                                   />
                                                 </span>
                                               ) : (
-                                               <> </>
+                                                <span
+                                                  className="topup-pack-card-img topup-pack-card-img--empty"
+                                                  aria-hidden="true"
+                                                />
                                               )}
                                               {/* Single bottom row: name + price
-                                              side by side. No coin reward
-                                              badge — that surfaces in the
-                                              section header on selection. */}
+                                              side by side. A small rounded
+                                              check sits next to the name
+                                              while the package is selected. */}
                                               <span className="topup-pack-card-row">
-                                                <span className="">
-                                                  {pack?.name}
+                                                <span className="topup-pack-card-name-wrap">
+                                                  {isSelected && (
+                                                    <span
+                                                      className="topup-pack-card-check-inline"
+                                                      aria-hidden="true"
+                                                      title="Selected"
+                                                    >
+                                                      ✓
+                                                    </span>
+                                                  )}
+                                                  <span>{pack?.name}</span>
                                                 </span>
                                                 <span className="topup-pack-card-price">
                                                   ৳ {pack?.price}
                                                 </span>
                                               </span>
                                             </button>
-                                            {hasPackDescription && (
+                                            {/* Info button — hidden while the
+                                                package is out-of-stock /
+                                                already-claimed so the stock
+                                                badge has the corner to itself
+                                                and we don't dangle a tappable
+                                                control on a disabled card. */}
+                                            {hasPackDescription && !isDisabled && (
                                               <span className="topup-pack-card-info-wrap">
                                                 <button
                                                   type="button"

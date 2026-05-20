@@ -88,6 +88,8 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/voucher-products-with-packages',       method: 'GET' },
     { path: '/topup-package/:id/voucher-maps',       method: 'GET' },
     { path: '/topup-package/:id/voucher-maps',       method: 'POST' },
+    // Per-user aggregate stats — drives the EditUser admin page.
+    { path: '/user/:id/stats',                        method: 'GET'  },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

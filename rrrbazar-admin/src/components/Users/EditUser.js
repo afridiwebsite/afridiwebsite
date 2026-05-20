@@ -1,16 +1,91 @@
 import React, { useRef, useState } from 'react'
 import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import {
+    FaIdBadge, FaWallet, FaPlusCircle, FaCoins,
+    FaShoppingCart, FaClipboardList,
+} from 'react-icons/fa';
 import axiosInstance from '../../common/axios';
 import useGet from '../../hooks/useGet';
 import { getErrors, hasData, imgPath, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
+
+// Reusable per-card style. Same six stat tiles the storefront's profile
+// page renders, just sourced from an admin-side aggregate endpoint so the
+// values reflect the user being edited rather than the admin themself.
+const STAT_DEFS = [
+    {
+        key: 'id',
+        label: 'User Id',
+        icon: <FaIdBadge />,
+        color: '#3b82f6',
+        anim: 'pp-float 3s ease-in-out infinite',
+        format: (v) => v ?? '—',
+    },
+    {
+        key: 'wallet',
+        label: 'Total Wallet',
+        icon: <FaWallet />,
+        color: '#10b981',
+        anim: 'pp-pulse 2s ease-in-out infinite',
+        format: (v) => `৳ ${Number(v || 0).toFixed(2)}`,
+    },
+    {
+        key: 'total_added',
+        label: 'Total Added',
+        icon: <FaPlusCircle />,
+        color: '#8b5cf6',
+        anim: 'pp-bounce 1.6s ease-in-out infinite',
+        format: (v) => `৳ ${Number(v || 0).toFixed(2)}`,
+    },
+    {
+        key: 'coins',
+        label: 'Total Coins',
+        icon: <FaCoins />,
+        color: '#f59e0b',
+        anim: 'pp-spin 8s linear infinite',
+        format: (v) => Number(v || 0),
+    },
+    {
+        key: 'total_spent',
+        label: 'Total Spent',
+        icon: <FaShoppingCart />,
+        color: '#ef4444',
+        anim: 'pp-shake 2.6s ease-in-out infinite',
+        format: (v) => `৳ ${Number(v || 0).toFixed(2)}`,
+    },
+    {
+        key: 'total_order',
+        label: 'Total Order',
+        icon: <FaClipboardList />,
+        color: '#06b6d4',
+        anim: 'pp-swing 2.4s ease-in-out infinite',
+        format: (v) => Number(v || 0),
+    },
+];
+
+const STAT_ANIM_CSS = `
+    @keyframes pp-float  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @keyframes pp-pulse  { 0%,100% { transform: scale(1); }       50% { transform: scale(1.12); } }
+    @keyframes pp-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes pp-spin   { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+    @keyframes pp-shake  { 0%,100% { transform: translateX(0) rotate(0); }
+                           25%     { transform: translateX(-2px) rotate(-6deg); }
+                           75%     { transform: translateX(2px)  rotate(6deg); } }
+    @keyframes pp-swing  { 0%,100% { transform: rotate(0); }
+                           25%     { transform: rotate(15deg); }
+                           75%     { transform: rotate(-15deg); } }
+`;
+
 function EditUser(props) {
     const history = useHistory()
     const userId = props.match.params.id;
 
     const [loading, setLoading] = useState(null)
     const [data, loadingData, error] = useGet(`admin/user/${userId}`)
+    // Aggregate stats — kept in a separate request so the existing user fetch
+    // doesn't need to grow extra fields.
+    const [stats, loadingStats] = useGet(`admin/user/${userId}/stats`)
 
     const wallet = useRef(null);
     const coins = useRef(null);
@@ -37,6 +112,7 @@ function EditUser(props) {
 
     return (
         <section className="relative container_admin" >
+            <style dangerouslySetInnerHTML={{ __html: STAT_ANIM_CSS }} />
             <div className="bg-white overflow-hidden rounded">
                 <div className="px-6 py-3 border-b border-gray-200">
                     <h3 className="text-lg font-bold text-black">
@@ -50,7 +126,7 @@ function EditUser(props) {
                         {
                             hasData(data, loading, error) && (
                                 <form onSubmit={editPaymentMethodHandler} >
-                                    <div className="flex flex-col items-center mb-8">
+                                    <div className="flex flex-col items-center mb-6">
                                         <img
                                             alt="Avatar"
                                             src={data?.avatar ? (data.avatar.startsWith('http') ? data.avatar : imgPath(data.avatar)) : require("../../assets/img/team-2-800x800.jpg").default}
@@ -59,6 +135,45 @@ function EditUser(props) {
                                         <h4 className="text-xl font-bold mt-4">{data?.username}</h4>
                                         <p className="text-gray-500 text-sm">{data?.email}</p>
                                     </div>
+
+                                    {/* Stat cards — mirror of the storefront Profile page. */}
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+                                        {STAT_DEFS.map((s) => {
+                                            const value =
+                                                s.key === 'id'
+                                                    ? data?.id
+                                                    : stats?.[s.key];
+                                            return (
+                                                <div
+                                                    key={s.key}
+                                                    className="relative bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+                                                    style={{ borderTop: `3px solid ${s.color}` }}
+                                                >
+                                                    <div className="flex flex-col items-center gap-2 py-4 px-2">
+                                                        <div
+                                                            className="inline-flex items-center justify-center w-10 h-10 rounded-full text-lg"
+                                                            style={{
+                                                                color: s.color,
+                                                                background: `${s.color}1a`,
+                                                                animation: s.anim,
+                                                            }}
+                                                        >
+                                                            {s.icon}
+                                                        </div>
+                                                        <p className="text-lg font-bold text-gray-800 leading-tight text-center">
+                                                            {loadingStats && s.key !== 'id'
+                                                                ? '…'
+                                                                : s.format(value)}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 text-center">
+                                                            {s.label}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
                                     <div>
 
                                         <div className="form_grid">
