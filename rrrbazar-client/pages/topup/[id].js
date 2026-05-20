@@ -570,10 +570,7 @@ function TopupOrderPage() {
                                                   />
                                                 </span>
                                               ) : (
-                                                <span
-                                                  className="topup-pack-card-img topup-pack-card-img--empty"
-                                                  aria-hidden="true"
-                                                />
+                                              <></>
                                               )}
                                               {/* Single bottom row: name + price
                                               side by side. A small rounded
