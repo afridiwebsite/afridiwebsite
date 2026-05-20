@@ -346,9 +346,11 @@ function TopupOrderPage() {
                                 ? "IDCODE"
                                 : securitycode,
                               payment_mathod: payment_mathod || "pay",
-                              quantity: isVoucherProduct
-                                ? Math.max(1, Number(values.quantity) || 1)
-                                : 1,
+                              quantity:
+                                isVoucherProduct &&
+                                values.selectedpackage?.allow_quantity == 1
+                                  ? Math.max(1, Number(values.quantity) || 1)
+                                  : 1,
                             })
                             .then((order_res) => {
                               if (
@@ -412,12 +414,14 @@ function TopupOrderPage() {
                       const isPaymentError = errors["payment_mathod"];
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
-                      // Voucher products can be ordered in quantities — they
-                      // pull N vouchers from the pool. Non-voucher products
-                      // implicitly use quantity 1.
-                      const orderQuantity = isVoucherProduct
-                        ? Math.max(1, Number(values.quantity) || 1)
-                        : 1;
+                      // Voucher products can be ordered in quantities — but
+                      // only when the picked package has `allow_quantity` on.
+                      // Anything else implicitly uses quantity 1.
+                      const orderQuantity =
+                        isVoucherProduct &&
+                        values.selectedpackage?.allow_quantity == 1
+                          ? Math.max(1, Number(values.quantity) || 1)
+                          : 1;
                       const totalCost =
                         Number(values.selectedpackage?.price || 0) *
                         orderQuantity;
@@ -621,10 +625,13 @@ function TopupOrderPage() {
                                       {/* Single Recharge --End-- */}
                                     </div>
                                     {/* Quantity stepper — voucher-pool products
-                                        can be bought in bulk. One mapped
-                                        voucher emitted per unit. */}
+                                        whose admin flipped on `allow_quantity`
+                                        for the selected package can be bought
+                                        in bulk. Other voucher packages stay
+                                        single-unit. */}
                                     {isVoucherProduct &&
-                                      values.selectedpackage && (
+                                      values.selectedpackage &&
+                                      values.selectedpackage.allow_quantity == 1 && (
                                         <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
                                           <label className="text-sm font-semibold text-gray-700">
                                             Quantity

@@ -62,6 +62,7 @@ class TopupPackageController {
             order_once,
             bot_url,
             auto_delivery,
+            allow_quantity,
         } = req.body
 
         try {
@@ -79,6 +80,7 @@ class TopupPackageController {
                 order_once: order_once == 1 ? 1 : 0,
                 bot_url: String(bot_url || '').trim(),
                 auto_delivery: auto_delivery == 1 ? 1 : 0,
+                allow_quantity: allow_quantity == 1 ? 1 : 0,
             })
 
             response.message = 'Created successfully'
@@ -111,6 +113,7 @@ class TopupPackageController {
             order_once,
             bot_url,
             auto_delivery,
+            allow_quantity,
         } = req.body
 
         try {
@@ -143,6 +146,9 @@ class TopupPackageController {
             }
             if (auto_delivery !== undefined) {
                 topupPackage.auto_delivery = auto_delivery == 1 ? 1 : 0;
+            }
+            if (allow_quantity !== undefined) {
+                topupPackage.allow_quantity = allow_quantity == 1 ? 1 : 0;
             }
             await topupPackage.save()
 

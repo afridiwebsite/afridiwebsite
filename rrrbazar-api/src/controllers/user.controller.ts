@@ -41,7 +41,7 @@ const {
 async function emitProductVoucher(packageId: number, orderId: number) {
   const voucher = await Voucher.findOne({
     where: { is_used: 0, package_id: packageId },
-    order: [['id', 'ASC']],
+    order: [["id", "ASC"]],
   });
   if (!voucher) return null;
   voucher.is_used = 1;
@@ -101,8 +101,6 @@ class UserController {
 
     const id = req.params.id as any;
     const { phone, wallet, address, city, zip_code, password } = req.body;
-
-    console.log(req.body);
 
     const user = await User.findByPk(id);
 
@@ -403,7 +401,7 @@ class UserController {
     try {
       const products = await TopupProduct.findAll({
         where: { is_voucher: 1 },
-        attributes: ['id', 'name'],
+        attributes: ["id", "name"],
         raw: true,
       });
       if (products.length === 0) {
@@ -412,11 +410,9 @@ class UserController {
       }
       const productById = new Map(products.map((p: any) => [p.id, p]));
 
-      console.log(productById,'Li')
-
       const packs = await TopupPackage.findAll({
         where: { product_id: { [Op.in]: products.map((p: any) => p.id) } },
-        attributes: ['id', 'name', 'product_id'],
+        attributes: ["id", "name", "product_id"],
         raw: true,
       });
       if (packs.length === 0) {
@@ -424,17 +420,27 @@ class UserController {
         return res.send(response.response);
       }
 
-      console.log(packs,'Li pa')
-
       const stats = await Voucher.findAll({
         where: { package_id: { [Op.in]: packs.map((p: any) => p.id) } },
         attributes: [
-          'package_id',
-          [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_used = 0 THEN 1 ELSE 0 END')), 'unused'],
-          [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_used = 1 THEN 1 ELSE 0 END')), 'used'],
-          [Sequelize.fn('COUNT', Sequelize.col('id')), 'total'],
+          "package_id",
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN is_used = 0 THEN 1 ELSE 0 END"),
+            ),
+            "unused",
+          ],
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.literal("CASE WHEN is_used = 1 THEN 1 ELSE 0 END"),
+            ),
+            "used",
+          ],
+          [Sequelize.fn("COUNT", Sequelize.col("id")), "total"],
         ],
-        group: ['package_id'],
+        group: ["package_id"],
         raw: true,
       });
       const statsByPackage = new Map<number, any>();
@@ -447,7 +453,7 @@ class UserController {
           package_id: p.id,
           package_name: p.name || `Package #${p.id}`,
           product_id: p.product_id || null,
-          product_name: (product as any)?.name || '—',
+          product_name: (product as any)?.name || "—",
           total: Number(stat?.total) || 0,
           used: Number(stat?.used) || 0,
           unused: Number(stat?.unused) || 0,
@@ -459,7 +465,7 @@ class UserController {
       response.data = data;
       res.send(response.response);
     } catch (error) {
-      console.log('getVoucherStatsByPackage error', error);
+      console.log("getVoucherStatsByPackage error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -589,9 +595,7 @@ class UserController {
       // not eligible for this product).
       if (input.region_lock) {
         const expected = String(input.region_lock).trim().toUpperCase();
-        const actual = String(
-          body?.player_info?.region ?? body?.region ?? '',
-        )
+        const actual = String(body?.player_info?.region ?? body?.region ?? "")
           .trim()
           .toUpperCase();
         if (!actual || actual !== expected) {
@@ -696,16 +700,16 @@ class UserController {
     const response = new responseUtils();
     try {
       const id = req.user.id;
-      const total = await Transaction.sum('amount', {
+      const total = await Transaction.sum("amount", {
         where: {
           user_id: id,
-          status: 'completed',
+          status: "completed",
         },
       });
       response.data = { total: Number(total) || 0 };
       res.send(response.response);
     } catch (error) {
-      console.log('myAddedTotal error', error);
+      console.log("myAddedTotal error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -724,12 +728,12 @@ class UserController {
           {
             model: Voucher,
             required: false,
-            attributes: ['id', 'data'],
+            attributes: ["id", "data"],
           },
           {
             model: TopupProduct,
             required: false,
-            attributes: ['id', 'name', 'logo', 'redeem_link', 'is_voucher'],
+            attributes: ["id", "name", "logo", "redeem_link", "is_voucher"],
           },
         ],
         order: [["created_at", "DESC"]],
@@ -902,7 +906,7 @@ class UserController {
         const playerIdInputCount = await TopupProductInput.count({
           where: { topup_product_id: product_id, is_player_id: 1 },
         });
-        const trimmedPlayerId = String(playerid || '').trim();
+        const trimmedPlayerId = String(playerid || "").trim();
         if (playerIdInputCount > 0 && trimmedPlayerId) {
           const previous = await Order.count({
             where: {
@@ -935,7 +939,10 @@ class UserController {
       // accidental bulk orders bounded.
       const isVoucherProduct = (product as any).is_voucher == 1;
       const quantity = isVoucherProduct
-        ? Math.min(Math.max(parseInt(String(rawQuantity || '1'), 10) || 1, 1), 100)
+        ? Math.min(
+            Math.max(parseInt(String(rawQuantity || "1"), 10) || 1, 1),
+            100,
+          )
         : 1;
       let amount = unitPrice * quantity;
       let bprice = unitBprice * quantity;
@@ -1073,7 +1080,9 @@ class UserController {
         };
 
         const meta_data = {
-          token: process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f",
+          token:
+            process.env.UDDOKTAPAY_API_KEY ||
+            "18b2ca74b5fe2f63d8293687d94fde987925c98f",
           id: user.id,
           paymentmethod: 1, // UddoktaPay method ID
           unipin_id: hold_unipin_id,
@@ -1082,12 +1091,6 @@ class UserController {
 
         const webhookUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`;
         const redirectUrl = `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/order`;
-        console.log("[topupPackageOrder] auto_payment requested", {
-          user_id: user.id,
-          amount,
-          webhookUrl,
-          redirectUrl,
-        });
 
         try {
           const fastPayData = await fastPay({
@@ -1100,7 +1103,6 @@ class UserController {
             webhook_url: webhookUrl,
           });
 
-          console.log("[topupPackageOrder] fastPay ok:", fastPayData);
           response.data = fastPayData;
           return res.send(response.data);
         } catch (err: any) {
@@ -1131,12 +1133,15 @@ class UserController {
         let pool_exhausted = false;
         for (let i = 0; i < quantity; i++) {
           const v = await emitProductVoucher(topupPackage.id, order.id);
-          if (!v) { pool_exhausted = true; break; }
+          if (!v) {
+            pool_exhausted = true;
+            break;
+          }
           emitted.push(v);
         }
         if (pool_exhausted) {
           for (const v of emitted) await releaseVoucher(v);
-          if (payment_mathod === 'pay') {
+          if (payment_mathod === "pay") {
             user.wallet = Number(user.wallet) + Number(amount);
             await user.save();
           }
@@ -1147,24 +1152,24 @@ class UserController {
           return res.status(400).send(response.response);
         }
 
-        order.status = 'completed';
-        order.brief_note = emitted.length === 1
-          ? `Voucher: ${emitted[0].data}`
-          : `Vouchers (${emitted.length}): ${emitted.map((v) => v.data).join(', ')}`;
+        order.status = "completed";
+        order.brief_note =
+          emitted.length === 1
+            ? `Voucher: ${emitted[0].data}`
+            : `Vouchers (${emitted.length}): ${emitted.map((v) => v.data).join(", ")}`;
         await order.save();
 
         // Coin reward still applies to voucher purchases (multiplied by
         // quantity, since each unit earns the coins).
         try {
-          const coinReward =
-            (Number(topupPackage.coin_value || 0)) * quantity;
+          const coinReward = Number(topupPackage.coin_value || 0) * quantity;
           if (coinReward > 0) {
             user.coins = (user.coins || 0) + coinReward;
             await user.save();
             await CoinTransaction.create({
               user_id: user.id,
               amount: coinReward,
-              type: 'purchase',
+              type: "purchase",
               note: `Order #${order.id} (${topupPackage.name} × ${quantity})`,
               reference_id: order.id,
             });
@@ -1179,7 +1184,7 @@ class UserController {
           bprice: bpriceAliasV,
           ...filteredOrderV
         } = order.get({ plain: true });
-        response.message = 'Order placed successfully';
+        response.message = "Order placed successfully";
         response.data = filteredOrderV;
         return res.send(response.response);
       }
@@ -1207,6 +1212,7 @@ class UserController {
       // (one per mapping) and how many times the auto-bot runs. All-or-
       // nothing: if any pool is empty we release the ones we already
       // grabbed, refund the wallet and abort.
+
       if ((topupPackage as any).auto_delivery == 1) {
         const maps = await PackageVoucherMap.findAll({
           where: { topup_package_id: topupPackage.id },
@@ -1217,12 +1223,16 @@ class UserController {
           let pool_exhausted = false;
           for (const m of maps as any[]) {
             const v = await emitProductVoucher(m.voucher_package_id, order.id);
-            if (!v) { pool_exhausted = true; break; }
+            if (!v) {
+              pool_exhausted = true;
+              break;
+            }
             emitted.push(v);
           }
+
           if (pool_exhausted) {
             for (const v of emitted) await releaseVoucher(v);
-            if (payment_mathod === 'pay') {
+            if (payment_mathod === "pay") {
               user.wallet = Number(user.wallet) + Number(amount);
               await user.save();
             }
@@ -1234,11 +1244,17 @@ class UserController {
             return res.status(400).send(response.response);
           }
 
-          // Fire the bot once per emitted voucher. Failures are logged but
-          // we don't roll back the vouchers; admin can retry / refund.
-          const botUrl = String((topupPackage as any).bot_url || '').trim();
+          // Fire the bot once per emitted voucher. Failures are captured in
+          // a structured array so we can surface specific messages on the
+          // order — admin can read why a delivery is stuck without digging
+          // into the server logs.
+          const botUrl = String((topupPackage as any).bot_url || "").trim();
+          const botErrors: string[] = [];
           let bot_failures = 0;
-          if (botUrl) {
+
+          if (!botUrl) {
+            botErrors.push("auto-bot URL is not configured for this package");
+          } else {
             for (const v of emitted) {
               try {
                 const ok = await autoOrder(
@@ -1248,16 +1264,42 @@ class UserController {
                   v.data,
                   botUrl,
                 );
-                if (!ok) bot_failures += 1;
-              } catch (e) {
+                if (!ok) {
+                  bot_failures += 1;
+                  botErrors.push(
+                    `bot rejected voucher #${v.id} (no response from ${botUrl})`,
+                  );
+                }
+              } catch (e: any) {
                 bot_failures += 1;
+                const msg =
+                  (e && (e.message || e.code || e.toString())) ||
+                  "unknown error";
+                botErrors.push(
+                  `bot call threw for voucher #${v.id}: ${String(msg).slice(0, 200)}`,
+                );
               }
             }
           }
 
-          order.status = bot_failures > 0 && botUrl ? 'In Progress' : 'completed';
-          order.brief_note = `Auto-delivered ${emitted.length} voucher(s)` +
-            (bot_failures > 0 ? ` (${bot_failures} bot retr${bot_failures === 1 ? 'y' : 'ies'} pending)` : '');
+          order.status =
+            botUrl === "" || (bot_failures > 0 && botUrl)
+              ? "In Progress"
+              : "completed";
+          // Compose a single brief_note that always reports the success
+          // count, plus any error context the admin needs to retry/refund.
+          let note = `Auto-delivered ${emitted.length} voucher(s)`;
+          if (!botUrl) {
+            note += " — auto-bot URL missing; vouchers issued but not dispatched";
+          } else if (bot_failures > 0) {
+            note += ` (${bot_failures} bot retr${bot_failures === 1 ? "y" : "ies"} pending)`;
+          }
+          if (botErrors.length > 0) {
+            // Cap at first 3 distinct messages so the column doesn't blow up.
+            const trimmed = Array.from(new Set(botErrors)).slice(0, 3);
+            note += ` | errors: ${trimmed.join("; ")}`;
+          }
+          order.brief_note = note;
           await order.save();
 
           const {
@@ -1266,7 +1308,7 @@ class UserController {
             bprice: bpriceAliasAd,
             ...filteredOrderAd
           } = order.get({ plain: true });
-          response.message = 'Order placed successfully';
+          response.message = "Order placed successfully";
           response.data = filteredOrderAd;
           return res.send(response.response);
         }
@@ -1283,6 +1325,11 @@ class UserController {
           order: Sequelize.literal("RAND()"),
         });
         if (!store_unipin_auto) {
+          // No voucher in stock for this UC tier — record the reason on the
+          // order so the admin sees it without trawling logs.
+          order.brief_note =
+            `Auto-bot skipped: no UniPin voucher in stock for UC tier ${topupPackage.uc}.`;
+          await order.save();
           const {
             uc: ucAlias,
             ingamepassword: ingamepasswordAlias,
@@ -1299,13 +1346,33 @@ class UserController {
         store_unipin_auto.status = order.id;
         await store_unipin_auto.save();
 
-        const botStatus = await autoOrder(
-          order.id,
-          playerid,
-          topupPackage.uc,
-          send_unipin,
-          (topupPackage as any).bot_url || '',
-        );
+        const pkgBotUrl = String((topupPackage as any).bot_url || "").trim();
+        let botStatus: any = null;
+        let botError: string | null = null;
+
+        if (!pkgBotUrl) {
+          // Auto-bot URL not configured. Don't even attempt — note the
+          // reason on the order and leave it pending for a human to retry.
+          botError = "auto-bot URL is not configured for this package";
+        } else {
+          try {
+            botStatus = await autoOrder(
+              order.id,
+              playerid,
+              topupPackage.uc,
+              send_unipin,
+              pkgBotUrl,
+            );
+            if (!botStatus) {
+              botError = `bot returned no acceptance (no response from ${pkgBotUrl})`;
+            }
+          } catch (e: any) {
+            const msg =
+              (e && (e.message || e.code || e.toString())) || "unknown error";
+            botError = `bot call threw: ${String(msg).slice(0, 200)}`;
+          }
+        }
+
         if (botStatus) {
           order.status = "In Progress";
           order.uc = send_unipin;
@@ -1313,11 +1380,15 @@ class UserController {
         } else {
           // Bot didn't accept the job — return the reserved voucher to the
           // pool so it can be re-sold, and leave the order pending for the
-          // admin to either retry or refund.
+          // admin to either retry or refund. Capture the specific failure
+          // reason in brief_note.
           store_unipin_auto.status = 1;
           await store_unipin_auto.save();
           order.status = "pending";
           order.uc = "";
+          if (botError) {
+            order.brief_note = `Auto-bot failed: ${botError}.`;
+          }
         }
         await order.save();
       }
@@ -1454,7 +1525,7 @@ class UserController {
       }
 
       const meta_data = {
-        token: process.env.UDDOKTAPAY_API_KEY ,
+        token: process.env.UDDOKTAPAY_API_KEY,
         id: user.id,
         phone: user.phone,
         wallet: user.wallet,
@@ -1467,11 +1538,6 @@ class UserController {
 
       if (paymentmethod == 4) {
         const webhookUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`;
-        console.log("[addWallet] fastPay requested", {
-          user_id: user.id,
-          amount,
-          webhookUrl,
-        });
         try {
           const fastPayData = await fastPay({
             full_name: user.email,
@@ -1482,15 +1548,10 @@ class UserController {
             cancel_url: `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/add-money`,
             webhook_url: webhookUrl,
           });
-          console.log("[addWallet] fastPay ok:", fastPayData);
           response.data = fastPayData;
           return res.send(response.data);
         } catch (err: any) {
-          console.error(
-            "[addWallet] fastPay failed:",
-            err?.message,
-            err?.body,
-          );
+          console.error("[addWallet] fastPay failed:", err?.message, err?.body);
           response.message =
             "Could not start payment session. Please try again or contact support.";
           response.status = 502;
@@ -2115,11 +2176,6 @@ class UserController {
         paymentmethod,
       } = req.body;
 
-      console.log("UddoktaPay Webhook Received");
-      console.log("[webhook] content-type:", req.headers["content-type"]);
-      console.log("[webhook] body keys:", Object.keys(req.body || {}));
-      console.log("[webhook] body:", JSON.stringify(req.body));
-
       //const uak = req.headers['RT_UDDOKTAPAY_API_KEY'];
 
       let metadataObj = metadata;
@@ -2132,7 +2188,10 @@ class UserController {
       }
 
       if (!metadataObj || !metadataObj.id) {
-        console.error("Webhook Error: User metadata not found or invalid", metadataObj);
+        console.error(
+          "Webhook Error: User metadata not found or invalid",
+          metadataObj,
+        );
         return res.send({
           status: "failure",
           statusCode: 400,
@@ -2150,7 +2209,9 @@ class UserController {
         });
       }
 
-      const envToken = process.env.UDDOKTAPAY_API_KEY || "18b2ca74b5fe2f63d8293687d94fde987925c98f";
+      const envToken =
+        process.env.UDDOKTAPAY_API_KEY ||
+        "18b2ca74b5fe2f63d8293687d94fde987925c98f";
       if (
         metadataObj.token == null ||
         metadataObj.token == "" ||
@@ -2165,7 +2226,10 @@ class UserController {
       }
 
       if (metadataObj.token != envToken) {
-        console.error("Webhook Error: Unauthorized Action! Token mismatch.", { received: metadataObj.token, expected: envToken });
+        console.error("Webhook Error: Unauthorized Action! Token mismatch.", {
+          received: metadataObj.token,
+          expected: envToken,
+        });
         return res.send({
           status: "failure",
           statusCode: 403,
@@ -2175,7 +2239,8 @@ class UserController {
 
       const pm = await PaymentMethod.findByPk(metadataObj.paymentmethod);
       if (pm) {
-        metadataObj.seller_id = (pm.info && !isNaN(Number(pm.info))) ? parseInt(pm.info) : 13;
+        metadataObj.seller_id =
+          pm.info && !isNaN(Number(pm.info)) ? parseInt(pm.info) : 13;
       } else {
         metadataObj.seller_id = 13;
       }
@@ -2216,36 +2281,39 @@ class UserController {
 
           if (typeof orderData === "object" && orderData !== null) {
             const order = await Order.create(orderData);
-            console.log("Order created from webhook:", order.id);
 
             // Voucher-pool product? Emit a code and complete the order
             // before falling into the UC/bot branch below. No refund path
             // here — payment is already captured; on empty pool the order
             // is left pending with a brief note so admin can intervene.
             try {
-              const orderProduct = await TopupProduct.findByPk(order.product_id);
+              const orderProduct = await TopupProduct.findByPk(
+                order.product_id,
+              );
               if (orderProduct && (orderProduct as any).is_voucher == 1) {
                 const voucher = await emitProductVoucher(
                   order.topuppackage_id,
                   order.id,
                 );
                 if (voucher) {
-                  order.status = 'completed';
+                  order.status = "completed";
                   order.brief_note = `Voucher: ${voucher.data}`;
                   await order.save();
                 } else {
                   order.brief_note =
-                    'Voucher pool empty — needs manual fulfilment';
+                    "Voucher pool empty — needs manual fulfilment";
                   await order.save();
                 }
               }
             } catch (e) {
-              console.error('webhook voucher emit failed', e);
+              console.error("webhook voucher emit failed", e);
             }
 
             // Award coins for purchase
             try {
-              const topupPackage = await TopupPackage.findByPk(order.topuppackage_id);
+              const topupPackage = await TopupPackage.findByPk(
+                order.topuppackage_id,
+              );
               if (topupPackage) {
                 const coinReward = Number(topupPackage.coin_value || 0);
                 if (coinReward > 0) {
@@ -2254,7 +2322,7 @@ class UserController {
                   await CoinTransaction.create({
                     user_id: user.id,
                     amount: coinReward,
-                    type: 'purchase',
+                    type: "purchase",
                     note: `Order #${order.id} (${topupPackage.name})`,
                     reference_id: order.id,
                   });
@@ -2279,7 +2347,7 @@ class UserController {
                       order.playerid,
                       topupPackage.uc,
                       myunipincode,
-                      (topupPackage as any).bot_url || '',
+                      (topupPackage as any).bot_url || "",
                     );
                     if (botStatus) {
                       order.status = "In Progress";

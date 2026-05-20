@@ -37,6 +37,19 @@ function EditPackage(props) {
   const order_once = useRef(null);
   const bot_url = useRef(null);
   const auto_delivery = useRef(null);
+  const allow_quantity = useRef(null);
+
+  // Tracks the selected product so the "Allow quantity" checkbox only
+  // renders for voucher-type products. Hydrated from the package's
+  // product_id once the package finishes loading.
+  const [selectedProductId, setSelectedProductId] = useState("");
+  useEffect(() => {
+    if (data?.product_id) setSelectedProductId(String(data.product_id));
+  }, [data?.id]);
+  const selectedProduct =
+    (products || []).find((p) => String(p.id) === String(selectedProductId)) ||
+    null;
+  const isVoucherProduct = selectedProduct?.is_voucher == 1;
 
   // Auto-delivery mapping — hydrated from /voucher-maps on load.
   const [autoDeliveryOn, setAutoDeliveryOn] = useState(false);
@@ -138,6 +151,8 @@ function EditPackage(props) {
         coin_value: coin_value.current.value || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: order_once.current?.checked ? 1 : 0,
+        allow_quantity:
+          isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
         description: convertToHTML(draftToHTMLConfig)(
           editorState.getCurrentContent(),
@@ -196,6 +211,7 @@ function EditPackage(props) {
                         defaultValue={data?.product_id}
                         ref={product_id}
                         className="form_input"
+                        onChange={(e) => setSelectedProductId(e.target.value)}
                       >
                         {products?.map((product) => (
                           <option value={product.id}>{product.name}</option>
@@ -313,6 +329,32 @@ function EditPackage(props) {
                       </label>
                     </div>
                   </div>
+
+                  {/* Allow quantity — voucher-products only. */}
+                  {isVoucherProduct && (
+                    <div className="form_grid">
+                      <div>
+                        <label className="inline-flex items-center cursor-pointer select-none">
+                          <input
+                            ref={allow_quantity}
+                            id="allow_quantity"
+                            value="1"
+                            className="form-checkbox"
+                            type="checkbox"
+                            defaultChecked={data?.allow_quantity == 1}
+                            key={`aq-${data?.id}-${data?.allow_quantity}`}
+                          />
+                          <span className="ml-2">
+                            Allow quantity input on storefront
+                          </span>
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          When on, customers can buy multiple units in one
+                          order.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Auto-delivery — maps voucher packages to this package. */}
                   <div className="form_grid  mt-5">

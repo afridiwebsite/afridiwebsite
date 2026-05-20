@@ -23,6 +23,7 @@ export default (sequelize: Sequelize) => {
         public order_once!: number;
         public bot_url!: string;
         public auto_delivery!: number;
+        public allow_quantity!: number;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -105,6 +106,17 @@ export default (sequelize: Sequelize) => {
             // package (see PackageVoucherMap) and run the auto-bot once
             // per voucher. The bot count is therefore = number of mapped
             // voucher packages.
+            type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
+        },
+        allow_quantity: {
+            // Per-package opt-in for the quantity stepper on /topup/:id.
+            // Only meaningful for packages whose parent product is a
+            // voucher-type (is_voucher = 1); the storefront gates the
+            // stepper on this flag in addition to the product type so an
+            // admin can ship single-unit voucher packages alongside bulk
+            // ones.
             type: DataTypes.TINYINT,
             allowNull: true,
             defaultValue: 0,

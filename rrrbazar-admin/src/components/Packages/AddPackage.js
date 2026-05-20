@@ -33,11 +33,14 @@ function AddPackage(props) {
   const order_once = useRef(null);
   const bot_url = useRef(null);
   const auto_delivery = useRef(null);
+  const allow_quantity = useRef(null);
 
-  // Auto-delivery mapping state — voucher packages whose pools should
-  // emit one code each when this package is ordered. Built locally in
-  // the form; persisted via /topup-package/:id/voucher-maps once the
-  // package has been created and we have an id to attach them to.
+  const [selectedProductId, setSelectedProductId] = useState(productId || "");
+  const selectedProduct =
+    (products || []).find((p) => String(p.id) === String(selectedProductId)) ||
+    null;
+  const isVoucherProduct = selectedProduct?.is_voucher == 1;
+
   const [autoDeliveryOn, setAutoDeliveryOn] = useState(false);
   const [mappings, setMappings] = useState([]); // [{ voucher_package_id, voucher_package_name, voucher_product_name }]
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -110,6 +113,8 @@ function AddPackage(props) {
         coin_value: coin_value.current.value || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: order_once.current?.checked ? 1 : 0,
+        allow_quantity:
+          isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
         description: convertToHTML(draftToHTMLConfig)(
           editorState.getCurrentContent(),
@@ -163,6 +168,7 @@ function AddPackage(props) {
                         defaultValue={productId}
                         ref={product_id}
                         className="form_input"
+                        onChange={(e) => setSelectedProductId(e.target.value)}
                       >
                         {products?.map((product) => (
                           <option value={product.id}>{product.name}</option>
@@ -273,6 +279,32 @@ function AddPackage(props) {
                       </label>
                     </div>
                   </div>
+
+                  {/* Allow quantity — voucher-products only. Gates the
+                      quantity stepper on /topup/:id so admins can sell
+                      single-unit voucher packages alongside bulk ones. */}
+                  {isVoucherProduct && (
+                    <div className="form_grid">
+                      <div>
+                        <label className="inline-flex items-center cursor-pointer select-none">
+                          <input
+                            ref={allow_quantity}
+                            id="allow_quantity"
+                            value="1"
+                            className="form-checkbox"
+                            type="checkbox"
+                          />
+                          <span className="ml-2">
+                            Allow quantity input on storefront
+                          </span>
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          When on, customers can buy multiple units in one
+                          order.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Auto-delivery — maps voucher packages to this package. */}
                   <div className="form_grid mt-5">

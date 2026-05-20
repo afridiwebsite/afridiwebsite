@@ -52,10 +52,15 @@ function OrderPage() {
           <div className="space-y-5">
             {hasData(orders) &&
               orders.map((order, index) => {
-                const vouchers = vouchersOf(order);
-                const hasVouchers = vouchers.length > 0;
                 const product =
                   order?.TopupProduct || order?.topup_product || null;
+                // Only voucher-type products surface their voucher rows here.
+                // Non-voucher orders may legitimately have rows in the
+                // Vouchers join from older flows, but those shouldn't render
+                // on the user-facing order list.
+                const isVoucherProduct = product?.is_voucher == 1;
+                const vouchers = isVoucherProduct ? vouchersOf(order) : [];
+                const hasVouchers = vouchers.length > 0;
                 const isCompleted = String(order?.status || '')
                   .toLowerCase()
                   .trim() === 'completed';
