@@ -472,8 +472,13 @@ function TopupOrderPage() {
                                       {packages.map((pack, index) => {
                                         const outOfStock =
                                           parseInt(pack?.in_stock) === 0;
+                                        // order_once only applies when the
+                                        // product has a Player ID input —
+                                        // otherwise we can't scope "used"
+                                        // to a player, so there's no impact.
                                         const alreadyOrdered =
                                           pack?.order_once == 1 &&
+                                          !!playerIdInput &&
                                           orderedOnceIds.has(Number(pack?.id));
                                         const isDisabled =
                                           outOfStock || alreadyOrdered;

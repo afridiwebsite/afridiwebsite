@@ -4,7 +4,6 @@ import moment from 'moment';
 import Badge from '../components/Badge';
 import { toast } from "react-toastify";
 import { Link } from 'react-router-dom';
-import ViewCompletedOrderByAdmin from '../components/Orders/ViewCompletedOrderByAdmin';
 import PlayerKillEditForm from '../components/PlayerKillEditForm';
 import PlayerRankingEditForm from '../components/PlayerRankingEditForm';
 import ProductDescriptionSeeMore from '../components/ProductDescriptionSeeMore';
@@ -37,12 +36,13 @@ export const ordersTableColumns = [
     {
         Header: 'Player id',
         accessor: 'playerid',
+        className: 'text-center',
         // Only meaningful when the product has a Player ID dynamic input —
         // otherwise the field is empty (or "UNIPIN_VOUCHER" for the legacy
         // Unipin path). The helper renders '---' for falsy values.
         Cell: (e) => {
             const v = e.row.original['playerid'];
-            if (!v || v === 'UNIPIN_VOUCHER') return <span className="text-gray-400">---</span>;
+            if (!v || v === 'UNIPIN_VOUCHER') return <span className="text-gray-400 w-max">---</span>;
             return copyableCell('Player ID', 'playerid')(e);
         },
     },
@@ -60,6 +60,7 @@ export const ordersTableColumns = [
         // back to the legacy `uc` field (UniPin / bot path).
         Header: 'UC / Voucher',
         accessor: 'uc',
+        className: 'w-[300px]',
         Cell: (e) => {
             const row = e.row.original;
             // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to

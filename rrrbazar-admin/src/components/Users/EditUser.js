@@ -71,12 +71,12 @@ function EditUser(props) {
                                                 <input ref={coins} defaultValue={data?.coins} className="form_input" type="number" placeholder="Coin balance" />
                                             </div>
                                         </div>
-                                        <div className="form_grid">
+                                        {/* <div className="form_grid">
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-bold mb-1">Set new password (leave blank to keep current)</label>
                                                 <input ref={password} className="form_input" type="text" placeholder="New password" />
                                             </div>
-                                        </div>
+                                        </div> */}
 
                                         <div className="mt-8">
                                             <button type="submit" className="cstm_btn w-full block">Update User Balance</button>

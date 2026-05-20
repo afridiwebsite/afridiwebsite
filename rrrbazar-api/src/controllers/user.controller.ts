@@ -872,18 +872,28 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      // Enforce one-per-user limit on packages flagged order_once.
+      // Enforce one-per-player-ID limit on packages flagged order_once.
+      // The constraint is scoped to the *player ID* (not the buying user),
+      // and only meaningful when the product actually has a Player ID input
+      // configured — without one we have no key to scope "used" against, so
+      // order_once has no effect.
       if ((topupPackage as any).order_once == 1) {
-        const previous = await Order.count({
-          where: {
-            user_id,
-            topuppackage_id,
-          },
+        const playerIdInputCount = await TopupProductInput.count({
+          where: { topup_product_id: product_id, is_player_id: 1 },
         });
-        if (previous > 0) {
-          response.message =
-            "You have already ordered this package — it's limited to one per user.";
-          return res.status(400).send(response.response);
+        const trimmedPlayerId = String(playerid || '').trim();
+        if (playerIdInputCount > 0 && trimmedPlayerId) {
+          const previous = await Order.count({
+            where: {
+              playerid: trimmedPlayerId,
+              topuppackage_id,
+            },
+          });
+          if (previous > 0) {
+            response.message =
+              "This player ID has already claimed this package — it's limited to one per player ID.";
+            return res.status(400).send(response.response);
+          }
         }
       }
       // const topupPaymentMethods = await PaymentMethod.query().where("is_active", 1).fetch()
