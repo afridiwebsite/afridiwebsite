@@ -861,6 +861,7 @@ class UserController {
         phone,
         payment_mathod,
         securitycode,
+        quantity: rawQuantity,
       } = req.body;
 
       let user_id = req.user.id;
@@ -899,8 +900,8 @@ class UserController {
       // const topupPaymentMethods = await PaymentMethod.query().where("is_active", 1).fetch()
       // const payments = topupPaymentMethods.rows.map(data => data.payment_method)
 
-      let amount = parseFloat(topupPackage.price);
-      let bprice = parseFloat(topupPackage.bprice);
+      const unitPrice = parseFloat(topupPackage.price);
+      const unitBprice = parseFloat(topupPackage.bprice);
 
       let product = await TopupProduct.findByPk(product_id);
 
@@ -908,6 +909,16 @@ class UserController {
         response.message = "TopupProduct not found";
         return res.status(400).send(response.response);
       }
+
+      // Quantity only applies to voucher-pool products; everything else is
+      // implicitly a quantity of 1. Clamp to a sane upper bound to keep
+      // accidental bulk orders bounded.
+      const isVoucherProduct = (product as any).is_voucher == 1;
+      const quantity = isVoucherProduct
+        ? Math.min(Math.max(parseInt(String(rawQuantity || '1'), 10) || 1, 1), 100)
+        : 1;
+      let amount = unitPrice * quantity;
+      let bprice = unitBprice * quantity;
       if (product.is_active == 0) {
         response.message = "TopupProduct is not available for order";
         return res.status(400).send(response.response);
@@ -1091,33 +1102,42 @@ class UserController {
 
       const order = await Order.create(user_order_data);
 
-      // Voucher-pool products: pull a code from the pool and complete the
-      // order. Runs BEFORE the UC/bot block below; voucher products are
-      // expected to have uc == 0, so the bot block becomes a no-op.
-      if ((product as any).is_voucher == 1) {
-        const voucher = await emitProductVoucher(topupPackage.id, order.id);
-        if (!voucher) {
-          // Pool is empty — refund the wallet, remove the order, surface a
-          // clear error to the caller. (auto_payment path never reaches
-          // here; the webhook handles that case.)
+      // Voucher-pool products: pull `quantity` codes from the pool and
+      // complete the order. All-or-nothing — if the pool can't fulfil the
+      // requested quantity, release any already-emitted codes, refund the
+      // wallet, destroy the order, and bail.
+      if (isVoucherProduct) {
+        const emitted: any[] = [];
+        let pool_exhausted = false;
+        for (let i = 0; i < quantity; i++) {
+          const v = await emitProductVoucher(topupPackage.id, order.id);
+          if (!v) { pool_exhausted = true; break; }
+          emitted.push(v);
+        }
+        if (pool_exhausted) {
+          for (const v of emitted) await releaseVoucher(v);
           if (payment_mathod === 'pay') {
             user.wallet = Number(user.wallet) + Number(amount);
             await user.save();
           }
           await order.destroy();
-          response.message =
-            'Sorry — vouchers for this package are sold out. Your wallet has not been charged.';
+          response.message = `Sorry — only ${emitted.length} voucher(s) available for this package (you requested ${quantity}). Your wallet has not been charged.`;
           response.success = false;
           response.status = 400;
           return res.status(400).send(response.response);
         }
+
         order.status = 'completed';
-        order.brief_note = `Voucher: ${voucher.data}`;
+        order.brief_note = emitted.length === 1
+          ? `Voucher: ${emitted[0].data}`
+          : `Vouchers (${emitted.length}): ${emitted.map((v) => v.data).join(', ')}`;
         await order.save();
 
-        // Coin reward still applies to voucher purchases.
+        // Coin reward still applies to voucher purchases (multiplied by
+        // quantity, since each unit earns the coins).
         try {
-          const coinReward = Number(topupPackage.coin_value || 0);
+          const coinReward =
+            (Number(topupPackage.coin_value || 0)) * quantity;
           if (coinReward > 0) {
             user.coins = (user.coins || 0) + coinReward;
             await user.save();
@@ -1125,7 +1145,7 @@ class UserController {
               user_id: user.id,
               amount: coinReward,
               type: 'purchase',
-              note: `Order #${order.id} (${topupPackage.name})`,
+              note: `Order #${order.id} (${topupPackage.name} × ${quantity})`,
               reference_id: order.id,
             });
           }

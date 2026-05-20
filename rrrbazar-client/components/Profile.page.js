@@ -14,6 +14,7 @@ import {
   FaShoppingCart,
   FaClipboardList,
   FaCoins,
+  FaSignOutAlt,
 } from 'react-icons/fa';
 import { GiTwoCoins, GiCoins } from 'react-icons/gi';
 import { HiSparkles } from 'react-icons/hi';
@@ -28,7 +29,7 @@ const randomNumber = Math.floor(Math.random() * (6 - 1) + 1);
 
 function ProfilePage() {
   const router = useRouter();
-  const { authUser, updateAuthUserInfo } = useContext(globalContext);
+  const { authUser, updateAuthUserInfo, signOut } = useContext(globalContext);
   const { avatar, username, email, wallet } = authUser;
 
   // Refresh server-side user profile on visit (keeps wallet/coins in sync).
@@ -82,6 +83,17 @@ function ProfilePage() {
             `,
           }}
         />
+
+        {/* Logout — top right of the hero. Pinned absolute so it doesn't
+            shift the avatar / username layout below. */}
+        <button
+          type="button"
+          onClick={signOut}
+          className="absolute top-3 right-3 md:top-4 md:right-6 z-10 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-md transition active:scale-95"
+        >
+          <FaSignOutAlt size={14} />
+          <span>Logout</span>
+        </button>
 
         <div className="flex flex-col sm:flex-row justify-center items-center md:items-end md:justify-between pb-5 absolute md:left-10 md:-bottom-3 left-0 right-0 m-auto top-1">
           <div className="flex flex-col items-center md:flex-row md:items-end gap-4 md:gap-5 mb-6 md:mb-0 animate-fade-in-up">

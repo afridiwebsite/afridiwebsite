@@ -167,12 +167,15 @@ function TopupOrderPage() {
     playerid: isUnipinVoucher ? "UNIPIN_VOUCHER" : "",
     selectedpackage: null,
     payment_mathod: "pay",
+    quantity: 1,
     // Seed a key for every non-PlayerID dynamic input so Formik tracks them.
     ...dynamicInputs.reduce((acc, inp) => {
       if (!inp.is_player_id) acc[`dyn_${inp.id}`] = "";
       return acc;
     }, {}),
   };
+
+  const isVoucherProduct = productInfo?.is_voucher == 1;
 
   // Form Validation Schema — playerid is only required when a Player ID
   // dynamic input is configured (or the legacy isactivefortopup flag is set).
@@ -343,6 +346,9 @@ function TopupOrderPage() {
                                 ? "IDCODE"
                                 : securitycode,
                               payment_mathod: payment_mathod || "pay",
+                              quantity: isVoucherProduct
+                                ? Math.max(1, Number(values.quantity) || 1)
+                                : 1,
                             })
                             .then((order_res) => {
                               if (
@@ -406,9 +412,17 @@ function TopupOrderPage() {
                       const isPaymentError = errors["payment_mathod"];
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
+                      // Voucher products can be ordered in quantities — they
+                      // pull N vouchers from the pool. Non-voucher products
+                      // implicitly use quantity 1.
+                      const orderQuantity = isVoucherProduct
+                        ? Math.max(1, Number(values.quantity) || 1)
+                        : 1;
+                      const totalCost =
+                        Number(values.selectedpackage?.price || 0) *
+                        orderQuantity;
                       const isNotEnoughMoney =
-                        Number(values.selectedpackage?.price || 0) >
-                        Number(authUser?.wallet || 0);
+                        totalCost > Number(authUser?.wallet || 0);
 
                       console.log(
                         "errors",
@@ -599,6 +613,75 @@ function TopupOrderPage() {
                                       })}
                                       {/* Single Recharge --End-- */}
                                     </div>
+                                    {/* Quantity stepper — voucher-pool products
+                                        can be bought in bulk. One mapped
+                                        voucher emitted per unit. */}
+                                    {isVoucherProduct &&
+                                      values.selectedpackage && (
+                                        <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
+                                          <label className="text-sm font-semibold text-gray-700">
+                                            Quantity
+                                          </label>
+                                          <div className="inline-flex items-center border border-gray-300 rounded overflow-hidden">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setFieldValue(
+                                                  "quantity",
+                                                  Math.max(
+                                                    1,
+                                                    (Number(values.quantity) ||
+                                                      1) - 1,
+                                                  ),
+                                                )
+                                              }
+                                              className="px-3 py-1 text-lg font-bold bg-gray-50 hover:bg-gray-100"
+                                              aria-label="Decrease quantity"
+                                            >
+                                              −
+                                            </button>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              value={values.quantity || 1}
+                                              onChange={(e) =>
+                                                setFieldValue(
+                                                  "quantity",
+                                                  Math.max(
+                                                    1,
+                                                    parseInt(
+                                                      e.target.value || "1",
+                                                      10,
+                                                    ),
+                                                  ),
+                                                )
+                                              }
+                                              className="w-14 text-center py-1 border-0 focus:outline-none"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setFieldValue(
+                                                  "quantity",
+                                                  (Number(values.quantity) ||
+                                                    1) + 1,
+                                                )
+                                              }
+                                              className="px-3 py-1 text-lg font-bold bg-gray-50 hover:bg-gray-100"
+                                              aria-label="Increase quantity"
+                                            >
+                                              +
+                                            </button>
+                                          </div>
+                                          <span className="text-sm text-gray-600">
+                                            Total:{" "}
+                                            <strong className="text-gray-900">
+                                              ৳ {totalCost.toFixed(2)}
+                                            </strong>
+                                          </span>
+                                        </div>
+                                      )}
+
                                     <FormikErrorMessage name="selectedpackage" />
                                     <FormikErrorMessage
                                       showError={
@@ -843,7 +926,13 @@ function TopupOrderPage() {
                                       You need to purchase this product:
                                     </span>
                                     <strong className="topup-pay-info-value">
-                                      ৳ {values.selectedpackage.price}
+                                      ৳ {totalCost.toFixed(2)}
+                                      {isVoucherProduct && orderQuantity > 1 && (
+                                        <span className="text-xs font-normal text-gray-500 ml-1">
+                                          ({orderQuantity} ×{" "}
+                                          {values.selectedpackage.price})
+                                        </span>
+                                      )}
                                     </strong>
                                   </div>
                                 )}

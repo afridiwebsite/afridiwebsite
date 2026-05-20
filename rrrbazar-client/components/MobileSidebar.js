@@ -52,31 +52,21 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
           {/* Header / User Profile */}
           <div className="px-5 py-6 bg-gray-50/50">
             {isAuth ? (
-              <div className="flex flex-col gap-4">
-                <div className="flex gap-4 items-center">
-                  <Avatar
-                    src={authUser?.avatar || null}
-                    text={authUser?.username?.[0] || 'U'}
-                    size={60}
-                    className="bg-primary-100 text-primary-600 ring-4 ring-white shadow-sm"
-                  />
-                  <div className="overflow-hidden">
-                    <h6 className="text-lg font-bold text-gray-800 line-clamp-1">
-                      {authUser?.username}
-                    </h6>
-                    <p className="text-sm text-gray-500 truncate">
-                      {authUser?.email}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  text="Logout"
-                  onClick={() => {
-                    closeSidebarForcely();
-                    signOut();
-                  }}
-                  className="w-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95"
+              <div className="flex gap-4 items-center">
+                <Avatar
+                  src={authUser?.avatar || null}
+                  text={authUser?.username?.[0] || 'U'}
+                  size={60}
+                  className="bg-primary-100 text-primary-600 ring-4 ring-white shadow-sm"
                 />
+                <div className="overflow-hidden">
+                  <h6 className="text-lg font-bold text-gray-800 line-clamp-1">
+                    {authUser?.username}
+                  </h6>
+                  <p className="text-sm text-gray-500 truncate">
+                    {authUser?.email}
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
