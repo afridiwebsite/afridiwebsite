@@ -3,10 +3,19 @@ import useGet from '../../hooks/useGet';
 import { hasData } from '../../utils/handler.utils';
 import UiHandler from '../UiHandler';
 
+// Color palette for row coding.
+const ROW_COLORS = [
+  "bg-blue-50 border-blue-200",
+  "bg-emerald-50 border-emerald-200",
+  "bg-violet-50 border-violet-200",
+  "bg-amber-50 border-amber-200",
+  "bg-rose-50 border-rose-200",
+  "bg-cyan-50 border-cyan-200",
+  "bg-fuchsia-50 border-fuchsia-200",
+  "bg-lime-50 border-lime-200",
+];
+
 // Voucher Statistics — packages from voucher-type products grouped under
-// their product. Each group renders the product as a header (with its
-// rolled-up Ready / Used / Total) and its packages as a small table.
-// Empty pools are still listed so the admin can see what needs seeding.
 export default function VoucherStatistic() {
   const [data, loading, error] = useGet('admin/voucher/available-voucher-by-package');
 
@@ -27,9 +36,9 @@ export default function VoucherStatistic() {
     group.totals.unused += Number(row.unused) || 0;
     return acc;
   }, new Map());
-  // Convert to an array so we can sort: most-depleted product first.
-  const groups = Array.from(grouped.values()).sort(
-    (a, b) => a.totals.unused - b.totals.unused,
+  // Convert to an array so we can sort: keep product order stable by name.
+  const groups = Array.from(grouped.values()).sort((a, b) =>
+    a.product_name.localeCompare(b.product_name)
   );
 
   const grandTotals = groups.reduce(
@@ -100,39 +109,36 @@ export default function VoucherStatistic() {
                       <thead>
                         <tr className="bg-white text-left text-gray-600">
                           <th className="px-3 py-2">Package</th>
-                          <th className="px-3 py-2 text-right">Ready</th>
-                          <th className="px-3 py-2 text-right">Used</th>
-                          <th className="px-3 py-2 text-right">Total</th>
+                          <th className="px-3 py-2 text-center">Ready</th>
+                         
                           <th className="px-3 py-2"></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {group.packages.map((row) => {
+                        {group.packages.map((row, idx) => {
                           const lowStock = row.unused === 0;
+                          const colorClass = ROW_COLORS[idx % ROW_COLORS.length];
                           return (
                             <tr
                               key={row.package_id}
-                              className={`border-t border-gray-100 ${
-                                lowStock ? 'bg-red-50/40' : ''
+                              className={`border-b-2 border-solid ${
+                                lowStock
+                                  ? "bg-red-100 border-red-300"
+                                  : colorClass
                               }`}
                             >
-                              <td className="px-3 py-2 text-gray-700">
+                              <td className="px-3 py-6 text-gray-700">
                                 {row.package_name}
                               </td>
                               <td
-                                className={`px-3 py-2 text-right font-semibold ${
+                                className={`px-3 py-2 text-center font-semibold ${
                                   lowStock ? 'text-red-600' : 'text-green-700'
                                 }`}
                               >
                                 {row.unused}
                               </td>
-                              <td className="px-3 py-2 text-right text-red-700">
-                                {row.used}
-                              </td>
-                              <td className="px-3 py-2 text-right text-gray-600">
-                                {row.total}
-                              </td>
-                              <td className="px-3 py-2 text-right">
+                              
+                              <td className="px-3 py-2 text-center">
                                 <Link
                                   to={`/topup-package/voucher/${row.package_id}`}
                                   className="cstm_btn_small"

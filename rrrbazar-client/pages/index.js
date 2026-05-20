@@ -11,7 +11,7 @@ import { hasData, imgPath } from "../helpers/helpers";
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="home-section-title font-bold text-xl  md:text-2xl !mb-8">
+    <h3 className="home-section-title font-bold text-xl  md:text-2xl !mb-1">
       {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
       <span>{children}</span>
       {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
@@ -22,10 +22,10 @@ function SectionTitle({ children }) {
 function CategorySection({ title, products }) {
   if (!products || products.length === 0) return null;
   return (
-    <section className="container mb-14 mt-20 animate-fade-in">
+    <section className="container mb-8 mt-8 animate-fade-in">
       <div className="">
         <SectionTitle>{title}</SectionTitle>
-        <div className="grid grid-cols-3 xs:grid-cols-3 md:grid-cols-6 gap-4 md:gap-8">
+        <div className="grid grid-cols-3 xs:grid-cols-3 md:grid-cols-6 gap-2 md:gap-8">
           {products.map((p, i) => (
             <div
               key={p.id || i}

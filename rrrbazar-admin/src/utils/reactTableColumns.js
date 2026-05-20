@@ -62,7 +62,7 @@ export const ordersTableColumns = [
         accessor: 'uc',
         // Wide column so multi-voucher orders (auto-delivery / bulk) can
         // show every code without truncation.
-        className: 'w-[520px] min-w-[400px]',
+        className: 'w-[300px] min-w-[300px]',
         Cell: (e) => {
             const row = e.row.original;
             // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
@@ -75,7 +75,7 @@ export const ordersTableColumns = [
                   : [];
             if (list.length > 0) {
                 return (
-                    <div className="flex flex-wrap gap-1 min-w-[500px]">
+                    <div className="flex flex-wrap gap-1 min-w-[300px]">
                         {list.map((v) => (
                             <span
                                 key={v.id}

@@ -1293,35 +1293,29 @@ body {
   display: block;
   background: #fff;
   border-radius: 14px;
-  border: 1px solid transparent;
-  // The accent strip is rendered as a pseudo-element so we can paint a
-  // gradient (matches the Buy Now CTA) instead of being stuck with a flat
-  // border-color. Reserve space at the bottom via padding so the strip
-  // doesn't sit over content.
-  border-bottom: 0;
-  padding-bottom: 3px;
+
+  /* Transparent border so the gradient border can show */
+  border-bottom: 3px solid var(--theme-primary, #2563eb);
+
+  /* Two layered backgrounds:
+     1. White card fill
+     2. Gradient painted into the border area
+  */
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(
+      135deg,
+      var(--theme-primary, #2563eb) 0%,
+      var(--theme-accent, #4D67D8) 100%
+    ) border-box;
+
   overflow: hidden;
   position: relative;
-  transition: transform 0.25s ease, border-color 0.2s ease, box-shadow 0.25s ease;
-}
-.game-card-link::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  // Match the parent's bottom curve so the strip follows the rounded
-  // corners cleanly. The parent's `overflow: hidden` does the rest, but
-  // setting the radius here avoids any visible square-edge bleed at the
-  // very corner pixels.
-  border-radius: 0 0 14px 14px;
-  background: linear-gradient(
-    135deg,
-    var(--theme-primary, #2563eb) 0%,
-    var(--theme-accent, #4D67D8) 100%
-  );
-  pointer-events: none;
+
+  transition:
+    transform 0.25s ease,
+    border-color 0.2s ease,
+    box-shadow 0.25s ease;
 }
 .game-card:hover .game-card-link {
   transform: translateY(-3px);
@@ -1332,13 +1326,16 @@ body {
 .game-card-image-wrap {
   position: relative;
   width: 100%;
+  height: 154px;
   aspect-ratio: 1 / 1;
   background: #f3f4f6;
   overflow: hidden;
   z-index: 2; // sits on top of the title so the rise-from-behind clip works
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   animation: game-image-in 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+
 }
+
 .game-card-image {
   width: 100%;
   height: 100%;

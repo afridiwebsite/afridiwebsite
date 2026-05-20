@@ -233,8 +233,8 @@ function Voucher(props) {
         </div>
 
         {/* Filters row */}
-        <div className="px-6 border-t border-gray-100 py-4 flex flex-wrap items-end gap-3">
-          <div className="flex gap-3 text-sm">
+        <div className="px-6 border-t border-gray-100 py-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-3 text-sm">
             <span className="px-2 py-1 rounded bg-gray-100">
               Total: <strong>{stats.total}</strong>
             </span>
@@ -246,42 +246,54 @@ function Voucher(props) {
             </span>
           </div>
 
-          <div className="ml-auto flex flex-col items-end gap-2">
+          <div className="w-full lg:w-auto flex flex-col lg:items-end gap-3">
             <div className="flex flex-wrap gap-2 items-end">
-              <div className="flex flex-col">
-                <label className="text-[10px] text-gray-500 uppercase">Date</label>
+              <div className="flex flex-col w-full sm:w-auto">
+                <label className="text-[10px] text-gray-500 uppercase ml-1">
+                  Date
+                </label>
                 <input
                   type="date"
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
-                  className="form_input !mb-0 !py-1 !px-2"
+                  className="form_input !mb-0 !py-1.5 !px-2 min-h-[38px] w-full sm:w-[150px]"
                 />
               </div>
 
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="form_input !mb-0 !py-1 !px-2 !w-auto"
-                title="Filter by status"
-              >
-                <option value="">All status</option>
-                <option value="unused">Ready</option>
-                <option value="used">Used</option>
-              </select>
+              <div className="flex flex-col w-full sm:w-auto">
+                <label className="text-[10px] text-gray-500 uppercase ml-1">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="form_input !mb-0 !py-1.5 !px-2 min-h-[38px] w-full sm:w-auto"
+                  title="Filter by status"
+                >
+                  <option value="">All status</option>
+                  <option value="unused">Ready</option>
+                  <option value="used">Used</option>
+                </select>
+              </div>
 
-              <input
-                type="text"
-                placeholder="Search code…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="form_input !mb-0 !py-1 !px-2"
-              />
+              <div className="flex flex-col w-full sm:w-auto">
+                <label className="text-[10px] text-gray-500 uppercase ml-1">
+                  Search
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search code…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="form_input !mb-0 !py-1.5 !px-2 min-h-[38px] w-full sm:w-auto"
+                />
+              </div>
 
               {(search || filterDate || status) && (
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-xs text-blue-600 underline pb-1"
+                  className="text-xs text-blue-600 underline pb-2 sm:pb-3 h-fit"
                 >
                   Reset
                 </button>
@@ -289,7 +301,7 @@ function Voucher(props) {
             </div>
 
             {/* Bulk delete sits under the search row */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 lg:justify-end">
               {!bulkMode ? (
                 <button
                   type="button"

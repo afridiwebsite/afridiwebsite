@@ -453,8 +453,8 @@ class UserController {
           unused: Number(stat?.unused) || 0,
         };
       });
-      // Most-depleted at the top so the admin sees what needs restocking.
-      data.sort((a, b) => a.unused - b.unused);
+      // Sort by package name to keep the order stable across refreshes.
+      data.sort((a, b) => a.package_name.localeCompare(b.package_name));
 
       response.data = data;
       res.send(response.response);
