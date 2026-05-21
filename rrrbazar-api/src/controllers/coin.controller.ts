@@ -157,13 +157,23 @@ class CoinController {
             response.message = 'User not found';
             return res.status(400).send(response.response);
         }
+        const settings = await getSettings();
+        // Admin-configured floor. 0 disables it so existing setups behave the
+        // same. Check this before the balance check so the user sees the
+        // limit error even when they have fewer coins than the minimum.
+        const minConvert = Number((settings as any).min_convert_coins) || 0;
+        if (minConvert > 0 && coinAmount < minConvert) {
+            response.status = 400;
+            response.success = false;
+            response.message = `Minimum convert is ${minConvert} coins`;
+            return res.status(400).send(response.response);
+        }
         if ((user.coins || 0) < coinAmount) {
             response.status = 400;
             response.success = false;
             response.message = 'Not enough coins';
             return res.status(400).send(response.response);
         }
-        const settings = await getSettings();
         const money = Number((coinAmount * settings.coin_to_money_rate).toFixed(2));
         if (money <= 0) {
             response.status = 400;

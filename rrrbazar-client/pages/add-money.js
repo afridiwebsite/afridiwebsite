@@ -95,6 +95,23 @@ function AddMoneyPage() {
     }
   }, [isCopied]);
 
+  // Pre-select the first available method so the user doesn't land on a
+  // blank screen — they can still pick another one. Runs only once per
+  // payment-methods fetch so the selection isn't reset on every render.
+  useEffect(() => {
+    if (selectedPaymentMethod) return;
+    if (!Array.isArray(payment_methods) || payment_methods.length === 0) return;
+    setSelectedPaymentMethod(payment_methods[0]);
+  }, [payment_methods, selectedPaymentMethod]);
+
+  // Mirror the default selection into Formik. `enableReinitialize` below
+  // applies these once the payment-methods query resolves.
+  const firstPaymentId = Array.isArray(payment_methods) && payment_methods[0]?.id;
+  const dynamicInitialValues = {
+    ...initialValues,
+    paymentmethod: firstPaymentId || "",
+  };
+
   return (
     <>
       <Head>
@@ -104,7 +121,8 @@ function AddMoneyPage() {
         <section className="container">
           <div className="w-full sm:w-[600px] mx-auto my-7">
             <Formik
-              initialValues={initialValues}
+              enableReinitialize
+              initialValues={dynamicInitialValues}
               validationSchema={validationSchema}
               onSubmit={(values, actions) => {
                 const { setSubmitting, resetForm, setFieldError } = actions;

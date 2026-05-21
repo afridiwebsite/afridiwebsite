@@ -19,6 +19,9 @@ class SiteSettingController {
         const reqPath = req.protocol + '://' + req.get('host');
         const json: any = settings.toJSON();
         json.logo_full_url = json.logo ? `${reqPath}/images/${json.logo}` : '';
+        json.wallet_pay_image_full_url = json.wallet_pay_image
+            ? `${reqPath}/images/${json.wallet_pay_image}`
+            : '';
         response.data = json;
         res.send(response.response);
     }
@@ -45,6 +48,8 @@ class SiteSettingController {
             telegram_number,
             telegram_support_number,
             youtube_link,
+            wallet_pay_image,
+            min_convert_coins,
         } = req.body;
 
         const settings = await getOrCreate();
@@ -69,6 +74,9 @@ class SiteSettingController {
         if (telegram_support_number !== undefined)
             settings.telegram_support_number = String(telegram_support_number || '').trim();
         if (youtube_link !== undefined)     settings.youtube_link     = String(youtube_link || '').trim();
+        if (wallet_pay_image !== undefined) settings.wallet_pay_image = String(wallet_pay_image || '').trim();
+        if (min_convert_coins !== undefined)
+            settings.min_convert_coins = Math.max(0, Number(min_convert_coins) || 0);
 
         await settings.save();
         response.data = settings;

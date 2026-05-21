@@ -46,9 +46,15 @@ function TopupOrderPage() {
   const [serverError, setServerError] = useState(null);
   // Pack whose description modal is currently open. null = closed.
   const [descPack, setDescPack] = useState(null);
-  const { isAuth, updateAuthUserInfo, authUser } = useContext(globalContext);
+  const { isAuth, updateAuthUserInfo, authUser, siteSettings } =
+    useContext(globalContext);
   const router = useRouter();
   const product_id = router.query.id;
+
+  // Wallet Pay tile image: admin-configured via SiteSettings. Falls back to
+  // the bundled logo so existing setups don't render a broken image until the
+  // admin uploads one.
+  const walletPayImage = siteSettings?.wallet_pay_image_full_url || "/logo.jpeg";
 
   // Refetching User Data On Every Time user visit this page
   const { data: userProfileData } = useQuery("user-profile", getUserProfile, {
@@ -878,7 +884,7 @@ function TopupOrderPage() {
                                 >
                                   <div className="topup-pay-card-body">
                                     <img
-                                      src="/logo.jpeg"
+                                      src={walletPayImage}
                                       alt=""
                                       className="topup-pay-card-img"
                                     />

@@ -1291,10 +1291,11 @@ class UserController {
             }
           }
 
-          order.status =
-            botUrl === "" || (bot_failures > 0 && botUrl)
-              ? "In Progress"
-              : "completed";
+          // Auto-delivered orders always start "In Progress": the vouchers
+          // are emitted and the bot has been dispatched, but the upstream
+          // confirmation comes back later via the checkOrder webhook, which
+          // flips the order to "completed" once the bot reports success.
+          order.status = "In Progress";
           // User-facing note only reports the successful allocation.
 
           // Internal context for the admin: reports why the delivery might
@@ -1433,7 +1434,7 @@ class UserController {
     try {
       const { orderid, status, message } = req.body;
 
-      console.log(orderid, status, message,'check order');
+      console.log(orderid, status, message, "check order");
 
       const botUrl = req.headers["cf-connecting-ip"];
 

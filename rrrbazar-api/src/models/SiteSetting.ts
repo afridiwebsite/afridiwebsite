@@ -23,6 +23,13 @@ export default (sequelize: Sequelize) => {
         public telegram_number!: string;
         public telegram_support_number!: string;
         public youtube_link!: string;
+        // Image shown on the "Wallet Pay" tile on the topup payment picker.
+        // Stored as the upload-relative filename; the controller appends the
+        // public path on read.
+        public wallet_pay_image!: string;
+        // Minimum coins a user can convert to wallet balance in a single call.
+        // 0 (the default) disables the floor.
+        public min_convert_coins!: number;
     }
 
     SiteSetting.init({
@@ -73,6 +80,8 @@ export default (sequelize: Sequelize) => {
         telegram_number:         { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         telegram_support_number: { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         youtube_link:     { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
+        wallet_pay_image: { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
+        min_convert_coins: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,

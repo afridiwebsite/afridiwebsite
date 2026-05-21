@@ -25,10 +25,19 @@ function SiteSettings() {
     const telegram_number = useRef(null)
     const telegram_support_number = useRef(null)
     const youtube_link = useRef(null)
+    const min_convert_coins = useRef(null)
 
     const [logoFile, setLogoFile] = useState(null)
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
     const [savedLogo, setSavedLogo] = useState('')
+
+    // Image shown on the "Wallet Pay" tile of the topup payment picker.
+    // Uploaded through the same hook the logo uses; the saved filename comes
+    // back through site settings on refresh.
+    const [walletPayFile, setWalletPayFile] = useState(null)
+    const { path: uploadedWalletPay, uploading: walletPayUploading } = useUpload(walletPayFile)
+    const [savedWalletPay, setSavedWalletPay] = useState('')
+    const [savedWalletPayFullUrl, setSavedWalletPayFullUrl] = useState('')
 
     const [busy, setBusy] = useState(false)
 
@@ -42,6 +51,8 @@ function SiteSettings() {
     useEffect(() => {
         if (data) {
             setSavedLogo(data.logo || '')
+            setSavedWalletPay(data.wallet_pay_image || '')
+            setSavedWalletPayFullUrl(data.wallet_pay_image_full_url || '')
             setColors({
                 primary: data.primary_color || '#2563eb',
                 secondary: data.secondary_color || '#1e40af',
@@ -56,7 +67,7 @@ function SiteSettings() {
 
     const submit = (e) => {
         e.preventDefault()
-        if (uploading) return
+        if (uploading || walletPayUploading) return
         setBusy(true)
         const payload = {
             site_name: site_name.current.value,
@@ -78,6 +89,8 @@ function SiteSettings() {
             telegram_number: telegram_number.current?.value || '',
             telegram_support_number: telegram_support_number.current?.value || '',
             youtube_link: youtube_link.current?.value || '',
+            wallet_pay_image: uploadedWalletPay || savedWalletPay,
+            min_convert_coins: parseInt(min_convert_coins.current?.value || 0, 10),
         }
         axiosInstance
             .post('/admin/site-settings/update', payload)
@@ -185,6 +198,41 @@ function SiteSettings() {
                                         <label>Coin to money rate (1 coin = X BDT)</label>
                                         <input ref={coin_to_money_rate} defaultValue={data.coin_to_money_rate} type="number" step="0.0001" min="0" className="form_input" required />
                                     </div>
+                                    <div>
+                                        <label>Minimum convert (coins)</label>
+                                        <input
+                                            ref={min_convert_coins}
+                                            defaultValue={data.min_convert_coins ?? 0}
+                                            type="number"
+                                            min="0"
+                                            className="form_input"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            0 = no minimum. Users can&apos;t convert fewer coins than this in a single request.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <h4 className="font-bold mt-6 mb-2">Wallet Pay</h4>
+                                <div className="form_grid">
+                                    <div>
+                                        <label>Wallet Pay image</label>
+                                        <input
+                                            type="file"
+                                            className="form_input"
+                                            onChange={(e) => setWalletPayFile(e.target.files[0])}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Shown on the &quot;Wallet Pay&quot; tile in the topup payment picker.
+                                        </p>
+                                        {(uploadedWalletPay || savedWalletPay) && (
+                                            <img
+                                                alt="wallet pay preview"
+                                                src={savedWalletPayFullUrl || ''}
+                                                style={{ maxHeight: 60, marginTop: 8 }}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
 
                                 <h4 className="font-bold mt-6 mb-2">Support contact</h4>
@@ -291,7 +339,11 @@ function SiteSettings() {
                                 </div> */}
 
                                 <div className="mt-6">
-                                    <button type="submit" disabled={uploading || busy} className="cstm_btn w-full block">
+                                    <button
+                                        type="submit"
+                                        disabled={uploading || walletPayUploading || busy}
+                                        className="cstm_btn w-full block"
+                                    >
                                         Save settings
                                     </button>
                                 </div>
