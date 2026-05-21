@@ -1223,7 +1223,7 @@ class UserController {
           raw: true,
         });
 
-        console.log(' hit auto', maps);
+        console.log('hit auto', maps);
         if (maps.length > 0) {
           const emitted: any[] = [];
           let pool_exhausted = false;
