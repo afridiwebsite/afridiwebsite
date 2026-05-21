@@ -1175,8 +1175,10 @@ class UserController {
 
       const order = await Order.create(user_order_data);
 
-      // Decrement tracked stock now that we have a persisted order. The
-      // rollback branches below restore it when they tear down the order.
+      // Decrement tracked stock now that we have a persisted order. Voucher
+      // pool exhaustion no longer destroys the order — it just parks it in
+      // "pending" for manual fulfilment, so we don't need to restore the
+      // count on those branches either.
       if (stockTracking) {
         (topupPackage as any).stock_quantity = Math.max(
           0,
@@ -1184,19 +1186,12 @@ class UserController {
         );
         await (topupPackage as any).save();
       }
-      // Tiny helper to undo the decrement on rollback paths so the failed
-      // order doesn't leak stock to nobody.
-      const restoreStock = async () => {
-        if (!stockTracking) return;
-        (topupPackage as any).stock_quantity =
-          (Number((topupPackage as any).stock_quantity) || 0) + quantity;
-        await (topupPackage as any).save();
-      };
 
       // Voucher-pool products: pull `quantity` codes from the pool and
-      // complete the order. All-or-nothing — if the pool can't fulfil the
-      // requested quantity, release any already-emitted codes, refund the
-      // wallet, destroy the order, and bail.
+      // complete the order. If the pool can't fulfil the full requested
+      // quantity we keep the order open in "pending" so an admin (or a
+      // restock) can finish delivery later — release any partial codes so
+      // they're not wasted on a stuck order. Wallet stays charged.
       if (isVoucherProduct) {
         const emitted: any[] = [];
         let pool_exhausted = false;
@@ -1209,17 +1204,25 @@ class UserController {
           emitted.push(v);
         }
         if (pool_exhausted) {
+          // Return the partial allocation back to the pool — the order will
+          // be re-allocated later when stock returns. Without this we'd
+          // hold N-1 vouchers idle against a stuck order.
           for (const v of emitted) await releaseVoucher(v);
-          if (payment_mathod === "pay") {
-            user.wallet = Number(user.wallet) + Number(amount);
-            await user.save();
-          }
-          await restoreStock();
-          await order.destroy();
-          response.message = `Sorry — only ${emitted.length} voucher(s) available for this package (you requested ${quantity}). Your wallet has not been charged.`;
-          response.success = false;
-          response.status = 400;
-          return res.status(400).send(response.response);
+          order.status = "pending";
+          order.brief_note = "Awaiting voucher restock";
+          (order as any).details = `<span style="color:orange;"><strong>Voucher pool ran dry</strong> — only ${emitted.length} of ${quantity} unit(s) were available at order time. Order kept pending for manual fulfilment.</span>`;
+          await order.save();
+
+          const {
+            uc: ucAliasPv,
+            ingamepassword: ingamepasswordAliasPv,
+            bprice: bpriceAliasPv,
+            ...filteredOrderPv
+          } = order.get({ plain: true });
+          response.message =
+            "Order placed — your vouchers will be delivered once stock is restocked.";
+          response.data = filteredOrderPv;
+          return res.send(response.response);
         }
 
         order.status = "completed";
@@ -1305,18 +1308,27 @@ class UserController {
           }
 
           if (pool_exhausted) {
+            // Same policy as the voucher-product branch: keep the order
+            // open in "pending" so it can be fulfilled when stock returns.
+            // Release any partially-emitted vouchers so they're free for
+            // other orders in the meantime.
             for (const v of emitted) await releaseVoucher(v);
-            if (payment_mathod === "pay") {
-              user.wallet = Number(user.wallet) + Number(amount);
-              await user.save();
-            }
-            await restoreStock();
-            await order.destroy();
+            order.status = "pending";
+            order.brief_note = "Awaiting voucher restock";
+            (order as any).details =
+              "<span style='color:orange;'><strong>Auto-delivery skipped:</strong> one of the linked voucher pools was empty at order time. Order kept pending for manual fulfilment.</span>";
+            await order.save();
+
+            const {
+              uc: ucAliasAdP,
+              ingamepassword: ingamepasswordAliasAdP,
+              bprice: bpriceAliasAdP,
+              ...filteredOrderAdP
+            } = order.get({ plain: true });
             response.message =
-              "Sorry — one of the linked voucher pools is empty. Your wallet has not been charged.";
-            response.success = false;
-            response.status = 400;
-            return res.status(400).send(response.response);
+              "Order placed — your vouchers will be delivered once stock is restocked.";
+            response.data = filteredOrderAdP;
+            return res.send(response.response);
           }
 
           // Fire the bot once per emitted voucher. Failures are captured in

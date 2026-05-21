@@ -185,18 +185,21 @@ function OrderPage() {
                     </div>
 
                     {/* Redeem button — corner-pinned. Only renders for completed
-                        voucher orders whose product has a redeem_link set. */}
+                        voucher orders whose product has a redeem_link set. The
+                        gradient mirrors `.header-search-btn` so primary CTAs
+                        feel consistent across the storefront. */}
                     {showRedeemBtn && (
                       <a
                         href={redeemLink}
                         target="_blank"
                         rel="noreferrer"
                         style={{
-                          background: 'var(--theme-primary)',
+                          background:
+                            'linear-gradient(135deg, var(--theme-primary, #2563eb) 0%, var(--theme-accent, #4D67D8) 100%)',
                           boxShadow:
-                            '0 2px 8px rgba(var(--theme-primary-rgb, 0 0 0) / 0.35)',
+                            '0 2px 8px rgba(var(--theme-primary-rgb, 37 99 235) / 0.35)',
                         }}
-                        className="absolute bottom-3 right-3 hover:brightness-110 active:brightness-95 text-white font-bold py-1.5 px-4 rounded text-sm transition"
+                        className="absolute bottom-3 right-3 hover:brightness-110 active:brightness-95 text-white font-bold py-1.5 px-4 rounded-full text-sm transition"
                       >
                         Redeem
                       </a>

@@ -59,9 +59,12 @@ function formatOrderTime(value) {
 }
 
 function OrderRow({ order }) {
+  // Slugify so multi-word statuses like "In Progress" → "in-progress" map to
+  // a valid CSS class (spaces in className make the modifier unmatchable).
   const status = String(order.status || "")
     .toLowerCase()
-    .trim();
+    .trim()
+    .replace(/[\s_]+/g, "-");
   // API now returns the order's User and TopupProduct as nested includes.
   const orderUser = order.User || order.user;
   const orderProduct = order.TopupProduct || order.product;

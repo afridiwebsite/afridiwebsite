@@ -3017,13 +3017,19 @@ body {
   animation: pill-pulse 1.8s ease-in-out infinite;
 }
 .topup-status-badge--pending,
-.topup-status-badge--processing {
+.topup-status-badge--processing,
+.topup-status-badge--in-progress,
+.topup-status-badge--in_progress,
+.topup-status-badge--inprogress {
   background: rgba(245, 158, 11, 0.14);
   color: #b45309;
   border-color: rgba(245, 158, 11, 0.28);
 }
 .topup-status-badge--pending .topup-status-dot,
-.topup-status-badge--processing .topup-status-dot {
+.topup-status-badge--processing .topup-status-dot,
+.topup-status-badge--in-progress .topup-status-dot,
+.topup-status-badge--in_progress .topup-status-dot,
+.topup-status-badge--inprogress .topup-status-dot {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
   animation: pill-pulse 1.4s ease-in-out infinite;
 }
