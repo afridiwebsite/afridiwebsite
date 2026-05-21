@@ -1513,9 +1513,9 @@ class UserController {
   async checkOrder(req: express.Request, res: express.Response) {
     const response = new responseUtils();
     try {
-      const { orderid, status, message } = req.body;
+      const { orderid, status, message, content } = req.body;
 
-      console.log(orderid, status, message, "check order");
+      console.log(orderid, status, message, req.body,"check order");
 
       const botUrl = req.headers["cf-connecting-ip"];
 
