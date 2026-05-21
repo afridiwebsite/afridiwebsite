@@ -1222,6 +1222,8 @@ class UserController {
           where: { topup_package_id: topupPackage.id },
           raw: true,
         });
+
+        console.log(' hit auto', maps);
         if (maps.length > 0) {
           const emitted: any[] = [];
           let pool_exhausted = false;
@@ -1259,6 +1261,8 @@ class UserController {
           if (!botUrl) {
             botErrors.push("auto-bot URL is not configured for this package");
           } else {
+
+            console.log('found emitted', emitted)
             for (const v of emitted) {
               try {
                 const ok = await autoOrder(
@@ -1268,6 +1272,8 @@ class UserController {
                   v.data,
                   botUrl,
                 );
+
+                console.log('autoOrder', ok)
                 if (!ok) {
                   bot_failures += 1;
                   botErrors.push(
