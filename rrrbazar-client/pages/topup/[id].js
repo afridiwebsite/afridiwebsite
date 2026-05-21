@@ -494,14 +494,28 @@ function TopupOrderPage() {
                                     <div className="topup-pack-grid">
                                       {/* Single Recharge --Start-- */}
                                       {packages.map((pack, index) => {
+                                        // Out-of-stock when either the manual
+                                        // "In Stock" flag is off, OR tracked
+                                        // stock is enabled and the count has
+                                        // reached 0.
+                                        const trackedEmpty =
+                                          Number(pack?.stock_tracking) === 1 &&
+                                          Number(pack?.stock_quantity) <= 0;
                                         const outOfStock =
-                                          parseInt(pack?.in_stock) === 0;
+                                          parseInt(pack?.in_stock) === 0 ||
+                                          trackedEmpty;
                                         // order_once only applies when the
                                         // product has a Player ID input —
                                         // otherwise we can't scope "used"
                                         // to a player, so there's no impact.
+                                        // Both order_once = 1 (forever) and
+                                        // = 2 (daily cooldown) feed into the
+                                        // backend's blocked-ids list. We only
+                                        // need to know the mode to vary the
+                                        // "claimed" label below.
+                                        const reorderMode = Number(pack?.order_once) || 0;
                                         const alreadyOrdered =
-                                          pack?.order_once == 1 &&
+                                          reorderMode > 0 &&
                                           !!playerIdInput &&
                                           orderedOnceIds.has(Number(pack?.id));
                                         const isDisabled =
@@ -560,7 +574,9 @@ function TopupOrderPage() {
                                               {!outOfStock &&
                                                 alreadyOrdered && (
                                                   <span className="topup-pack-card-stock topup-pack-card-stock--claimed">
-                                                    Already claimed
+                                                    {reorderMode === 2
+                                                      ? "Try again tomorrow"
+                                                      : "Already claimed"}
                                                   </span>
                                                 )}
                                               {/* Foreground image column — sits
@@ -630,6 +646,28 @@ function TopupOrderPage() {
                                       })}
                                       {/* Single Recharge --End-- */}
                                     </div>
+                                    {/* Selected package's tracked stock —
+                                        only renders when the admin opted into
+                                        quantity tracking for the package so
+                                        non-tracked packages stay unchanged. */}
+                                    {values.selectedpackage &&
+                                      Number(
+                                        values.selectedpackage.stock_tracking,
+                                      ) === 1 && (
+                                        <div className="mt-4 w-max inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+                                          <span className="font-semibold">
+                                            In stock:
+                                          </span>
+                                          <strong>
+                                            {Number(
+                                              values.selectedpackage
+                                                .stock_quantity,
+                                            ) || 0}
+                                          </strong>
+                                        
+                                        </div>
+                                      )}
+
                                     {/* Quantity stepper — voucher-pool products
                                         whose admin flipped on `allow_quantity`
                                         for the selected package can be bought

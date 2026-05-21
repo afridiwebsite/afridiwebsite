@@ -26,10 +26,20 @@ function AddPackage(props) {
   const serial = useRef(null);
   const logo = useRef(null);
   const coin_value = useRef(null);
-  const order_once = useRef(null);
   const bot_url = useRef(null);
   const auto_delivery = useRef(null);
   const allow_quantity = useRef(null);
+
+  // Re-order limit: 0 = none, 1 = once forever per player ID, 2 = once/day
+  // per player ID. Server enforces by playerid; this is also relayed back
+  // through myOrderedOncePackages so the storefront grays the card out.
+  const [orderLimit, setOrderLimit] = useState(0);
+
+  // Quantity-tracked stock. When `stockTracking` is on, each order decrements
+  // `stockQuantity` server-side and the storefront treats the package as
+  // out-of-stock once it hits 0.
+  const [stockTracking, setStockTracking] = useState(false);
+  const [stockQuantity, setStockQuantity] = useState(0);
 
   const [selectedProductId, setSelectedProductId] = useState(productId || "");
   const selectedProduct =
@@ -96,12 +106,14 @@ function AddPackage(props) {
         logo: path,
         coin_value: coin_value.current.value || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
-        order_once: order_once.current?.checked ? 1 : 0,
+        order_once: orderLimit,
         allow_quantity:
           isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
         auto_delivery: autoDeliveryOn ? 1 : 0,
+        stock_tracking: stockTracking ? 1 : 0,
+        stock_quantity: stockTracking ? Math.max(0, Number(stockQuantity) || 0) : 0,
       })
       .then(async (res) => {
         // Persist voucher-map rows once we know the new package id.
@@ -251,14 +263,65 @@ function AddPackage(props) {
                     <div>
                       <label className="inline-flex items-center cursor-pointer select-none">
                         <input
-                          ref={order_once}
-                          id="order_once"
-                          value="1"
-                          className="form-checkbox"
                           type="checkbox"
+                          className="form-checkbox"
+                          checked={stockTracking}
+                          onChange={(e) => setStockTracking(e.target.checked)}
                         />
-                        <span className="ml-2">Order once per user</span>
+                        <span className="ml-2">Track stock quantity</span>
                       </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        When on, each order deducts from the count and the
+                        storefront shows the package as out of stock once it
+                        hits 0.
+                      </p>
+                    </div>
+                    {stockTracking && (
+                      <div>
+                        <label htmlFor="stock_quantity">Stock quantity</label>
+                        <input
+                          id="stock_quantity"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          value={stockQuantity}
+                          onChange={(e) => setStockQuantity(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form_grid">
+                    <div>
+                      <span className="block font-semibold mb-1">
+                        Re-order limit
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { value: 0, label: "None" },
+                          { value: 1, label: "Order once per user" },
+                          { value: 2, label: "Order once a day per user" },
+                        ].map((opt) => (
+                          <label
+                            key={opt.value}
+                            className="inline-flex items-center cursor-pointer select-none"
+                          >
+                            <input
+                              type="radio"
+                              name="order_once"
+                              className="mr-2"
+                              checked={orderLimit === opt.value}
+                              onChange={() => setOrderLimit(opt.value)}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Scoped by Player ID. No effect on products that don't
+                        have a Player ID input.
+                      </p>
                     </div>
                   </div>
 

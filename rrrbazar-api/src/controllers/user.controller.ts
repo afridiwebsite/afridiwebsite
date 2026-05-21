@@ -618,9 +618,13 @@ class UserController {
     }
   };
 
-  // Returns the topuppackage IDs the current user has already ordered AMONG
-  // packages flagged order_once. The client uses this to disable already-
-  // claimed packs on /topup/:id without leaking other users' history.
+  // Returns the topuppackage IDs the current user is currently BLOCKED from
+  // re-ordering. The client uses this to disable already-claimed packs on
+  // /topup/:id without leaking other users' history.
+  //
+  // Two modes:
+  //   order_once = 1 → any prior order by this user blocks forever
+  //   order_once = 2 → only orders in the last 24 h block (daily cooldown)
   myOrderedOncePackages = async (
     req: express.Request,
     res: express.Response,
@@ -628,26 +632,48 @@ class UserController {
     const response = new responseUtils();
     try {
       const user_id = req.user.id;
-      const oncePacks = await TopupPackage.findAll({
-        where: { order_once: 1 },
-        attributes: ["id"],
+      const limitedPacks = await TopupPackage.findAll({
+        where: { order_once: { [Op.in]: [1, 2] } },
+        attributes: ["id", "order_once"],
+        raw: true,
       });
-      const onceIds = oncePacks.map((p: any) => p.id);
-      if (onceIds.length === 0) {
+      if (limitedPacks.length === 0) {
         response.data = { ordered_package_ids: [] };
         return res.send(response.response);
       }
-      const orders = await Order.findAll({
-        where: {
-          user_id,
-          topuppackage_id: { [Op.in]: onceIds },
-        },
-        attributes: ["topuppackage_id"],
-      });
-      const ordered = Array.from(
-        new Set(orders.map((o: any) => o.topuppackage_id)),
-      );
-      response.data = { ordered_package_ids: ordered };
+      const onceIds = (limitedPacks as any[])
+        .filter((p) => Number(p.order_once) === 1)
+        .map((p) => p.id);
+      const dailyIds = (limitedPacks as any[])
+        .filter((p) => Number(p.order_once) === 2)
+        .map((p) => p.id);
+
+      const blocked = new Set<number>();
+
+      if (onceIds.length > 0) {
+        const orders = await Order.findAll({
+          where: { user_id, topuppackage_id: { [Op.in]: onceIds } },
+          attributes: ["topuppackage_id"],
+          raw: true,
+        });
+        for (const o of orders as any[]) blocked.add(o.topuppackage_id);
+      }
+
+      if (dailyIds.length > 0) {
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const orders = await Order.findAll({
+          where: {
+            user_id,
+            topuppackage_id: { [Op.in]: dailyIds },
+            created_at: { [Op.gte]: cutoff },
+          },
+          attributes: ["topuppackage_id"],
+          raw: true,
+        });
+        for (const o of orders as any[]) blocked.add(o.topuppackage_id);
+      }
+
+      response.data = { ordered_package_ids: Array.from(blocked) };
       return res.send(response.response);
     } catch (error) {
       console.log(
@@ -899,26 +925,32 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      // Enforce one-per-player-ID limit on packages flagged order_once.
-      // The constraint is scoped to the *player ID* (not the buying user),
-      // and only meaningful when the product actually has a Player ID input
-      // configured — without one we have no key to scope "used" against, so
-      // order_once has no effect.
-      if ((topupPackage as any).order_once == 1) {
+      // Enforce per-player-ID re-order limit. Mode 1 = forever; mode 2 =
+      // 24-h cooldown. Only meaningful when the product has a Player ID
+      // input configured — without one we have no key to scope "used"
+      // against, so the limit has no effect.
+      const orderOnceMode = Number((topupPackage as any).order_once);
+      if (orderOnceMode === 1 || orderOnceMode === 2) {
         const playerIdInputCount = await TopupProductInput.count({
           where: { topup_product_id: product_id, is_player_id: 1 },
         });
         const trimmedPlayerId = String(playerid || "").trim();
         if (playerIdInputCount > 0 && trimmedPlayerId) {
-          const previous = await Order.count({
-            where: {
-              playerid: trimmedPlayerId,
-              topuppackage_id,
-            },
-          });
+          const where: any = {
+            playerid: trimmedPlayerId,
+            topuppackage_id,
+          };
+          if (orderOnceMode === 2) {
+            where.created_at = {
+              [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            };
+          }
+          const previous = await Order.count({ where });
           if (previous > 0) {
             response.message =
-              "This player ID has already claimed this package — it's limited to one per player ID.";
+              orderOnceMode === 2
+                ? "This player ID has already claimed this package in the last 24 hours — try again later."
+                : "This player ID has already claimed this package — it's limited to one per player ID.";
             return res.status(400).send(response.response);
           }
         }
@@ -951,6 +983,23 @@ class UserController {
       if (product.is_active == 0) {
         response.message = "TopupProduct is not available for order";
         return res.status(400).send(response.response);
+      }
+
+      // Quantity-tracked stock gate. We re-read the live count from the
+      // already-loaded `topupPackage` and reject upfront so we never charge
+      // a wallet or open a payment session against a sold-out package.
+      const stockTracking =
+        Number((topupPackage as any).stock_tracking) === 1;
+      const stockBefore = Number((topupPackage as any).stock_quantity) || 0;
+      if (stockTracking) {
+        if (stockBefore <= 0) {
+          response.message = "This package is out of stock.";
+          return res.status(400).send(response.response);
+        }
+        if (stockBefore < quantity) {
+          response.message = `Only ${stockBefore} unit(s) available — reduce quantity and try again.`;
+          return res.status(400).send(response.response);
+        }
       }
 
       if (product.is_offer == 1 && product.offer_items > 0) {
@@ -1126,6 +1175,24 @@ class UserController {
 
       const order = await Order.create(user_order_data);
 
+      // Decrement tracked stock now that we have a persisted order. The
+      // rollback branches below restore it when they tear down the order.
+      if (stockTracking) {
+        (topupPackage as any).stock_quantity = Math.max(
+          0,
+          stockBefore - quantity,
+        );
+        await (topupPackage as any).save();
+      }
+      // Tiny helper to undo the decrement on rollback paths so the failed
+      // order doesn't leak stock to nobody.
+      const restoreStock = async () => {
+        if (!stockTracking) return;
+        (topupPackage as any).stock_quantity =
+          (Number((topupPackage as any).stock_quantity) || 0) + quantity;
+        await (topupPackage as any).save();
+      };
+
       // Voucher-pool products: pull `quantity` codes from the pool and
       // complete the order. All-or-nothing — if the pool can't fulfil the
       // requested quantity, release any already-emitted codes, refund the
@@ -1147,6 +1214,7 @@ class UserController {
             user.wallet = Number(user.wallet) + Number(amount);
             await user.save();
           }
+          await restoreStock();
           await order.destroy();
           response.message = `Sorry — only ${emitted.length} voucher(s) available for this package (you requested ${quantity}). Your wallet has not been charged.`;
           response.success = false;
@@ -1242,6 +1310,7 @@ class UserController {
               user.wallet = Number(user.wallet) + Number(amount);
               await user.save();
             }
+            await restoreStock();
             await order.destroy();
             response.message =
               "Sorry — one of the linked voucher pools is empty. Your wallet has not been charged.";

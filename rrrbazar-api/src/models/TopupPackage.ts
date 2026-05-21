@@ -24,6 +24,11 @@ export default (sequelize: Sequelize) => {
         public bot_url!: string;
         public auto_delivery!: number;
         public allow_quantity!: number;
+        // Quantity-tracked stock. `stock_tracking = 1` opts the package in;
+        // each successful order decrements `stock_quantity` and the package
+        // is treated as out-of-stock once the count hits 0.
+        public stock_tracking!: number;
+        public stock_quantity!: number;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -85,9 +90,13 @@ export default (sequelize: Sequelize) => {
             allowNull: true,
         },
         order_once: {
-            // 1 = each user may only order this package once. The order
-            // endpoint checks Order.user_id + topuppackage_id and rejects
-            // repeats with a clear message.
+            // Per-package re-order limit, keyed by the Player ID input.
+            //   0 = no limit
+            //   1 = once forever per player ID
+            //   2 = once per 24 h per player ID (daily cooldown)
+            // The order endpoint queries Order.playerid + topuppackage_id and
+            // narrows by created_at when mode = 2 so the cooldown resets after
+            // the window elapses.
             type: DataTypes.TINYINT,
             allowNull: true,
             defaultValue: 0,
@@ -118,6 +127,16 @@ export default (sequelize: Sequelize) => {
             // admin can ship single-unit voucher packages alongside bulk
             // ones.
             type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
+        },
+        stock_tracking: {
+            type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
+        },
+        stock_quantity: {
+            type: DataTypes.INTEGER,
             allowNull: true,
             defaultValue: 0,
         },

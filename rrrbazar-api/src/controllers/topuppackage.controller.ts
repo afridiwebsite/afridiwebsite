@@ -63,6 +63,8 @@ class TopupPackageController {
             bot_url,
             auto_delivery,
             allow_quantity,
+            stock_tracking,
+            stock_quantity,
         } = req.body
 
         try {
@@ -77,10 +79,12 @@ class TopupPackageController {
                 logo,
                 coin_value: Number(coin_value) || 0,
                 description: description || '',
-                order_once: order_once == 1 ? 1 : 0,
+                order_once: Number(order_once) === 2 ? 2 : Number(order_once) === 1 ? 1 : 0,
                 bot_url: String(bot_url || '').trim(),
                 auto_delivery: auto_delivery == 1 ? 1 : 0,
                 allow_quantity: allow_quantity == 1 ? 1 : 0,
+                stock_tracking: stock_tracking == 1 ? 1 : 0,
+                stock_quantity: stock_tracking == 1 ? Math.max(0, Number(stock_quantity) || 0) : 0,
             })
 
             response.message = 'Created successfully'
@@ -114,6 +118,8 @@ class TopupPackageController {
             bot_url,
             auto_delivery,
             allow_quantity,
+            stock_tracking,
+            stock_quantity,
         } = req.body
 
         try {
@@ -139,7 +145,8 @@ class TopupPackageController {
                 topupPackage.description = description;
             }
             if (order_once !== undefined) {
-                topupPackage.order_once = order_once == 1 ? 1 : 0;
+                topupPackage.order_once =
+                    Number(order_once) === 2 ? 2 : Number(order_once) === 1 ? 1 : 0;
             }
             if (bot_url !== undefined) {
                 topupPackage.bot_url = String(bot_url || '').trim();
@@ -149,6 +156,19 @@ class TopupPackageController {
             }
             if (allow_quantity !== undefined) {
                 topupPackage.allow_quantity = allow_quantity == 1 ? 1 : 0;
+            }
+            if (stock_tracking !== undefined) {
+                topupPackage.stock_tracking = stock_tracking == 1 ? 1 : 0;
+                // When tracking is turned off, zero the count so it doesn't
+                // linger and surprise anyone re-enabling later. When on, take
+                // the value if provided.
+                if (topupPackage.stock_tracking === 0) {
+                    topupPackage.stock_quantity = 0;
+                } else if (stock_quantity !== undefined) {
+                    topupPackage.stock_quantity = Math.max(0, Number(stock_quantity) || 0);
+                }
+            } else if (stock_quantity !== undefined && topupPackage.stock_tracking === 1) {
+                topupPackage.stock_quantity = Math.max(0, Number(stock_quantity) || 0);
             }
             await topupPackage.save()
 
