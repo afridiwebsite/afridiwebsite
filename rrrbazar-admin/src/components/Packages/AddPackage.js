@@ -1,15 +1,11 @@
 import React, { useRef, useState } from "react";
 import { useHistory, withRouter } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Editor } from "react-draft-wysiwyg";
-import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
-import { EditorState } from "draft-js";
-import { convertToHTML } from "draft-convert";
 import axiosInstance from "../../common/axios";
 import useUpload from "../../hooks/useUpload";
 import useGet from "../../hooks/useGet";
 import { getErrors, hasData, toastDefault } from "../../utils/handler.utils";
-import { draftToHTMLConfig } from "../../utils/draftEditor.utils";
+import TextEditor from "../TextEditor/TextEditor";
 import Loader from "../Loader/Loader";
 
 function AddPackage(props) {
@@ -84,20 +80,8 @@ function AddPackage(props) {
   const removeMapping = (idx) =>
     setMappings((prev) => prev.filter((_, i) => i !== idx));
 
-  // Rich-text package description. Toolbar enables inline images (uploaded
-  // as base64 — kept simple to avoid wiring a second upload pipeline).
-  const [editorState, setEditorState] = useState(EditorState.createEmpty());
-
-  const uploadImageCallback = (file) => {
-    // Inline image as base64 data URL. Works without server changes; if the
-    // descriptions ever get heavy, swap this for a real upload.
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve({ data: { link: reader.result } });
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+  // Rich-text package description — admin-facing HTML.
+  const [descriptionHtml, setDescriptionHtml] = useState("");
 
   const addPackageHandler = (e) => {
     e.preventDefault();
@@ -116,9 +100,7 @@ function AddPackage(props) {
         allow_quantity:
           isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
-        description: convertToHTML(draftToHTMLConfig)(
-          editorState.getCurrentContent(),
-        ),
+        description: descriptionHtml,
         auto_delivery: autoDeliveryOn ? 1 : 0,
       })
       .then(async (res) => {
@@ -394,23 +376,10 @@ function AddPackage(props) {
                         inline images supported)
                       </span>
                     </label>
-                    <Editor
-                      editorState={editorState}
-                      editorStyle={{ height: 220 }}
-                      wrapperStyle={{
-                        border: "1px solid #dcdcf3",
-                        borderRadius: 6,
-                      }}
-                      onEditorStateChange={setEditorState}
-                      toolbar={{
-                        image: {
-                          uploadCallback: uploadImageCallback,
-                          alt: { present: true, mandatory: false },
-                          previewImage: true,
-                          inputAccept:
-                            "image/jpeg,image/jpg,image/png,image/gif,image/webp",
-                        },
-                      }}
+                    <TextEditor
+                      value={descriptionHtml}
+                      onHtmlChange={setDescriptionHtml}
+                      minHeight={220}
                     />
                   </div>
 

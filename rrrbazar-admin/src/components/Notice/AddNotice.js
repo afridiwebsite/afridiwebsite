@@ -1,14 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import { EditorState } from 'draft-js';
-import { convertToHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
-import { draftToHTMLConfig } from '../../utils/draftEditor.utils';
+import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
 
 const TYPE_LABELS = {
@@ -24,7 +20,7 @@ function AddNotice() {
 
     const [noticeLogo, setNoticeLogo] = useState(null)
     const { path, uploading } = useUpload(noticeLogo)
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [noticeHtml, setNoticeHtml] = useState('')
 
     const [loading, setLoading] = useState(null)
     const history = useHistory()
@@ -39,20 +35,9 @@ function AddNotice() {
     // Strips (marquee + navbar_bottom) only carry text — no image, no CTA.
     const isStripType = noticeType === 'marquee' || noticeType === 'navbar_bottom'
 
-    const uploadImageCallback = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve({ data: { link: reader.result } });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    };
-
     const createPaymentMethodHandler = (e) => {
         e.preventDefault()
         if (uploading) return
-
-        const noticeHtml = convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent())
 
         setLoading(true)
         axiosInstance.post('/admin/notice/create', {
@@ -123,17 +108,11 @@ function AddNotice() {
 
                                 <div className="mt-2">
                                     <label>Notice</label>
-                                    <div className="border border-gray-200 rounded mt-1">
-                                        <Editor
-                                            editorState={editorState}
-                                            onEditorStateChange={setEditorState}
-                                            wrapperClassName="px-2"
-                                            editorClassName="px-2 min-h-[160px]"
-                                            toolbar={{
-                                                image: { uploadCallback: uploadImageCallback, alt: { present: true, mandatory: false } },
-                                            }}
-                                        />
-                                    </div>
+                                    <TextEditor
+                                        value={noticeHtml}
+                                        onHtmlChange={setNoticeHtml}
+                                        minHeight={160}
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">
                                         Rendered as HTML on the storefront.
                                     </p>

@@ -1370,6 +1370,7 @@ class UserController {
               send_unipin,
               pkgBotUrl,
             );
+            console.log(botStatus, "botStatus**##");
             if (!botStatus) {
               botError = `bot returned no acceptance (no response from ${pkgBotUrl})`;
             }

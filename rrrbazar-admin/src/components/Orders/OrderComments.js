@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Editor } from 'react-draft-wysiwyg'
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css'
-import { EditorState } from 'draft-js'
-import { convertFromHTML, convertToHTML } from 'draft-convert'
 import { toast } from 'react-toastify'
 import axiosInstance from '../../common/axios'
 import { getErrors, toastDefault } from '../../utils/handler.utils'
+import TextEditor from '../TextEditor/TextEditor'
 import Loader from '../Loader/Loader'
 
 // Manages the saved comment templates used by the Orders edit modal.
@@ -14,7 +11,7 @@ function OrderComments() {
     const [loading, setLoading] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [label, setLabel] = useState('')
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [html, setHtml] = useState('')
     const [saving, setSaving] = useState(false)
 
     const refresh = async () => {
@@ -36,22 +33,17 @@ function OrderComments() {
     const resetForm = () => {
         setEditingId(null)
         setLabel('')
-        setEditorState(EditorState.createEmpty())
+        setHtml('')
     }
 
     const startEditing = (item) => {
         setEditingId(item.id)
         setLabel(item.label || '')
-        if (item.html) {
-            setEditorState(EditorState.createWithContent(convertFromHTML(item.html)))
-        } else {
-            setEditorState(EditorState.createEmpty())
-        }
+        setHtml(item.html || '')
     }
 
     const submit = async (e) => {
         e.preventDefault()
-        const html = convertToHTML(editorState.getCurrentContent())
         const url = editingId
             ? `/admin/order-comments/${editingId}`
             : '/admin/order-comments'
@@ -123,14 +115,10 @@ function OrderComments() {
                             <label className="text-xs text-gray-600 block mb-1">
                                 Comment
                             </label>
-                            <Editor
-                                editorState={editorState}
-                                editorStyle={{ height: 220 }}
-                                wrapperStyle={{
-                                    border: '1px solid #dcdcf3',
-                                    borderRadius: 6,
-                                }}
-                                onEditorStateChange={setEditorState}
+                            <TextEditor
+                                value={html}
+                                onHtmlChange={setHtml}
+                                minHeight={220}
                             />
                             <div className="mt-4 flex gap-2">
                                 <button

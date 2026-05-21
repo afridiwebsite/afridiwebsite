@@ -1,18 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import { EditorState } from 'draft-js';
-import { convertToHTML, convertFromHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useGet from '../../hooks/useGet';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
-import {
-    draftToHTMLConfig,
-    draftFromHTMLConfig,
-} from '../../utils/draftEditor.utils';
+import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
 
 const TYPE_LABELS = {
@@ -34,34 +27,18 @@ function EditNotice(props) {
     const button_text = useRef(null);
     const is_active = useRef(null);
 
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [noticeHtml, setNoticeHtml] = useState('')
 
     useEffect(() => {
-        if (data?.notice) {
-            setEditorState(
-                EditorState.createWithContent(
-                    convertFromHTML(draftFromHTMLConfig)(data.notice),
-                ),
-            )
-        }
+        if (data?.notice != null) setNoticeHtml(data.notice || '')
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data?.id])
 
     const noticeType = data?.type || 'normal'
     const isStripType = noticeType === 'marquee' || noticeType === 'navbar_bottom'
 
-    const uploadImageCallback = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve({ data: { link: reader.result } });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    };
-
     const editPaymentMethodHandler = (e) => {
         e.preventDefault()
-        const noticeHtml = convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent())
         setLoading(true)
         axiosInstance.post(`/admin/notice/update/${noticeId}`, {
             title: '',
@@ -139,17 +116,11 @@ function EditNotice(props) {
 
                                         <div className="mt-2">
                                             <label>Notice</label>
-                                            <div className="border border-gray-200 rounded mt-1">
-                                                <Editor
-                                                    editorState={editorState}
-                                                    onEditorStateChange={setEditorState}
-                                                    wrapperClassName="px-2"
-                                                    editorClassName="px-2 min-h-[160px]"
-                                                    toolbar={{
-                                                        image: { uploadCallback: uploadImageCallback, alt: { present: true, mandatory: false } },
-                                                    }}
-                                                />
-                                            </div>
+                                            <TextEditor
+                                                value={noticeHtml}
+                                                onHtmlChange={setNoticeHtml}
+                                                minHeight={160}
+                                            />
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Rendered as HTML on the storefront.
                                             </p>

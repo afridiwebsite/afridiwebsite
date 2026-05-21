@@ -1,14 +1,10 @@
 import React, { useRef, useState } from 'react'
 import { useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import { EditorState } from 'draft-js';
-import { convertToHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
-import { draftToHTMLConfig } from '../../utils/draftEditor.utils';
+import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
 
 function AddPaymentMethod() {
@@ -21,24 +17,13 @@ function AddPaymentMethod() {
 
     const [loading, setLoading] = useState(null)
     const [type, setType] = useState('normal')
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [infoHtml, setInfoHtml] = useState('')
     const history = useHistory()
-
-    const uploadImageCallback = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve({ data: { link: reader.result } });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    };
 
     const createPaymentMethodHandler = (e) => {
         e.preventDefault()
 
         if (uploading) return
-
-        const infoHtml = convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent())
 
         setLoading(true)
         axiosInstance.post('/admin/payment-method/create', {
@@ -112,17 +97,11 @@ function AddPaymentMethod() {
 
                                 <div className="mt-2">
                                     <label>Information (shown to users)</label>
-                                    <div className="border border-gray-200 rounded mt-1">
-                                        <Editor
-                                            editorState={editorState}
-                                            onEditorStateChange={setEditorState}
-                                            wrapperClassName="px-2"
-                                            editorClassName="px-2 min-h-[160px]"
-                                            toolbar={{
-                                                image: { uploadCallback: uploadImageCallback, alt: { present: true, mandatory: false } },
-                                            }}
-                                        />
-                                    </div>
+                                    <TextEditor
+                                        value={infoHtml}
+                                        onHtmlChange={setInfoHtml}
+                                        minHeight={160}
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">
                                         Rendered as HTML on the storefront. Leave empty if not needed.
                                     </p>

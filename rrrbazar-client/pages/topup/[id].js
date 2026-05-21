@@ -1063,7 +1063,7 @@ function TopupOrderPage() {
                                 </h5>
                               </div>
                               <div className="order_box_body">
-                                <div className="_body2 text-[13px]">
+                                <div className="_body2 text-[13px] rich-text-html">
                                   {ReactHtmlParser(productInfo?.rules)}
                                 </div>
                               </div>

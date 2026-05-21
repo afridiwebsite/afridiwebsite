@@ -1,18 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useHistory, withRouter } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Editor } from "react-draft-wysiwyg";
-import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
-import { EditorState } from "draft-js";
-import { convertToHTML, convertFromHTML } from "draft-convert";
 import axiosInstance from "../../common/axios";
 import useUpload from "../../hooks/useUpload";
 import useGet from "../../hooks/useGet";
 import { getErrors, hasData, toastDefault } from "../../utils/handler.utils";
-import {
-  draftToHTMLConfig,
-  draftFromHTMLConfig,
-} from "../../utils/draftEditor.utils";
+import TextEditor from "../TextEditor/TextEditor";
 import Loader from "../Loader/Loader";
 
 function EditPackage(props) {
@@ -113,29 +106,11 @@ function EditPackage(props) {
   const removeMapping = (idx) =>
     setMappings((prev) => prev.filter((_, i) => i !== idx));
 
-  const [editorState, setEditorState] = useState(EditorState.createEmpty());
-
-  // Seed the editor once the package loads. Skips reseeding on later
-  // updates so the admin's in-progress edits aren't clobbered.
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   useEffect(() => {
-    if (data?.description) {
-      setEditorState(
-        EditorState.createWithContent(
-          convertFromHTML(draftFromHTMLConfig)(data.description),
-        ),
-      );
-    }
+    if (data?.description != null) setDescriptionHtml(data.description || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
-
-  const uploadImageCallback = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve({ data: { link: reader.result } });
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
 
   const editPackageHandler = (e) => {
     e.preventDefault();
@@ -154,9 +129,7 @@ function EditPackage(props) {
         allow_quantity:
           isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
-        description: convertToHTML(draftToHTMLConfig)(
-          editorState.getCurrentContent(),
-        ),
+        description: descriptionHtml,
         auto_delivery: autoDeliveryOn ? 1 : 0,
       })
       .then(async () => {
@@ -449,23 +422,10 @@ function EditPackage(props) {
                         inline images supported)
                       </span>
                     </label>
-                    <Editor
-                      editorState={editorState}
-                      editorStyle={{ height: 220 }}
-                      wrapperStyle={{
-                        border: "1px solid #dcdcf3",
-                        borderRadius: 6,
-                      }}
-                      onEditorStateChange={setEditorState}
-                      toolbar={{
-                        image: {
-                          uploadCallback: uploadImageCallback,
-                          alt: { present: true, mandatory: false },
-                          previewImage: true,
-                          inputAccept:
-                            "image/jpeg,image/jpg,image/png,image/gif,image/webp",
-                        },
-                      }}
+                    <TextEditor
+                      value={descriptionHtml}
+                      onHtmlChange={setDescriptionHtml}
+                      minHeight={220}
                     />
                   </div>
 

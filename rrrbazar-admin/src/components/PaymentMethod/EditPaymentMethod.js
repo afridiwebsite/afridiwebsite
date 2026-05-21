@@ -1,18 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import { EditorState } from 'draft-js';
-import { convertToHTML, convertFromHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useGet from '../../hooks/useGet';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
-import {
-    draftToHTMLConfig,
-    draftFromHTMLConfig,
-} from '../../utils/draftEditor.utils';
+import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
 
 function EditPaymentMethod(props) {
@@ -30,35 +23,18 @@ function EditPaymentMethod(props) {
     const status = useRef(null);
 
     const [type, setType] = useState('normal')
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [infoHtml, setInfoHtml] = useState('')
 
-    // Hydrate type + editor once the payment method finishes loading. Skips
-    // reseeding on later updates so in-progress edits aren't clobbered.
+    // Hydrate type + editor once the payment method finishes loading.
     useEffect(() => {
         if (!data) return
         setType(data?.type === 'direct' ? 'direct' : 'normal')
-        if (data?.info) {
-            setEditorState(
-                EditorState.createWithContent(
-                    convertFromHTML(draftFromHTMLConfig)(data.info),
-                ),
-            )
-        }
+        setInfoHtml(data?.info || '')
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data?.id])
 
-    const uploadImageCallback = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve({ data: { link: reader.result } });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    };
-
     const editPaymentMethodHandler = (e) => {
         e.preventDefault()
-        const infoHtml = convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent())
         setLoading(true)
         axiosInstance.post(`/admin/payment-method/update/${paymentMethodId}`, {
             name: name.current.value,
@@ -139,17 +115,11 @@ function EditPaymentMethod(props) {
 
                                 <div className="mt-2">
                                     <label>Information (shown to users)</label>
-                                    <div className="border border-gray-200 rounded mt-1">
-                                        <Editor
-                                            editorState={editorState}
-                                            onEditorStateChange={setEditorState}
-                                            wrapperClassName="px-2"
-                                            editorClassName="px-2 min-h-[160px]"
-                                            toolbar={{
-                                                image: { uploadCallback: uploadImageCallback, alt: { present: true, mandatory: false } },
-                                            }}
-                                        />
-                                    </div>
+                                    <TextEditor
+                                        value={infoHtml}
+                                        onHtmlChange={setInfoHtml}
+                                        minHeight={160}
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">
                                         Rendered as HTML on the storefront. Leave empty if not needed.
                                     </p>

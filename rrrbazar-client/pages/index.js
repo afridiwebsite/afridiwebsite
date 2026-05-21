@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import moment from "moment";
 import ReactHtmlParser from "react-html-parser";
 import { Autoplay, Pagination } from "swiper";
@@ -9,16 +9,8 @@ import { IoCloseSharp } from "react-icons/io5";
 import api from "../api/api";
 import ActivityIndicator from "../components/ActivityIndicator";
 import Game from "../components/game";
+import MarqueeTicker from "../components/MarqueeTicker";
 import { hasData, imgPath } from "../helpers/helpers";
-
-// Strip HTML for places where we can't render rich text — currently the
-// <marquee> element. Keeps any user-typed spaces but collapses formatting.
-function stripHtml(value) {
-  return String(value || "")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function SectionTitle({ children }) {
   return (
@@ -171,33 +163,19 @@ function Home({
   const looseProducts = Array.isArray(uncategorized) ? uncategorized : [];
 
   const [closedNoticeIds, setClosedNoticeIds] = useState([]);
-  // Ref to the <marquee> element so we can call .start() after mount in
-  // case hydration left it paused (some browsers occasionally start the
-  // element in a stopped state when it's rendered via SSR).
-  const marqueeRef = useRef(null);
 
   useEffect(() => {
     const closed = JSON.parse(localStorage.getItem("closed_notices") || "[]");
     setClosedNoticeIds(closed);
   }, []);
 
-  useEffect(() => {
-    // Kick the marquee on every render where the element exists so it's
-    // running by the time the user sees the page.
-    const el = marqueeRef.current;
-    if (el && typeof el.start === "function") {
-      try {
-        el.start();
-      } catch (e) {
-        /* old browsers may not support */
-      }
-    }
-  });
-
-  const handleCloseNotice = (id) => {
-    const updated = [...closedNoticeIds, id];
-    setClosedNoticeIds(updated);
-    localStorage.setItem("closed_notices", JSON.stringify(updated));
+  const handleCloseNotice = (ids) => {
+    const idArray = Array.isArray(ids) ? ids : [ids];
+    setClosedNoticeIds((prev) => {
+      const updated = [...new Set([...prev, ...idArray])];
+      localStorage.setItem("closed_notices", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const renderNotice = () => {
@@ -218,33 +196,18 @@ function Home({
           <section className="mb-2 mt-1 md:my-3 home_slider_wrapper animate-fade-in">
             <div className="container">
               <div className="home-notice home-notice--marquee">
-                <span className="home-notice-dot" aria-hidden="true" />
-                <div className="home-notice-marquee-wrap">
-                  <marquee
-                    ref={marqueeRef}
-                    scrollamount="5"
-                    onMouseOver={(e) => e.target.stop && e.target.stop()}
-                    onMouseOut={(e) => e.target.start && e.target.start()}
-                  >
-                    {marquees.map((m, idx) => (
-                      <span key={m.id}>
-                        {stripHtml(m.notice)}
-                        {idx < marquees.length - 1 && (
-                          <span className="home-notice-sep">|</span>
-                        )}
-                      </span>
-                    ))}
-                  </marquee>
+                <div className="home-notice-header">
+                  <span className="home-notice-dot" aria-hidden="true" />
+                  <span className="home-notice-label">NOTICE</span>
                 </div>
-                <button
-                  onClick={() =>
-                    marquees.forEach((m) => handleCloseNotice(m.id))
-                  }
+                <MarqueeTicker items={marquees} />
+                {/* <button
+                  onClick={() => handleCloseNotice(marquees.map((m) => m.id))}
                   className="home-notice-close"
                   aria-label="Close marquee"
                 >
                   <FaTimes size={14} />
-                </button>
+                </button> */}
               </div>
             </div>
           </section>

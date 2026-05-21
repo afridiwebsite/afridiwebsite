@@ -5,10 +5,7 @@ import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
-import { Editor } from "react-draft-wysiwyg";
-import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
-import { EditorState } from 'draft-js';
-import { convertToHTML } from 'draft-convert';
+import TextEditor from '../TextEditor/TextEditor';
 
 function AddPhysicalProduct() {
     const name = useRef(null);
@@ -18,7 +15,7 @@ function AddPhysicalProduct() {
     const is_active_product = useRef(null);
     const quantity = useRef(null);
 
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [descriptionHtml, setDescriptionHtml] = useState('')
     const [productLogo, setProductLogo] = useState(null)
     const { path, uploading } = useUpload(productLogo)
 
@@ -38,7 +35,7 @@ function AddPhysicalProduct() {
                 regular_price: regular_price.current.value,
                 quantity: quantity.current.value,
                 is_active: is_active_product.current.checked ? 1 : 0,
-                description: convertToHTML(editorState.getCurrentContent())
+                description: descriptionHtml
 
             }).then(res => {
                 toast.success('Product created successfully', toastDefault)
@@ -94,17 +91,11 @@ function AddPhysicalProduct() {
                                     </div>
                                 </div>
 
-                                <Editor
-                                    editorState={editorState}
-                                    editorStyle={{
-                                        height: 300,
-                                    }}
-                                    wrapperStyle={{
-                                        border: '1px solid #dcdcf3',
-                                        borderRadius: 6
-                                    }}
-                                    onEditorStateChange={(e) => setEditorState(e)}
-                                />;
+                                <TextEditor
+                                    value={descriptionHtml}
+                                    onHtmlChange={setDescriptionHtml}
+                                    minHeight={300}
+                                />
 
                                 <div className="my-2" >
                                     <label className="py-2 inline-block cursor-pointer select-none" >

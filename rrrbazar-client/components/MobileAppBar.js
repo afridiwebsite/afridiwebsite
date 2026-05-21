@@ -1,6 +1,6 @@
-import { useContext, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useContext, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import {
   FaHome,
   FaWallet,
@@ -10,16 +10,19 @@ import {
   FaGamepad,
   FaUser,
   FaTelegramPlane,
-} from 'react-icons/fa';
-import routes from '../config/routes';
-import { globalContext } from '../pages/_app';
+  FaMoneyBill,
+} from "react-icons/fa";
+import routes from "../config/routes";
+import { __access_token_key, __user_key } from "../config/globalConfig";
+import { getLocal, getSession } from "../lib/localStorage";
+import { globalContext } from "../pages/_app";
 
 // Build a t.me link from an admin-provided value.
 function buildTelegramLink(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  const stripped = raw.replace(/^@/, '');
-  const digits = stripped.replace(/[^0-9]/g, '');
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const stripped = raw.replace(/^@/, "");
+  const digits = stripped.replace(/[^0-9]/g, "");
   const looksLikePhone = /^\+?\d[\d\s-]*$/.test(stripped);
   if (looksLikePhone && digits) return `https://t.me/+${digits}`;
   return stripped;
@@ -29,33 +32,69 @@ function buildTelegramLink(value) {
 // consistent navigation and support access.
 function MobileAppBar() {
   const router = useRouter();
-  const { isAuth, siteSettings } = useContext(globalContext) || {};
+  const { isAuth: ctxIsAuth, siteSettings } = useContext(globalContext) || {};
+
+  // SSR can't see localStorage, so the context's `isAuth` starts as `false`
+  // on the server and during the initial hydrate render. If we trusted that
+  // value, logged-in users would briefly see the unauth bar — which puts
+  // FaUser (Login) where Add Wallet (FaMoneyBill) should sit. Re-derive
+  // auth from storage on mount so the rendered items match reality from
+  // the first client-side render onwards.
+  const [hydratedAuth, setHydratedAuth] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const u = getLocal(__user_key) || getSession(__user_key);
+    const t = getLocal(__access_token_key) || getSession(__access_token_key);
+    setHydratedAuth(!!(u && t));
+    setMounted(true);
+  }, [ctxIsAuth]);
+  const isAuth = mounted ? hydratedAuth : !!ctxIsAuth;
 
   // Toggle a body class so the CSS can add page padding on mobile.
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    document.body.classList.add('has-mobile-appbar');
-    return () => document.body.classList.remove('has-mobile-appbar');
+    if (typeof document === "undefined") return;
+    document.body.classList.add("has-mobile-appbar");
+    return () => document.body.classList.remove("has-mobile-appbar");
   }, []);
 
   // "Message" item points at the dedicated 1:1 support contact; falls
   // back to the general Telegram channel when no support number is set.
-  const telegramSupportRaw = siteSettings?.telegram_support_number || '';
-  const telegramChannelRaw = siteSettings?.telegram_number || '';
+  const telegramSupportRaw = siteSettings?.telegram_support_number || "";
+  const telegramChannelRaw = siteSettings?.telegram_number || "";
   const telegramLink =
     buildTelegramLink(telegramSupportRaw) ||
     buildTelegramLink(telegramChannelRaw);
 
   const items = isAuth
     ? [
-        { href: '/', label: 'Home', icon: FaHome, scheme: 'blue' },
-        { href: routes.addMoney.name, label: 'Add Wallet', icon: FaWallet, scheme: 'emerald' },
-        { href: routes.myOrder.name, label: 'Orders', icon: FaHistory, scheme: 'amber' },
-        { href: routes.spin.name, label: 'Spin', icon: FaDice, scheme: 'purple' },
+        { href: "/", label: "Home", icon: FaHome, scheme: "blue" },
+        {
+          href: routes.addMoney.name,
+          label: "Add Wallet",
+          icon: FaMoneyBill,
+          scheme: "emerald",
+        },
+        {
+          href: routes.myOrder.name,
+          label: "Orders",
+          icon: FaHistory,
+          scheme: "amber",
+        },
+        {
+          href: routes.spin.name,
+          label: "Spin",
+          icon: FaDice,
+          scheme: "purple",
+        },
       ]
     : [
-        { href: '/', label: 'Home', icon: FaHome, scheme: 'blue' },
-        { href: routes.login.name, label: 'Login', icon: FaUser, scheme: 'purple' },
+        { href: "/", label: "Home", icon: FaHome, scheme: "blue" },
+        {
+          href: routes.login.name,
+          label: "Login",
+          icon: FaUser,
+          scheme: "purple",
+        },
       ];
 
   const totalItems = items.length + (telegramLink ? 1 : 0);
@@ -65,7 +104,7 @@ function MobileAppBar() {
   const activeHref = items
     .filter(
       ({ href }) =>
-        router.pathname === href || router.pathname.startsWith(href + '/'),
+        router.pathname === href || router.pathname.startsWith(href + "/"),
     )
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
@@ -83,7 +122,7 @@ function MobileAppBar() {
             <li key={href}>
               <Link href={href}>
                 <a
-                  className={`mobile-appbar-item mobile-appbar-item--${scheme} ${isActive ? 'is-active' : ''}`}
+                  className={`mobile-appbar-item mobile-appbar-item--${scheme} ${isActive ? "is-active" : ""}`}
                 >
                   <div className="mobile-appbar-icon-box">
                     <Icon size={20} />

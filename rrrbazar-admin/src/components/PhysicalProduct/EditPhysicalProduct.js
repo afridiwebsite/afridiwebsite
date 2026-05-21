@@ -1,32 +1,24 @@
-import { convertFromHTML, convertToHTML } from 'draft-convert';
-import { EditorState } from 'draft-js';
 import React, { useEffect, useRef, useState } from 'react';
-import { Editor } from 'react-draft-wysiwyg';
 import { useHistory, withRouter } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../common/axios';
 import useGet from '../../hooks/useGet';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
+import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
 function EditPhysicalProduct(props) {
     const history = useHistory()
     const productId = props.match.params.id;
 
     const [loading, setLoading] = useState(null)
-    const [editorState, setEditorState] = useState(EditorState.createEmpty())
+    const [descriptionHtml, setDescriptionHtml] = useState('')
     const [data, loadingData, error] = useGet(`admin/physical-product/${productId}`)
     const [productLogo, setProductLogo] = useState(data?.image)
     const { path, uploading } = useUpload(productLogo)
 
-    console.log(data);
-
     useEffect(() => {
-        if (hasData(data?.description)) {
-            setEditorState(
-                EditorState.createWithContent(convertFromHTML(data?.description))
-            )
-        }
+        if (data?.description != null) setDescriptionHtml(data.description || '')
     }, [data])
 
     const name = useRef(null);
@@ -46,7 +38,7 @@ function EditPhysicalProduct(props) {
             regular_price: regular_price.current.value,
             quantity: quantity.current.value,
             is_active: is_active_product.current.checked ? 1 : 0,
-            description: convertToHTML(editorState.getCurrentContent())
+            description: descriptionHtml
         }).then(res => {
             toast.success('Product updated successfully', toastDefault)
 
@@ -102,17 +94,11 @@ function EditPhysicalProduct(props) {
                                             </div>
                                         </div>
 
-                                        <Editor
-                                            editorState={editorState}
-                                            editorStyle={{
-                                                height: 300,
-                                            }}
-                                            wrapperStyle={{
-                                                border: '1px solid #dcdcf3',
-                                                borderRadius: 6
-                                            }}
-                                            onEditorStateChange={(e) => setEditorState(e)}
-                                        />;
+                                        <TextEditor
+                                            value={descriptionHtml}
+                                            onHtmlChange={setDescriptionHtml}
+                                            minHeight={300}
+                                        />
 
                                         <div className="my-2" >
                                             <label className="py-2 inline-block cursor-pointer select-none" >

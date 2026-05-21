@@ -1,6 +1,3 @@
-import { convertFromHTML, convertToHTML } from "draft-convert";
-import { EditorState } from "draft-js";
-import { Editor } from "react-draft-wysiwyg";
 import { useEffect, useRef, useState } from "react";
 import { useHistory, withRouter } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -8,6 +5,7 @@ import axiosInstance from "../../common/axios";
 import useGet from "../../hooks/useGet";
 import useUpload from "../../hooks/useUpload";
 import { getErrors, hasData, toastDefault } from "../../utils/handler.utils";
+import TextEditor from "../TextEditor/TextEditor";
 import Loader from "../Loader/Loader";
 function EditTopupProduct(props) {
   const history = useHistory();
@@ -18,13 +16,9 @@ function EditTopupProduct(props) {
   const [productLogo, setProductLogo] = useState(data?.logo);
   const { path, uploading } = useUpload(productLogo);
 
-  const [editorState, setEditorState] = useState(EditorState.createEmpty());
+  const [rulesHtml, setRulesHtml] = useState("");
   useEffect(() => {
-    if (hasData(data?.rules)) {
-      setEditorState(
-        EditorState.createWithContent(convertFromHTML(data?.rules)),
-      );
-    }
+    if (data?.rules != null) setRulesHtml(data.rules || "");
   }, [data]);
 
   const name = useRef(null);
@@ -225,7 +219,7 @@ function EditTopupProduct(props) {
         logo: path || data?.logo,
         price: 1,
         serial: serial.current.value,
-        rules: isPassthrough ? "" : convertToHTML(editorState.getCurrentContent()),
+        rules: isPassthrough ? "" : rulesHtml,
         isactivefortopup: isactivefortopupValue,
         is_active: is_active_product.current.checked ? 1 : 0,
         is_offer: 0,
@@ -451,16 +445,10 @@ function EditTopupProduct(props) {
 
                   {!isPassthrough && (
                   <>
-                  <Editor
-                    editorState={editorState}
-                    editorStyle={{
-                      height: 300,
-                    }}
-                    wrapperStyle={{
-                      border: "1px solid #dcdcf3",
-                      borderRadius: 6,
-                    }}
-                    onEditorStateChange={(e) => setEditorState(e)}
+                  <TextEditor
+                    value={rulesHtml}
+                    onHtmlChange={setRulesHtml}
+                    minHeight={300}
                   />
 
                   {/* Dynamic Inputs ---- */}

@@ -6,10 +6,7 @@ import useGet from "../../hooks/useGet";
 import useUpload from "../../hooks/useUpload";
 import { getErrors, toastDefault } from "../../utils/handler.utils";
 import Loader from "../Loader/Loader";
-import { Editor } from "react-draft-wysiwyg";
-import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
-import { EditorState } from "draft-js";
-import { convertToHTML } from "draft-convert";
+import TextEditor from "../TextEditor/TextEditor";
 
 function AddTopupProduct() {
   const name = useRef(null);
@@ -35,7 +32,7 @@ function AddTopupProduct() {
   const [youtubeLinkValue, setYoutubeLinkValue] = useState("");
   const isPassthrough = !!productLinkValue.trim();
 
-  const [editorState, setEditorState] = useState(EditorState.createEmpty());
+  const [rulesHtml, setRulesHtml] = useState("");
   const [productLogo, setProductLogo] = useState(null);
   const { path, uploading } = useUpload(productLogo);
 
@@ -201,7 +198,7 @@ function AddTopupProduct() {
           is_active: is_active_product.current.checked ? 1 : 0,
           is_offer: 0,
           offer_items:  0,
-          rules: isPassthrough ? "" : convertToHTML(editorState.getCurrentContent()),
+          rules: isPassthrough ? "" : rulesHtml,
           product_link: productLinkValue.trim(),
           youtube_link: youtubeLinkValue.trim(),
           is_voucher: is_voucher.current?.checked ? 1 : 0,
@@ -405,16 +402,10 @@ function AddTopupProduct() {
 
                 {!isPassthrough && (
                 <>
-                <Editor
-                  editorState={editorState}
-                  editorStyle={{
-                    height: 300,
-                  }}
-                  wrapperStyle={{
-                    border: "1px solid #dcdcf3",
-                    borderRadius: 6,
-                  }}
-                  onEditorStateChange={(e) => setEditorState(e)}
+                <TextEditor
+                  value={rulesHtml}
+                  onHtmlChange={setRulesHtml}
+                  minHeight={300}
                 />
 
                 {/* Dynamic Inputs ---- */}
