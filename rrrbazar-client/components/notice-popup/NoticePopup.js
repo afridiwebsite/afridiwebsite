@@ -6,7 +6,8 @@
  * Date: 25 November 2021 (Thursday)
  *
  */
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import ReactHtmlParser from "react-html-parser";
 import { IoCloseSharp } from "react-icons/io5";
 import { useQuery } from "react-query";
 import { getPopupNotice } from "../../api/api";
@@ -14,8 +15,6 @@ import { __last_seen_modal_key, __access_token_key } from "../../config/globalCo
 import reactQueryConfig from "../../config/reactQueryConfig";
 import { hasData, imgPath } from "../../helpers/helpers";
 import {
-  setSession,
-  getSession,
   setLocal,
   getLocal,
 } from "../../lib/localStorage";
@@ -27,13 +26,11 @@ function NoticePopup() {
   useEffect(() => {
     if (hasData(data)) {
       const accessToken = getLocal(__access_token_key);
-      // Create a unique key for this notice and user session
       const persistenceKey = `${__last_seen_modal_key}_${data.id}_${accessToken || 'guest'}`;
       const isAlreadySeen = getLocal(persistenceKey);
 
       if (!isAlreadySeen) {
         setShowModal(true);
-        // Mark as seen immediately in localStorage so other tabs (and new tabs) know it's been shown
         setLocal(persistenceKey, true);
       }
     }
@@ -64,7 +61,11 @@ function NoticePopup() {
 
           <div className="p-4">
             {data?.title && <h3 className="_h3 mb-1.5">{data?.title}</h3>}
-            {data?.notice && <p className="_subtitle1">{data?.notice}</p>}
+            {data?.notice && (
+              <div className="_subtitle1 notice-popup-body">
+                {ReactHtmlParser(String(data.notice))}
+              </div>
+            )}
             {data?.link && (
               <div className="mt-3">
                 <a
@@ -73,7 +74,7 @@ function NoticePopup() {
                   rel="noreferrer"
                   className="_btn"
                 >
-                  Go to link
+                  {data?.button_text || "Go to link"}
                 </a>
               </div>
             )}

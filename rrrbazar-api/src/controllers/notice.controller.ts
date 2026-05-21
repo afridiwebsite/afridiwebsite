@@ -1,5 +1,5 @@
 import express from 'express';
-import { col, fn, Op } from 'sequelize';
+import { col, fn } from 'sequelize';
 import Schema from '../models';
 import responseUtils from '../utils/response.utils';
 
@@ -69,31 +69,24 @@ class NoticeController {
 
     async createNotice(req: express.Request, res: express.Response) {
         const response = new responseUtils()
-        const { title, image, link, notice, for_home_modal, template, is_active, type } = req.body
+        const { title, image, link, notice, for_home_modal, is_active, type, button_text } = req.body
 
-        const checkExist = await Notice.findAll({
-            where: {
-                [Op.or]: [
-                    {
-                        notice: notice
-                    },
-                    {
-                        image: image
-                    }
-                ]
-            }
-        })
-
-        // if (checkExist?.length > 0) {
-        //     response.status = 400;
-        //     response.success = false;
-        //     response.message = 'Notice is already exist';
-        //     return res.status(400).send(response.response)
-        // }
-
+        // image and link are only meaningful for 'normal' popups. For
+        // marquee/navbar_bottom strips we drop them so empty strings don't
+        // pollute the data and the CMS-side conditional rendering stays clean.
+        const noticeType = type || 'normal';
+        const isStrip = noticeType === 'marquee' || noticeType === 'navbar_bottom';
 
         const data = await Notice.create({
-            title, image, link, notice, for_home_modal, template: 'image_title_detail_grid', is_active, type
+            title,
+            image: isStrip ? '' : (image || ''),
+            link: isStrip ? '' : (link || ''),
+            notice,
+            for_home_modal,
+            template: 'image_title_detail_grid',
+            is_active,
+            type: noticeType,
+            button_text: isStrip ? '' : (button_text || ''),
         })
         response.data = data
         res.send(response.response)
@@ -102,7 +95,7 @@ class NoticeController {
     async updateNotice(req: express.Request, res: express.Response) {
         const response = new responseUtils()
         const id = (req.params.id as any);
-        const { title, image, link, notice, for_home_modal, template, is_active, type } = req.body
+        const { title, image, link, notice, for_home_modal, is_active, type, button_text } = req.body
 
         const findNotice = await Notice.findByPk(id)
 
@@ -113,34 +106,18 @@ class NoticeController {
             return res.status(400).send(response.response)
         }
 
-        const checkExist = await Notice.findAll({
-            where: {
-                [Op.or]: [
-                    {
-                        notice: notice
-                    },
-                    {
-                        image: image
-                    }
-                ]
-            }
-        })
-
-        // if (checkExist?.length > 1) {
-        //     response.status = 400;
-        //     response.success = false;
-        //     response.message = 'Notice is already exist';
-        //     return res.status(400).send(response.response)
-        // }
+        const noticeType = type || findNotice.type || 'normal';
+        const isStrip = noticeType === 'marquee' || noticeType === 'navbar_bottom';
 
         findNotice.title = title;
-        findNotice.image = image;
-        findNotice.link = link;
+        findNotice.image = isStrip ? '' : (image || '');
+        findNotice.link = isStrip ? '' : (link || '');
         findNotice.notice = notice;
         findNotice.for_home_modal = for_home_modal;
         findNotice.template = 'image_title_detail_grid';
         findNotice.is_active = is_active;
-        findNotice.type = type;
+        findNotice.type = noticeType;
+        findNotice.button_text = isStrip ? '' : (button_text || '');
 
         await findNotice.save();
 

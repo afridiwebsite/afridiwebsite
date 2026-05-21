@@ -1,13 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import moment from "moment";
+import ReactHtmlParser from "react-html-parser";
 import { Autoplay, Pagination } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { BrowserView, MobileView } from "react-device-detect";
 import { FaTelegramPlane, FaTimes } from "react-icons/fa";
+import { IoCloseSharp } from "react-icons/io5";
 import api from "../api/api";
 import ActivityIndicator from "../components/ActivityIndicator";
 import Game from "../components/game";
 import { hasData, imgPath } from "../helpers/helpers";
+
+// Strip HTML for places where we can't render rich text — currently the
+// <marquee> element. Keeps any user-typed spaces but collapses formatting.
+function stripHtml(value) {
+  return String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function SectionTitle({ children }) {
   return (
@@ -217,7 +228,7 @@ function Home({
                   >
                     {marquees.map((m, idx) => (
                       <span key={m.id}>
-                        {m.notice}
+                        {stripHtml(m.notice)}
                         {idx < marquees.length - 1 && (
                           <span className="home-notice-sep">|</span>
                         )}
@@ -244,15 +255,20 @@ function Home({
             className="mb-2 md:my-3 home_slider_wrapper animate-fade-in"
           >
             <div className="container">
-              <div className="home-notice">
-                <span className="home-notice-dot" aria-hidden="true" />
-                <p className="home-notice-text flex-1">{n.notice}</p>
+              <div className="navbar-notice">
+                <div className="navbar-notice-body">
+                  <div className="navbar-notice-title">Notice</div>
+                  <div className="navbar-notice-text">
+                    {ReactHtmlParser(String(n.notice || ""))}
+                  </div>
+                </div>
                 <button
                   onClick={() => handleCloseNotice(n.id)}
-                  className="home-notice-close"
+                  className="navbar-notice-close"
                   aria-label="Close notice"
+                  type="button"
                 >
-                  <FaTimes />
+                  <IoCloseSharp size={18} />
                 </button>
               </div>
             </div>

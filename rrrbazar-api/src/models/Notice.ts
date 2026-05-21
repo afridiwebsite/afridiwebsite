@@ -12,6 +12,9 @@ export default (sequelize: Sequelize) => {
         public template!: string;
         public type!: string;
         public is_active!: number;
+        // Optional CTA button label shown on the popup (type=normal only).
+        // Falls back to "Go to link" on the client when empty.
+        public button_text!: string;
     }
 
     Notice.init({
@@ -50,6 +53,11 @@ export default (sequelize: Sequelize) => {
             allowNull: true,
             // unique: true,
             defaultValue: 0,
+        },
+        button_text: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: '',
         },
         created_at: {
             type: DataTypes.DATE,

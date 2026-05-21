@@ -23,14 +23,11 @@ export const paymentmethodSchema = [
 ];
 
 export const noticeSchema = [
-    // body('title')
-    //     .exists(checkNullFalse)
-    //     .withMessage('Title is required')
-    //     .isLength({ min: 3 })
-    //     .withMessage('Must be at least 3 chars long'),
-    body('image')
-        .exists(checkNullFalse)
-        .withMessage('Image is required'),
+    // image is only required for 'normal' popup notices. Marquee and
+    // navbar_bottom strips don't render an image, so the field is optional
+    // here and the controller skips empty strings.
+    body('image').optional({ checkFalsy: true }).isString(),
+    body('link').optional({ checkFalsy: true }).isString(),
     body('notice')
         .exists(checkNullFalse)
         .withMessage('Notice is required'),
@@ -38,9 +35,7 @@ export const noticeSchema = [
         .optional()
         .isString()
         .withMessage('Type must be a string'),
-    // body('template')
-    //     .exists(checkNullFalse)
-    //     .withMessage('Template is required'),
+    body('button_text').optional({ nullable: true }).isString(),
     validationHandler
 ];
 

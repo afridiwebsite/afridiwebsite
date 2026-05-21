@@ -516,37 +516,36 @@ export const noticeTableColumns = [
         Header: 'Id',
         accessor: 'id',
     },
-    // {
-    //     Header: 'Title',
-    //     accessor: 'title',
-    // },
+    // Image — only meaningful for type=normal; renders blank for strips.
     {
         Header: 'Image',
         accessor: 'image_full_url',
         Cell: (e) => {
+            const src = e.row.original?.image
+            if (!src) return <span className="text-gray-400">---</span>
             return <img src={e.value} alt="" width={50} />
         }
     },
     {
         Header: 'Link',
         accessor: 'link',
+        Cell: (e) => {
+            const v = e.row.original?.link
+            if (!v) return <span className="text-gray-400">---</span>
+            return v
+        }
     },
     {
         Header: 'Notice',
         accessor: 'notice',
+        // Notice may contain HTML now; strip tags for a compact preview so
+        // the table stays scannable.
+        Cell: (e) => {
+            const v = String(e.row.original?.notice || '')
+            const plain = v.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+            return <span title={plain}>{plain.length > 80 ? plain.slice(0, 80) + '…' : plain}</span>
+        }
     },
-    {
-        Header: 'Type',
-        accessor: 'type',
-    },
-    // {
-    //     Header: 'Home modal',
-    //     accessor: 'for_home_modal',
-    // },
-    // {
-    //     Header: 'Template',
-    //     accessor: 'template',
-    // },
     {
         Header: 'Is Active',
         accessor: 'is_active',

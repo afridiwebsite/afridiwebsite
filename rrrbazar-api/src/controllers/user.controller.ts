@@ -357,11 +357,13 @@ class UserController {
       const notices = await Notice.findOne({
         where: {
           for_home_modal: 1,
+          type: "normal",
           is_active: 1,
         },
         order: [["id", "ASC"]],
       });
       response.data = notices || {};
+      console.log(notices);
       res.send(response.response);
     } catch (error) {
       console.log(error);
@@ -1157,7 +1159,8 @@ class UserController {
           emitted.length === 1
             ? `Voucher: ${emitted[0].data}`
             : `Vouchers (${emitted.length}) delivered`;
-        (order as any).details = `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${emitted.map((v) => `<li>${v.data}</li>`).join("")}</ul>`;
+        (order as any).details =
+          `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${emitted.map((v) => `<li>${v.data}</li>`).join("")}</ul>`;
         await order.save();
 
         // Coin reward still applies to voucher purchases (multiplied by
@@ -1289,7 +1292,6 @@ class UserController {
               : "completed";
           // User-facing note only reports the successful allocation.
 
-
           // Internal context for the admin: reports why the delivery might
           // be stuck or skipped.
           let detailHtml = `<strong>Bot failures: ${bot_failures}</strong>`;
@@ -1332,7 +1334,8 @@ class UserController {
         if (!store_unipin_auto) {
           // No voucher in stock for this UC tier — record the reason on the
           // order so the admin sees it without trawling logs.
-          (order as any).details = `<span style="color:orange;"><strong>Auto-bot skipped:</strong> No UniPin voucher in stock for UC tier ${topupPackage.uc}.</span>`;
+          (order as any).details =
+            `<span style="color:orange;"><strong>Auto-bot skipped:</strong> No UniPin voucher in stock for UC tier ${topupPackage.uc}.</span>`;
           await order.save();
           const {
             uc: ucAlias,
@@ -1391,7 +1394,8 @@ class UserController {
           order.status = "pending";
           order.uc = "";
           if (botError) {
-            (order as any).details = `<span style="color:red;"><strong>Auto-bot failed:</strong> ${botError}</span>`;
+            (order as any).details =
+              `<span style="color:red;"><strong>Auto-bot failed:</strong> ${botError}</span>`;
           }
         }
         await order.save();
@@ -1537,7 +1541,7 @@ class UserController {
       // 'direct' → kick straight to the FastPay/UddoktaPay flow; no sender
       // number needed, no admin verification step. The webhook completes the
       // transaction on its own.
-      if (pm.type === 'direct') {
+      if (pm.type === "direct") {
         const meta_data = {
           token: process.env.UDDOKTAPAY_API_KEY,
           id: user.id,
@@ -2317,7 +2321,8 @@ class UserController {
                   order.brief_note = `Voucher: ${voucher.data}`;
                   await order.save();
                 } else {
-                  (order as any).details = "<span style='color:red;'><strong>Voucher pool empty</strong> — needs manual fulfilment</span>";
+                  (order as any).details =
+                    "<span style='color:red;'><strong>Voucher pool empty</strong> — needs manual fulfilment</span>";
                   await order.save();
                 }
               }

@@ -1,13 +1,16 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Editor } from 'react-draft-wysiwyg';
+import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+import { EditorState } from 'draft-js';
+import { convertToHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
+import { draftToHTMLConfig } from '../../utils/draftEditor.utils';
 import Loader from '../Loader/Loader';
 
-// Human-readable labels for the three notice types. The picker is gone — the
-// type is supplied by the Notice listing page via `?type=…` query string.
 const TYPE_LABELS = {
     normal: 'Normal',
     marquee: 'Marquee',
@@ -15,51 +18,63 @@ const TYPE_LABELS = {
 };
 
 function AddNotice() {
-    const image = useRef(null);
     const link = useRef(null);
-    const notice = useRef(null);
+    const button_text = useRef(null);
     const is_active = useRef(null);
 
     const [noticeLogo, setNoticeLogo] = useState(null)
     const { path, uploading } = useUpload(noticeLogo)
+    const [editorState, setEditorState] = useState(EditorState.createEmpty())
 
     const [loading, setLoading] = useState(null)
     const history = useHistory()
     const location = useLocation()
 
-    // Type is set by the listing page through the URL. Fall back to 'normal'
-    // if someone lands on the add screen without a query string.
     const noticeType = useMemo(() => {
         const params = new URLSearchParams(location.search || '')
         const t = params.get('type')
         return TYPE_LABELS[t] ? t : 'normal'
     }, [location.search])
 
+    // Strips (marquee + navbar_bottom) only carry text — no image, no CTA.
+    const isStripType = noticeType === 'marquee' || noticeType === 'navbar_bottom'
+
+    const uploadImageCallback = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ data: { link: reader.result } });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     const createPaymentMethodHandler = (e) => {
         e.preventDefault()
+        if (uploading) return
 
-        if (!uploading) {
-            setLoading(true)
-            axiosInstance.post('/admin/notice/create', {
-                title: '',
-                image: path,
-                link: link.current.value,
-                notice: notice.current.value,
-                type: noticeType,
-                for_home_modal: 1,
-                template: '',
-                is_active: is_active.current.checked ? 1 : 0,
-            }).then(res => {
-                toast.success('Notice created successfully', toastDefault)
+        const noticeHtml = convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent())
 
-                setTimeout(() => {
-                    history.push('/notice')
-                }, 1500);
-            }).catch(err => {
-                toast.error(getErrors(err, false, true), toastDefault)
-                setLoading(false)
-            })
-        }
+        setLoading(true)
+        axiosInstance.post('/admin/notice/create', {
+            title: '',
+            image: isStripType ? '' : path,
+            link: isStripType ? '' : (link.current?.value || ''),
+            notice: noticeHtml,
+            type: noticeType,
+            for_home_modal: 1,
+            template: '',
+            is_active: is_active.current.checked ? 1 : 0,
+            button_text: isStripType ? '' : (button_text.current?.value || ''),
+        }).then(res => {
+            toast.success('Notice created successfully', toastDefault)
+
+            setTimeout(() => {
+                history.push('/notice')
+            }, 1500);
+        }).catch(err => {
+            toast.error(getErrors(err, false, true), toastDefault)
+            setLoading(false)
+        })
     }
 
     return (
@@ -78,22 +93,53 @@ function AddNotice() {
                         {loading && <Loader absolute />}
                         <form onSubmit={createPaymentMethodHandler} >
                             <div>
-                                <div>
-                                    <label htmlFor="image">Image</label>
-                                    <input ref={image} id="image" className="form_input" type="file" required onChange={e => setNoticeLogo(e.target.files[0])} />
+                                {!isStripType && (
+                                    <>
+                                        <div>
+                                            <label htmlFor="image">Image</label>
+                                            <input id="image" className="form_input" type="file" onChange={e => setNoticeLogo(e.target.files[0])} />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="link">Link</label>
+                                            <input ref={link} id="link" className="form_input" type="text" placeholder="Link (optional)" />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="button_text">Button text</label>
+                                            <input
+                                                ref={button_text}
+                                                id="button_text"
+                                                className="form_input"
+                                                type="text"
+                                                placeholder="e.g. Go to link, Learn more, Claim now"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Shown on the modal CTA when a Link is set. Falls back to "Go to link" when empty.
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="mt-2">
+                                    <label>Notice</label>
+                                    <div className="border border-gray-200 rounded mt-1">
+                                        <Editor
+                                            editorState={editorState}
+                                            onEditorStateChange={setEditorState}
+                                            wrapperClassName="px-2"
+                                            editorClassName="px-2 min-h-[160px]"
+                                            toolbar={{
+                                                image: { uploadCallback: uploadImageCallback, alt: { present: true, mandatory: false } },
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Rendered as HTML on the storefront.
+                                    </p>
                                 </div>
 
-
-                                <div>
-                                    <label htmlFor="link">Link</label>
-                                    <input ref={link} id="link" className="form_input" type="text" placeholder="Link" />
-                                </div>
-                                <div>
-                                    <label htmlFor="notice">Notice</label>
-                                    <textarea required ref={notice} id="notice" className="form_input" placeholder="Notice" cols="30" rows="10"></textarea>
-                                </div>
-
-                                <div className="cursor-pointer" >
+                                <div className="cursor-pointer mt-3" >
                                     <input ref={is_active} id="is_active" type="checkbox" className="mr-2" />
                                     <label htmlFor="is_active" className="select-none cursor-pointer">Is Active</label>
                                 </div>
