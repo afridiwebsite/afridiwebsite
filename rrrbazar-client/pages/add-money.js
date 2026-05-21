@@ -1,8 +1,8 @@
 import { Formik } from "formik";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import ReactHtmlParser from "react-html-parser";
 import { useEffect, useState } from "react";
-import { CopyToClipboard } from "react-copy-to-clipboard";
 import { BsCheckCircleFill } from "react-icons/bs";
 import { GoDot } from "react-icons/go";
 import { useQuery } from "react-query";
@@ -24,6 +24,7 @@ import {
 } from "../config/globalConfig";
 import reactQueryConfig from "../config/reactQueryConfig";
 import routes from "../config/routes";
+import { CopyToClipboard } from "react-copy-to-clipboard";
 import {
   getErrors,
   hasData,
@@ -49,7 +50,6 @@ const validationSchema = Yup.object().shape({
   number: Yup.string().trim().label("Sender number"),
   paymentmethod: Yup.string().required("Please select a payment method").trim(),
 });
-
 const step1Rules = [
   "প্রথমে উপরে দেওয়া নাম্বার কপি করুণ।",
   "(bKash,Nagad,Rocket) App অথাবা Ussd কোডের মধ্যেমে",
@@ -68,7 +68,6 @@ const step2Rules = [
 ];
 
 function AddMoneyPage() {
-  // Getting payment methods
   const {
     data: payment_methods,
     isLoading,
@@ -80,6 +79,12 @@ function AddMoneyPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUnrecognizedError, setIsUnrecognizedError] = useState(false);
+
+  const isDirect = selectedPaymentMethod?.type === "direct";
+  const hasInfoHtml = !!(
+    selectedPaymentMethod?.info && String(selectedPaymentMethod.info).trim()
+  );
+
   const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
@@ -103,7 +108,6 @@ function AddMoneyPage() {
               validationSchema={validationSchema}
               onSubmit={(values, actions) => {
                 const { setSubmitting, resetForm, setFieldError } = actions;
-                console.log("values", values);
                 setSubmitting(false);
                 setIsSubmitting(true);
                 api
@@ -130,7 +134,6 @@ function AddMoneyPage() {
                         setFieldError(serverError.param, serverError.msg);
                       });
                     } else {
-                      // window.scrollTop = 0;
                       setIsUnrecognizedError(getErrors(err));
                       scrollTopWindow();
                     }
@@ -150,10 +153,6 @@ function AddMoneyPage() {
                 const isPaymentMethodError =
                   errors["paymentmethod"] && touched["paymentmethod"];
 
-                // useEffect(() => {
-                //   isPaymentMethodError && setFieldTouched('paymentmethod');
-                // }, [isPaymentMethodError]);
-
                 return (
                   <>
                     {isUnrecognizedError && (
@@ -163,7 +162,7 @@ function AddMoneyPage() {
                         title={isUnrecognizedError}
                       />
                     )}
-                    {/* Select Payment Method --Start-- */}
+                    {/* Step 1 — choose method */}
                     <div className="_order_box_wrapper">
                       <div className="_order_box_header">
                         <div className="_order_header_step_circle">1</div>
@@ -199,12 +198,10 @@ function AddMoneyPage() {
                                   }
                                   isError={isPaymentMethodError}
                                   onClick={() => {
-
-                                    console.log(payment_method.info, 'selected')
                                     setSelectedPaymentMethod(payment_method);
                                     setFieldValue(
                                       "paymentmethod",
-                                      +payment_method?.info,
+                                      payment_method?.id,
                                     );
                                   }}
                                 />
@@ -215,102 +212,112 @@ function AddMoneyPage() {
                         )}
                       </div>
                     </div>
-                    {/* Select Payment Method --End-- */}
 
-                    {/* How to add money --Start-- */}
-                    {selectedPaymentMethod &&
-                      selectedPaymentMethod?.id != 4 && (
-                        <div className="_order_box_wrapper">
-                          <div className="_order_box_header">
-                            <div className="_order_header_step_circle">2</div>
-                            <h5 className="_order_header_title">
-                              How To Add Money
-                            </h5>
-                          </div>
-
-                          <div className="order_box_body">
-                            {/* Showing Selected Payment Method Name and Info --Start-- */}
-                            {selectedPaymentMethod && (
-                              <div className="mb-2 flex items-center justify-between flex-wrap gap-3 border-l-4 bg-primary-500/5 border-primary-500 py-3 px-3.5">
-                                <p className="_h4">
-                                  {selectedPaymentMethod?.name}:{" "}
-                                  {selectedPaymentMethod?.info}
-                                </p>
-                                <CopyToClipboard
-                                  text={selectedPaymentMethod?.info}
-                                  onCopy={() => setIsCopied(true)}
-                                >
-                                  <Button
-                                    StartIcon={
-                                      isCopied ? (
-                                        <BsCheckCircleFill size={18} />
-                                      ) : undefined
-                                    }
-                                    className="small"
-                                    text={
-                                      isCopied ? "Number Copied" : "Copy Number"
-                                    }
-                                  />
-                                </CopyToClipboard>
-                              </div>
-                            )}
-                            {/* Showing Selected Payment Method Name and Info --End-- */}
-                            <div>
-                              <p className="_subtitle1 text-gray-800 font-semibold">
-                                Step 1:
-                              </p>
-                              <div className="pl-2 mt-2 space-y-2.5">
-                                {step1Rules.map((rule, index) => (
-                                  <p
-                                    className="_body2 flex items-start gap-2"
-                                    key={index}
-                                  >
-                                    <GoDot className="text-gray-500" /> {rule}
-                                  </p>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="mt-4">
-                              <p className="_subtitle1 text-gray-800 font-semibold">
-                                Step 2:
-                              </p>
-                              <div className="pl-2 mt-2 space-y-2.5">
-                                {step2Rules.map((rule, index) => (
-                                  <p
-                                    className="_body2 flex items-start gap-2"
-                                    key={index}
-                                  >
-                                    <GoDot className="text-gray-500" /> {rule}
-                                  </p>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    {/* How to add money --End-- */}
-
-                    {/* Add money form --Start-- */}
-                    {selectedPaymentMethod && (
+                    {/* Step 2 — instructions (normal only). Direct payment
+                        methods don't take a sender number, so there's no
+                        out-of-band send step to explain. */}
+                    {selectedPaymentMethod && !isDirect && hasInfoHtml && (
                       <div className="_order_box_wrapper">
                         <div className="_order_box_header">
-                          <div className="_order_header_step_circle">
-                            {selectedPaymentMethod?.id != 4 ? "3" : "2"}
-                          </div>
+                          <div className="_order_header_step_circle">2</div>
                           <h5 className="_order_header_title">
-                            Request Add Money
+                            How To Add Money
                           </h5>
                         </div>
 
                         <div className="order_box_body">
+                          <div className="prose max-w-none _payment_info_html">
+                            {ReactHtmlParser(selectedPaymentMethod.info)}
+                          </div>
+
+                          {selectedPaymentMethod && !isDirect && (
+                            <div className="mb-2 flex items-center justify-between flex-wrap gap-3 border-l-4 bg-primary-500/5 border-primary-500 py-3 px-3.5">
+                              <p className="_h4">
+                                {selectedPaymentMethod?.name}:{" "}
+                                {selectedPaymentMethod?.info}
+                              </p>
+                              <CopyToClipboard
+                                text={selectedPaymentMethod?.info}
+                                onCopy={() => setIsCopied(true)}
+                              >
+                                <Button
+                                  StartIcon={
+                                    isCopied ? (
+                                      <BsCheckCircleFill size={18} />
+                                    ) : undefined
+                                  }
+                                  className="small"
+                                  text={
+                                    isCopied ? "Number Copied" : "Copy Number"
+                                  }
+                                />
+                              </CopyToClipboard>
+                            </div>
+                          )}
+                          {/* Showing Selected Payment Method Name and Info --End-- */}
+                          <div>
+                            <p className="_subtitle1 text-gray-800 font-semibold">
+                              Step 1:
+                            </p>
+                            <div className="pl-2 mt-2 space-y-2.5">
+                              {step1Rules.map((rule, index) => (
+                                <p
+                                  className="_body2 flex items-start gap-2"
+                                  key={index}
+                                >
+                                  <GoDot className="text-gray-500" /> {rule}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <p className="_subtitle1 text-gray-800 font-semibold">
+                              Step 2:
+                            </p>
+                            <div className="pl-2 mt-2 space-y-2.5">
+                              {step2Rules.map((rule, index) => (
+                                <p
+                                  className="_body2 flex items-start gap-2"
+                                  key={index}
+                                >
+                                  <GoDot className="text-gray-500" /> {rule}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Final step — request/initiate payment */}
+                    {selectedPaymentMethod && (
+                      <div className="_order_box_wrapper">
+                        <div className="_order_box_header">
+                          <div className="_order_header_step_circle">
+                            {isDirect || !hasInfoHtml ? "2" : "3"}
+                          </div>
+                          <h5 className="_order_header_title">
+                            {isDirect ? "Add Money" : "Request Add Money"}
+                          </h5>
+                        </div>
+
+                        <div className="order_box_body">
+                          {/* Direct flow inlines the instructions (if any)
+                              right above the amount box, since there's no
+                              separate How-To section. */}
+                          {isDirect && hasInfoHtml && (
+                            <div className="prose max-w-none _payment_info_html mb-4">
+                              {ReactHtmlParser(selectedPaymentMethod.info)}
+                            </div>
+                          )}
                           <form className="flex flex-col gap-4">
-                            <div className="_grid_2">
+                            <div className={isDirect ? "" : "_grid_2"}>
                               <FormikInput
                                 name="amount"
                                 label="Amount"
                                 placeholder="Amount"
                               />
-                              {selectedPaymentMethod?.id != 4 && (
+                              {!isDirect && (
                                 <FormikInput
                                   name="number"
                                   label="Sender Number"
@@ -331,13 +338,12 @@ function AddMoneyPage() {
                               className="w-full"
                               loading={isSubmitting}
                             >
-                              Add Money
+                              {isDirect ? "Add Money" : "Request Add Money"}
                             </Button>
                           </form>
                         </div>
                       </div>
                     )}
-                    {/* Add money form --End-- */}
                   </>
                 );
               }}

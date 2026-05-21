@@ -11,12 +11,14 @@ export const paymentmethodSchema = [
     body('logo')
         .exists(checkNullFalse)
         .withMessage('Logo is required'),
-    body('info')
-        .exists(checkNullFalse)
-        .withMessage('Payment method info is required'),
+    // info is now a free-form rich-text block rendered to users as instructions.
+    // Optional — direct payment methods often don't need any.
+    body('info').optional({ checkFalsy: true }).isString(),
     body('status')
         .exists(checkNullFalse)
         .withMessage('Payment status is required'),
+    body('type').optional().isIn(['normal', 'direct']).withMessage('type must be normal or direct'),
+    body('seller_id').optional({ nullable: true }),
     validationHandler
 ];
 

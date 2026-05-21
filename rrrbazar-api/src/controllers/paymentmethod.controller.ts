@@ -69,34 +69,21 @@ class PaymentMethodController {
 
   async createPaymentMethod(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const { name, logo, info, status } = req.body
+    const { name, logo, info, status, type, seller_id } = req.body
 
-    // const checkExist = await PaymentMethod.findAll({
-    //   where: {
-    //     [Op.or]: [
-    //       {
-    //         name: name
-    //       },
-    //       {
-    //         info: info
-    //       }
-    //     ]
-    //   }
-    // })
-
-    // if (checkExist?.length > 0) {
-    //   response.status = 400;
-    //   response.success = false;
-    //   response.message = 'Payment method is already exist';
-    //   return res.status(400).send(response.response)
-    // }
-
+    const normalizedType = type === 'direct' ? 'direct' : 'normal';
+    const parsedSellerId =
+      normalizedType === 'direct' && seller_id !== undefined && seller_id !== null && seller_id !== ''
+        ? Number(seller_id)
+        : null;
 
     const data = await PaymentMethod.create({
       name,
       logo,
       info,
-      status
+      status,
+      type: normalizedType,
+      seller_id: Number.isFinite(parsedSellerId as number) ? parsedSellerId : null,
     })
     response.data = data
     res.send(response.response)
@@ -105,7 +92,7 @@ class PaymentMethodController {
   async updatePaymentMethod(req: express.Request, res: express.Response) {
     const response = new responseUtils()
     const id = (req.params.id as any);
-    const { name, logo, info, status } = req.body
+    const { name, logo, info, status, type, seller_id } = req.body
 
     const paymentMethod = await PaymentMethod.findByPk(id)
 
@@ -116,30 +103,17 @@ class PaymentMethodController {
       return res.status(400).send(response.response)
     }
 
-    // const checkExist = await PaymentMethod.findAll({
-    //   where: {
-    //     [Op.or]: [
-    //       {
-    //         name: name
-    //       },
-    //       {
-    //         info: info
-    //       }
-    //     ]
-    //   }
-    // })
-
-    // if (checkExist?.length > 1) {
-    //   response.status = 400;
-    //   response.success = false;
-    //   response.message = 'Payment method is already exist';
-    //   return res.status(400).send(response.response)
-    // }
-
     paymentMethod.name = name;
     paymentMethod.logo = logo;
     paymentMethod.info = info;
     paymentMethod.status = status;
+    if (type !== undefined) {
+      paymentMethod.type = type === 'direct' ? 'direct' : 'normal';
+    }
+    if (seller_id !== undefined) {
+      const parsed = seller_id === null || seller_id === '' ? null : Number(seller_id);
+      paymentMethod.seller_id = Number.isFinite(parsed as number) ? (parsed as number) : null;
+    }
 
     await paymentMethod.save();
 

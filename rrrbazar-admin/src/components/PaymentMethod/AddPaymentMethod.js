@@ -1,43 +1,63 @@
 import React, { useRef, useState } from 'react'
 import { useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Editor } from 'react-draft-wysiwyg';
+import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+import { EditorState } from 'draft-js';
+import { convertToHTML } from 'draft-convert';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
+import { draftToHTMLConfig } from '../../utils/draftEditor.utils';
 import Loader from '../Loader/Loader';
 
 function AddPaymentMethod() {
     const name = useRef(null);
     const logo = useRef(null);
-    const information = useRef(null);
+    const seller_id = useRef(null);
 
     const [paymentLogo, setPaymentLogo] = useState(null)
     const { path, uploading } = useUpload(paymentLogo)
 
     const [loading, setLoading] = useState(null)
+    const [type, setType] = useState('normal')
+    const [editorState, setEditorState] = useState(EditorState.createEmpty())
     const history = useHistory()
+
+    const uploadImageCallback = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ data: { link: reader.result } });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
 
     const createPaymentMethodHandler = (e) => {
         e.preventDefault()
 
-        if (!uploading) {
-            setLoading(true)
-            axiosInstance.post('/admin/payment-method/create', {
-                name: name.current.value,
-                logo: path,
-                info: information.current.value,
-                status: '1',
-            }).then(res => {
-                toast.success('Payment method created successfully', toastDefault)
+        if (uploading) return
 
-                setTimeout(() => {
-                    history.push('/payment-method')
-                }, 1500);
-            }).catch(err => {
-                toast.error(getErrors(err, false, true), toastDefault)
-                setLoading(false)
-            })
-        }
+        const infoHtml = convertToHTML(draftToHTMLConfig)(editorState.getCurrentContent())
+
+        setLoading(true)
+        axiosInstance.post('/admin/payment-method/create', {
+            name: name.current.value,
+            logo: path,
+            info: infoHtml,
+            status: '1',
+            type,
+            seller_id: type === 'direct' ? (seller_id.current?.value || null) : null,
+        }).then(res => {
+            toast.success('Payment method created successfully', toastDefault)
+
+            setTimeout(() => {
+                history.push('/payment-method')
+            }, 1500);
+        }).catch(err => {
+            toast.error(getErrors(err, false, true), toastDefault)
+            setLoading(false)
+        })
     }
 
     return (
@@ -63,13 +83,53 @@ function AddPaymentMethod() {
                                         <input ref={logo} id="logo" className="form_input" type="file" required onChange={e => setPaymentLogo(e.target.files[0])} />
                                     </div>
                                 </div>
-                                <div>
-                                    <label htmlFor="information">Information</label>
-                                    <input ref={information} id="information" className="form_input" type="number" placeholder="Information" required />
+                                <div className="form_grid">
+                                    <div>
+                                        <label htmlFor="type">Type</label>
+                                        <select
+                                            id="type"
+                                            className="form_input"
+                                            value={type}
+                                            onChange={(e) => setType(e.target.value)}
+                                        >
+                                            <option value="normal">Normal — user reports a sender number, admin verifies</option>
+                                            <option value="direct">Direct — auto-payment via UddoktaPay/FastPay</option>
+                                        </select>
+                                    </div>
+                                    {type === 'direct' && (
+                                        <div>
+                                            <label htmlFor="seller_id">Seller ID (UddoktaPay)</label>
+                                            <input
+                                                ref={seller_id}
+                                                id="seller_id"
+                                                className="form_input"
+                                                type="number"
+                                                placeholder="e.g. 13"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-2">
+                                    <label>Information (shown to users)</label>
+                                    <div className="border border-gray-200 rounded mt-1">
+                                        <Editor
+                                            editorState={editorState}
+                                            onEditorStateChange={setEditorState}
+                                            wrapperClassName="px-2"
+                                            editorClassName="px-2 min-h-[160px]"
+                                            toolbar={{
+                                                image: { uploadCallback: uploadImageCallback, alt: { present: true, mandatory: false } },
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Rendered as HTML on the storefront. Leave empty if not needed.
+                                    </p>
                                 </div>
 
                                 <div>
-                                    <button type="submit" disabled={uploading} className="cstm_btn w-full block">Create Payment Method</button>
+                                    <button type="submit" disabled={uploading} className="cstm_btn w-full block mt-4">Create Payment Method</button>
                                 </div>
                             </div>
                         </form>

@@ -1515,6 +1515,12 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
+      const pm = await PaymentMethod.findByPk(paymentmethod);
+      if (!pm) {
+        response.message = "Payment method not found";
+        return res.status(400).send(response.response);
+      }
+
       const checkPendingOrder = await Transaction.count({
         where: {
           user_id,
@@ -1528,19 +1534,20 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      const meta_data = {
-        token: process.env.UDDOKTAPAY_API_KEY,
-        id: user.id,
-        phone: user.phone,
-        wallet: user.wallet,
-        city: user.city,
-        address: user.address,
-        zip_code: user.zip_code,
-        paymentmethod: paymentmethod,
-        seller_id: number,
-      };
-
-      if (paymentmethod == 4) {
+      // 'direct' → kick straight to the FastPay/UddoktaPay flow; no sender
+      // number needed, no admin verification step. The webhook completes the
+      // transaction on its own.
+      if (pm.type === 'direct') {
+        const meta_data = {
+          token: process.env.UDDOKTAPAY_API_KEY,
+          id: user.id,
+          phone: user.phone,
+          wallet: user.wallet,
+          city: user.city,
+          address: user.address,
+          zip_code: user.zip_code,
+          paymentmethod: paymentmethod,
+        };
         const webhookUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`;
         try {
           const fastPayData = await fastPay({
@@ -1562,19 +1569,21 @@ class UserController {
           response.success = false;
           return res.status(502).send(response.response);
         }
-      } else {
-        const createTransaction = await Transaction.create({
-          user_id,
-          purpose,
-          amount,
-          number,
-          paymentmethod_id: paymentmethod,
-          status: "pending",
-        });
-
-        response.data = createTransaction;
-        return res.send(response.response);
       }
+
+      // 'normal' → user is sending money out-of-band and reports the sender
+      // number; admin verifies and marks completed.
+      const createTransaction = await Transaction.create({
+        user_id,
+        purpose,
+        amount,
+        number,
+        paymentmethod_id: paymentmethod,
+        status: "pending",
+      });
+
+      response.data = createTransaction;
+      return res.send(response.response);
     } catch (error) {
       console.log(error);
       res.status(400).send(response.internalError);
@@ -2242,9 +2251,13 @@ class UserController {
       }
 
       const pm = await PaymentMethod.findByPk(metadataObj.paymentmethod);
-      if (pm) {
-        metadataObj.seller_id =
-          pm.info && !isNaN(Number(pm.info)) ? parseInt(pm.info) : 13;
+      if (pm && pm.seller_id) {
+        metadataObj.seller_id = Number(pm.seller_id);
+      } else if (pm && pm.info && !isNaN(Number(pm.info))) {
+        // Legacy fallback: pre-migration payment methods stored the seller
+        // id on the `info` column. Once direct rows have been re-saved with
+        // a real seller_id, this branch becomes dead code.
+        metadataObj.seller_id = parseInt(pm.info);
       } else {
         metadataObj.seller_id = 13;
       }

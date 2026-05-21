@@ -152,11 +152,16 @@ function MyApp({ Component, pageProps }) {
       <Head>
         <title>{__site_name_2} | {__site_name_label}</title>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="shortcut icon" href="/favicon48x48.ico" />
-        <link rel="icon" href="/favicon48x48.ico" />
-        <link rel="apple-touch-icon" href="/favicon144x144.ico" />
-        <link rel="apple-touch-icon-precomposed" href="/favicon144x144.ico" />
-        <meta name="theme-color" content="#fff" />
+        <link rel="shortcut icon" href="/favico.ico" />
+        <link rel="icon" href="/favico.ico" />
+        <link rel="apple-touch-icon" href="/logo.png" />
+        <link rel="apple-touch-icon-precomposed" href="/logo.png" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="application-name" content="RRRBAZAR" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="RRRBAZAR" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </Head>
       <globalContext.Provider value={glovalContextData}>
         <QueryClientProvider client={queryClient}>

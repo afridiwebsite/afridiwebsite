@@ -8,6 +8,13 @@ export default (sequelize: Sequelize) => {
         public logo!: string;
         public info!: string;
         public status!: string;
+        // 'normal' → user submits request with sender number, admin verifies.
+        // 'direct' → server kicks straight to FastPay/UddoktaPay (no sender number).
+        public type!: string;
+        // Optional UddoktaPay seller id used only for the 'direct' flow. Previously
+        // this was overloaded onto `info`; lifting it out lets `info` become free-form
+        // HTML rendered to users as instructions.
+        public seller_id!: number | null;
     }
 
     PaymentMethod.init({
@@ -27,6 +34,15 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING,
             allowNull: true,
             defaultValue: '',
+        },
+        type: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            defaultValue: 'normal',
+        },
+        seller_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
         },
         created_at: {
             type: DataTypes.DATE,

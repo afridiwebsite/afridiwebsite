@@ -1,19 +1,23 @@
-import React, { useRef, useState } from 'react'
-import { useHistory } from 'react-router-dom';
+import React, { useMemo, useRef, useState } from 'react'
+import { useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
 
+// Human-readable labels for the three notice types. The picker is gone — the
+// type is supplied by the Notice listing page via `?type=…` query string.
+const TYPE_LABELS = {
+    normal: 'Normal',
+    marquee: 'Marquee',
+    navbar_bottom: 'Below Navbar (Closable)',
+};
+
 function AddNotice() {
-    // const title = useRefnull);
     const image = useRef(null);
     const link = useRef(null);
     const notice = useRef(null);
-    const type = useRef(null);
-    // const for_home_modal = useRef(null);
-    // const template = useRef(null);
     const is_active = useRef(null);
 
     const [noticeLogo, setNoticeLogo] = useState(null)
@@ -21,6 +25,15 @@ function AddNotice() {
 
     const [loading, setLoading] = useState(null)
     const history = useHistory()
+    const location = useLocation()
+
+    // Type is set by the listing page through the URL. Fall back to 'normal'
+    // if someone lands on the add screen without a query string.
+    const noticeType = useMemo(() => {
+        const params = new URLSearchParams(location.search || '')
+        const t = params.get('type')
+        return TYPE_LABELS[t] ? t : 'normal'
+    }, [location.search])
 
     const createPaymentMethodHandler = (e) => {
         e.preventDefault()
@@ -32,7 +45,7 @@ function AddNotice() {
                 image: path,
                 link: link.current.value,
                 notice: notice.current.value,
-                type: type.current.value,
+                type: noticeType,
                 for_home_modal: 1,
                 template: '',
                 is_active: is_active.current.checked ? 1 : 0,
@@ -52,20 +65,19 @@ function AddNotice() {
     return (
         <section className="relative container_admin" >
             <div className="bg-white overflow-hidden rounded">
-                <div className="px-6 py-3 border-b border-gray-200">
+                <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
                     <h3 className="text-lg font-bold text-black">
                         Create new notice
                     </h3>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                        Type: {TYPE_LABELS[noticeType]}
+                    </span>
                 </div>
                 <div className="py-10 px-4" >
                     <div className="w-full md:w-[70%] mx-auto py-6 relative border border-gray-200 px-4">
                         {loading && <Loader absolute />}
                         <form onSubmit={createPaymentMethodHandler} >
                             <div>
-                                {/* <div>
-                                        <label htmlFor="title">Title</label>
-                                        <input ref={title} id="title" className="form_input" type="text" placeholder="Title" required />
-                                    </div> */}
                                 <div>
                                     <label htmlFor="image">Image</label>
                                     <input ref={image} id="image" className="form_input" type="file" required onChange={e => setNoticeLogo(e.target.files[0])} />
@@ -81,47 +93,10 @@ function AddNotice() {
                                     <textarea required ref={notice} id="notice" className="form_input" placeholder="Notice" cols="30" rows="10"></textarea>
                                 </div>
 
-                                <div>
-                                    <label htmlFor="type">Notice Type</label>
-                                    <select ref={type} id="type" className="form_input" required>
-                                        <option value="normal">Normal</option>
-                                        <option value="marquee">Marquee</option>
-                                        <option value="navbar_bottom">Below Navbar (Closable)</option>
-                                    </select>
-                                </div>
-
-                                {/* <div className="mb-4" >
-                                    <label className="mb-2 inline-block">Template</label>
-                                    <div className="flex items-center space-x-4" >
-
-                                        <label className="select-none cursor-pointer">
-                                            <input defaultChecked ref={template} value="only_image" name="template" className="mr-1" type="radio" />
-                                            <span>Only image</span>
-                                        </label>
-                                        <label className="select-none cursor-pointer">
-                                            <input ref={template} value="title_detail" name="template" className="mr-1" type="radio" />
-                                            <span>Title And Notice</span>
-                                        </label>
-                                        <label className="select-none cursor-pointer">
-                                            <input ref={template} value="image_title_detail_grid" name="template" className="mr-1" type="radio" />
-                                            <span>Image, Title, Detail in Grid</span>
-                                        </label>
-
-                                    </div>
-                                </div>
-
-
-                                <div className="cursor-pointer" >
-                                    <input ref={for_home_modal} id="for_home_modal" type="checkbox" className="mr-2" />
-                                    <label htmlFor="for_home_modal" className="select-none cursor-pointer">For home modal</label>
-                                </div> */}
-
                                 <div className="cursor-pointer" >
                                     <input ref={is_active} id="is_active" type="checkbox" className="mr-2" />
                                     <label htmlFor="is_active" className="select-none cursor-pointer">Is Active</label>
                                 </div>
-
-
 
                                 <div className="mt-4">
                                     <button type="submit" disabled={uploading} className="cstm_btn w-full block">Create Notice</button>

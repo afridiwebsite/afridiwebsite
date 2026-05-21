@@ -6,6 +6,13 @@ import useGet from '../../hooks/useGet';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
+
+const TYPE_LABELS = {
+    normal: 'Normal',
+    marquee: 'Marquee',
+    navbar_bottom: 'Below Navbar (Closable)',
+};
+
 function EditNotice(props) {
     const history = useHistory()
     const noticeId = props.match.params.id;
@@ -15,16 +22,10 @@ function EditNotice(props) {
     const [noticeImage, setNoticeLogo] = useState(data?.image)
     const { path, uploading } = useUpload(noticeImage)
 
-    // const title = useRef(null);
     const image = useRef(null);
     const link = useRef(null);
     const notice = useRef(null);
-    const type = useRef(null);
-    // const for_home_modal = useRef(null);
-    // const template = useRef(null);
     const is_active = useRef(null);
-
-    console.log(data);
 
     const editPaymentMethodHandler = (e) => {
         e.preventDefault()
@@ -34,7 +35,9 @@ function EditNotice(props) {
             image: path || data?.image,
             link: link.current.value,
             notice: notice.current.value,
-            type: type.current.value,
+            // Preserve whatever type this notice was created under. The
+            // listing-page tabs are the only place type is chosen now.
+            type: data?.type || 'normal',
             for_home_modal: 1,
             template: '',
             is_active: is_active.current.checked ? 1 : 0,
@@ -50,13 +53,20 @@ function EditNotice(props) {
         })
     }
 
+    const currentTypeLabel = TYPE_LABELS[data?.type] || TYPE_LABELS.normal
+
     return (
         <section className="relative container_admin" >
             <div className="bg-white overflow-hidden rounded">
-                <div className="px-6 py-3 border-b border-gray-200">
+                <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
                     <h3 className="text-lg font-bold text-black">
                         Edit notice
                     </h3>
+                    {data && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                            Type: {currentTypeLabel}
+                        </span>
+                    )}
                 </div>
                 <div className="py-10 px-4" >
                     <div className="w-full md:w-[70%] min-h-[300px] mx-auto py-6 relative border border-gray-200 px-4">
@@ -66,13 +76,6 @@ function EditNotice(props) {
                             hasData(data, loading, error) && (
                                 <form onSubmit={editPaymentMethodHandler} >
                                     <div>
-
-                                        {/* <div>
-                                                <label htmlFor="title">Title</label>
-                                                <input ref={title} id="title" defaultValue={data?.title} className="form_input" type="text" placeholder="Title" required />
-                                            </div> */}
-
-
                                         <div>
                                             <label htmlFor="image">Image</label>
                                             <input ref={image} id="image" className="form_input" type="file" onChange={e => setNoticeLogo(e.target.files[0])} />
@@ -84,73 +87,13 @@ function EditNotice(props) {
                                         </div>
                                         <div>
                                             <label htmlFor="notice">Notice</label>
-                                            <textarea required ref={notice} id="notice" className="form_input" type="number" placeholder="Notice" cols="30" rows="10" defaultValue={data?.notice}>
-
-                                            </textarea>
+                                            <textarea required ref={notice} id="notice" className="form_input" placeholder="Notice" cols="30" rows="10" defaultValue={data?.notice} />
                                         </div>
-
-                                        <div>
-                                            <label htmlFor="type">Notice Type</label>
-                                            <select ref={type} id="type" className="form_input" defaultValue={data?.type} required>
-                                                <option value="normal">Normal</option>
-                                                <option value="marquee">Marquee</option>
-                                                <option value="navbar_bottom">Below Navbar (Closable)</option>
-                                            </select>
-                                        </div>
-
-                                        {/* <div className="mb-4" >
-                                            <label className="mb-2 inline-block">Template</label>
-                                            <div className="flex items-center space-x-4" >
-
-                                                <label className="select-none cursor-pointer">
-                                                    <input
-                                                        ref={template}
-                                                        value="only_image"
-                                                        defaultChecked={data?.template === 'only_image'}
-                                                        name="template"
-                                                        className="mr-1"
-                                                        type="radio"
-                                                    />
-                                                    <span>Only image</span>
-                                                </label>
-                                                <label className="select-none cursor-pointer">
-                                                    <input
-                                                        ref={template}
-                                                        value="title_detail"
-                                                        defaultChecked={data?.template === 'title_detail'}
-                                                        name="template"
-                                                        className="mr-1"
-                                                        type="radio"
-                                                    />
-                                                    <span>Title And Notice</span>
-                                                </label>
-                                                <label className="select-none cursor-pointer">
-                                                    <input
-                                                        ref={template}
-                                                        value="image_title_detail_grid"
-                                                        defaultChecked={data?.template === 'image_title_detail_grid'}
-                                                        name="template"
-                                                        className="mr-1"
-                                                        type="radio"
-                                                    />
-                                                    <span>Image, Title, Detail in Grid</span>
-                                                </label>
-
-                                            </div>
-                                        </div>
-
-
-                                        <div className="cursor-pointer" >
-                                            <input ref={for_home_modal} id="for_home_modal" defaultChecked={data?.for_home_modal === 1} type="checkbox" className="mr-2" />
-                                            <label htmlFor="for_home_modal" className="select-none cursor-pointer">For home modal</label>
-                                        </div> */}
 
                                         <div className="cursor-pointer" >
                                             <input ref={is_active} id="is_active" defaultChecked={data?.is_active == 1} type="checkbox" className="mr-2" />
                                             <label htmlFor="is_active" className="select-none cursor-pointer">Is Active</label>
                                         </div>
-
-
 
                                         <div className="mt-4">
                                             <button type="submit" disabled={uploading} className="cstm_btn w-full block">Updated Notice</button>
