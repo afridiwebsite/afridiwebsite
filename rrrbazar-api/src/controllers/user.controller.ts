@@ -1223,7 +1223,7 @@ class UserController {
           raw: true,
         });
 
-        console.log('hit auto', maps);
+        console.log("hit auto", maps);
         if (maps.length > 0) {
           const emitted: any[] = [];
           let pool_exhausted = false;
@@ -1261,8 +1261,7 @@ class UserController {
           if (!botUrl) {
             botErrors.push("auto-bot URL is not configured for this package");
           } else {
-
-            console.log('found emitted', emitted)
+            console.log("found emitted", emitted, topupPackage);
             for (const v of emitted) {
               try {
                 const ok = await autoOrder(
@@ -1273,7 +1272,7 @@ class UserController {
                   botUrl,
                 );
 
-                console.log('autoOrder', ok)
+                console.log("autoOrder", ok);
                 if (!ok) {
                   bot_failures += 1;
                   botErrors.push(
@@ -1433,6 +1432,8 @@ class UserController {
     const response = new responseUtils();
     try {
       const { orderid, status, message } = req.body;
+
+      console.log(orderid, status, message,'check order');
 
       const botUrl = req.headers["cf-connecting-ip"];
 
