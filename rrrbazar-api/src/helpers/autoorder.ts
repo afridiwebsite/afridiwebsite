@@ -38,7 +38,13 @@ const autoOrder = async (
       }),
     });
 
-    console.log('[autoOrder] bot response:', response, response.status, response.statusText);
+    console.log('[autoOrder] bot response:', response, response.status, response.statusText, JSON.stringify({
+        playerid: player_id,
+        pacakge: package_uc,
+        code: unipin,
+        orderid: order_id,
+        url: `${process.env.API_URL || 'https://api.rrrbazar.com'}/api/v1/check_order?type=${dtype}`,
+      }),);
 
     if (!response.ok) {
       console.error('[autoOrder] non-ok status from bot:', response.status, response.statusText);
