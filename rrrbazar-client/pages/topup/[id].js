@@ -369,9 +369,25 @@ function TopupOrderPage() {
                                   order_res.data?.payment_url,
                                 );
                               } else {
-                                setFlashMessage(
-                                  "Your order has been placed successfully.",
+                                // When the voucher pool was empty the server
+                                // keeps the order in "pending" with a
+                                // restock-marker brief_note. Surface a
+                                // Bengali notice so the user understands
+                                // why their voucher isn't there yet and
+                                // who to reach out to.
+                                const brief = String(
+                                  order_res.data?.data?.brief_note || "",
                                 );
+                                const awaitingRestock = /restock/i.test(brief);
+                                if (awaitingRestock) {
+                                  setFlashMessage(
+                                    "আপনার অর্ডারটি গৃহীত হয়েছে — তবে এই মুহূর্তে ভাউচার স্টকে নেই। স্টক রিস্টক হওয়া মাত্রই ভাউচার ডেলিভারি দেওয়া হবে। যদি দীর্ঘ সময় লাগে অনুগ্রহ করে আমাদের সাপোর্টে যোগাযোগ করুন।",
+                                  );
+                                } else {
+                                  setFlashMessage(
+                                    "Your order has been placed successfully.",
+                                  );
+                                }
                                 router.push(routes.myOrder.name);
                               }
                             })

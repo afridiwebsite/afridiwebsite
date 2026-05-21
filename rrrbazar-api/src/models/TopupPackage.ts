@@ -29,6 +29,12 @@ export default (sequelize: Sequelize) => {
         // is treated as out-of-stock once the count hits 0.
         public stock_tracking!: number;
         public stock_quantity!: number;
+        // Shell-mode delivery. When `is_shell = 1` the auto-bot is told to
+        // use the configured `shell` string in the `code` field instead of
+        // the emitted voucher code. Lets a single auto-bot pipeline handle
+        // both voucher delivery and shell/code-injection style products.
+        public is_shell!: number;
+        public shell!: string;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -139,6 +145,16 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: true,
             defaultValue: 0,
+        },
+        is_shell: {
+            type: DataTypes.TINYINT,
+            allowNull: true,
+            defaultValue: 0,
+        },
+        shell: {
+            type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
         },
         created_at: {
             type: DataTypes.DATE,

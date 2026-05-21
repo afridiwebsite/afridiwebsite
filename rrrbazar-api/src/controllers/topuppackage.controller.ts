@@ -65,6 +65,8 @@ class TopupPackageController {
             allow_quantity,
             stock_tracking,
             stock_quantity,
+            is_shell,
+            shell,
         } = req.body
 
         try {
@@ -85,6 +87,11 @@ class TopupPackageController {
                 allow_quantity: allow_quantity == 1 ? 1 : 0,
                 stock_tracking: stock_tracking == 1 ? 1 : 0,
                 stock_quantity: stock_tracking == 1 ? Math.max(0, Number(stock_quantity) || 0) : 0,
+                // Shell only makes sense when auto-delivery is on — the bot is
+                // the thing that uses it. Off auto-delivery rows fall back to
+                // is_shell=0/shell='' regardless of what was sent.
+                is_shell: auto_delivery == 1 && is_shell == 1 ? 1 : 0,
+                shell: auto_delivery == 1 && is_shell == 1 ? String(shell || '').trim() : '',
             })
 
             response.message = 'Created successfully'
@@ -120,6 +127,8 @@ class TopupPackageController {
             allow_quantity,
             stock_tracking,
             stock_quantity,
+            is_shell,
+            shell,
         } = req.body
 
         try {
@@ -169,6 +178,20 @@ class TopupPackageController {
                 }
             } else if (stock_quantity !== undefined && topupPackage.stock_tracking === 1) {
                 topupPackage.stock_quantity = Math.max(0, Number(stock_quantity) || 0);
+            }
+            // Shell: scoped to auto-delivery. If auto-delivery is off, force
+            // both fields back to defaults so a stale value doesn't haunt the
+            // bot dispatch later.
+            const isAutoOn = (topupPackage.auto_delivery as any) == 1;
+            if (is_shell !== undefined) {
+                topupPackage.is_shell = isAutoOn && is_shell == 1 ? 1 : 0;
+                if (topupPackage.is_shell === 0) {
+                    topupPackage.shell = '';
+                } else if (shell !== undefined) {
+                    topupPackage.shell = String(shell || '').trim();
+                }
+            } else if (shell !== undefined && isAutoOn && topupPackage.is_shell === 1) {
+                topupPackage.shell = String(shell || '').trim();
             }
             await topupPackage.save()
 

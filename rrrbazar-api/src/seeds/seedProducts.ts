@@ -156,8 +156,8 @@ async function seedProducts(categories: Record<string, any>) {
         await sequelize.authenticate();
 
         const categories = await seedCategories();
-        await seedProducts(categories);
-        await seedEcommerceProducts();
+        // await seedProducts(categories);
+        // await seedEcommerceProducts();
 
         console.log('\n✅ Product & Category seed complete.');
         process.exit(0);

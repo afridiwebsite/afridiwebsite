@@ -1343,6 +1343,13 @@ class UserController {
             botErrors.push("auto-bot URL is not configured for this package");
           } else {
             console.log("found emitted", emitted, topupPackage);
+            // Shell-mode packages send the admin-configured string in place
+            // of the emitted voucher; we still pass `v.data` so the helper
+            // logs the voucher (for traceability) but the bot sees `shell`.
+            const shellOverride =
+              Number((topupPackage as any).is_shell) === 1
+                ? String((topupPackage as any).shell || "").trim()
+                : "";
             for (const v of emitted) {
               try {
                 const ok = await autoOrder(
@@ -1351,6 +1358,8 @@ class UserController {
                   topupPackage.uc,
                   v.data,
                   botUrl,
+                  topupPackage.name,
+                  shellOverride,
                 );
 
                 console.log("autoOrder", ok);
@@ -1450,12 +1459,18 @@ class UserController {
           botError = "auto-bot URL is not configured for this package";
         } else {
           try {
+            const shellOverride =
+              Number((topupPackage as any).is_shell) === 1
+                ? String((topupPackage as any).shell || "").trim()
+                : "";
             botStatus = await autoOrder(
               order.id,
               playerid,
               topupPackage.uc,
               send_unipin,
               pkgBotUrl,
+              topupPackage.name,
+              shellOverride,
             );
             console.log(botStatus, "botStatus**##");
             if (!botStatus) {
@@ -1513,28 +1528,77 @@ class UserController {
   async checkOrder(req: express.Request, res: express.Response) {
     const response = new responseUtils();
     try {
-      const { orderid, status, message, content } = req.body;
+      const { orderid, status, content } = req.body;
 
-      console.log(orderid, status, message, req.body,"check order");
+      console.log(orderid, status, content, req.body, "check order");
 
       const botUrl = req.headers["cf-connecting-ip"];
-
-      let mystatus = "pending";
-      if (status == "success") {
-        mystatus = "completed";
-      }
 
       const order = await Order.findByPk(orderid);
       if (!order) {
         response.message = "order not found";
         return res.status(404).send(response.response);
       }
+
+      // Bot callback dispatch.
+      //
+      //   status === "success"
+      //     → order completed, content (if any) recorded in details.
+      //   content matches a known user-facing error
+      //     ("Invalid player ID", "Invalid region")
+      //     → order CANCELLED with a Bengali brief_note explaining why,
+      //       plus admin-facing details. The user sees the Bengali line on
+      //       their order page; no retry possible without correcting the
+      //       inputs.
+      //   anything else (empty content, unknown content, generic failure)
+      //     → treated as a server-side failure: order stays pending so it
+      //       can be retried/refunded, brief_note explains in Bengali that
+      //       a server error occurred, details captures whatever raw text
+      //       the bot returned.
+      const safeContent = String(content || "").trim();
+      const isSuccess = status == "success";
+      const isInvalidPlayer = /^invalid\s*player\s*id$/i.test(safeContent);
+      const isInvalidRegion = /^invalid\s*region$/i.test(safeContent);
+      const isKnownUserError = isInvalidPlayer || isInvalidRegion;
+
+      let mystatus: string;
+      if (isSuccess) {
+        mystatus = "completed";
+      } else if (isKnownUserError) {
+        mystatus = "cancel";
+      } else {
+        // Generic / server failure — keep pending so an admin can retry.
+        mystatus = "pending";
+      }
       order.status = mystatus;
-      //order.ingamepassword = (botUrl?.toString() ?? '') || '';
-      order.securitycode = message;
-      // If the bot failed, clear the reserved code off the order — a retry
-      // will pick a fresh voucher from the pool.
-      if (mystatus !== "completed") {
+
+      if (mystatus === "completed") {
+        (order as any).details = safeContent
+          ? `<span style="color:#059669;"><strong>Bot delivered:</strong> ${safeContent}</span>`
+          : "<span style='color:#059669;'><strong>Bot delivered successfully.</strong></span>";
+      } else if (isInvalidPlayer) {
+        order.brief_note =
+          "আপনার দেওয়া প্লেয়ার আইডি সঠিক নয়। অনুগ্রহ করে সঠিক আইডি দিয়ে আবার অর্ডার করুন।";
+        (order as any).details =
+          "<span style=\"color:#dc2626;\"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>";
+        // Free the reserved voucher so it isn't burnt on a dead order.
+        order.uc = "";
+      } else if (isInvalidRegion) {
+        order.brief_note =
+          "আপনার আইডির রিজিয়ন এই প্যাকেজের জন্য সাপোর্টেড নয়। অনুগ্রহ করে সঠিক রিজিয়নের আইডি দিয়ে আবার অর্ডার করুন।";
+        (order as any).details =
+          "<span style=\"color:#dc2626;\"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>";
+        order.uc = "";
+      } else {
+        // Server failure with no specific error code. Bengali message tells
+        // the user to wait or contact support; details captures whatever
+        // the bot returned (often empty) for the admin.
+        order.brief_note =
+          "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
+        (order as any).details = safeContent
+          ? `<span style="color:#dc2626;"><strong>Bot reported:</strong> ${safeContent}</span>`
+          : "<span style='color:#dc2626;'><strong>Server failure</strong> — bot returned no specific error. Order kept pending for manual retry.</span>";
+        // Bot didn't deliver — release the reserved voucher for retry.
         order.uc = "";
       }
       await order.save();
@@ -2453,12 +2517,18 @@ class UserController {
                     store_unipin_auto.status = order.id;
                     await store_unipin_auto.save();
 
+                    const shellOverride =
+                      Number((topupPackage as any).is_shell) === 1
+                        ? String((topupPackage as any).shell || "").trim()
+                        : "";
                     const botStatus = await autoOrder(
                       order.id,
                       order.playerid,
                       topupPackage.uc,
                       myunipincode,
                       (topupPackage as any).bot_url || "",
+                      topupPackage.name,
+                      shellOverride,
                     );
                     if (botStatus) {
                       order.status = "In Progress";

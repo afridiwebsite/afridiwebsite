@@ -65,6 +65,16 @@ function EditPackage(props) {
 
   // Auto-delivery mapping — hydrated from /voucher-maps on load.
   const [autoDeliveryOn, setAutoDeliveryOn] = useState(false);
+  // Shell mode — only valid while auto-delivery is on. Hydrated from
+  // the saved package, defaults off.
+  const [isShell, setIsShell] = useState(false);
+  const [shellValue, setShellValue] = useState("");
+  useEffect(() => {
+    if (!data) return;
+    setIsShell(Number(data.is_shell) === 1);
+    setShellValue(String(data.shell || ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.id]);
   const [mappings, setMappings] = useState([]);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
@@ -152,6 +162,8 @@ function EditPackage(props) {
         auto_delivery: autoDeliveryOn ? 1 : 0,
         stock_tracking: stockTracking ? 1 : 0,
         stock_quantity: stockTracking ? Math.max(0, Number(stockQuantity) || 0) : 0,
+        is_shell: autoDeliveryOn && isShell ? 1 : 0,
+        shell: autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
       })
       .then(async () => {
         // Replace voucher-map rows. When auto_delivery is off we still
@@ -427,6 +439,44 @@ function EditPackage(props) {
                               placeholder="https://bot.example.com/dispatch"
                             />
                           </div>
+                        </div>
+                      )}
+
+                      {autoDeliveryOn && (
+                        <div className="form_grid">
+                          <div>
+                            <label className="inline-flex items-center cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                className="form-checkbox"
+                                checked={isShell}
+                                onChange={(e) =>
+                                  setIsShell(e.target.checked)
+                                }
+                              />
+                              <span className="ml-2">Is shell</span>
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1">
+                              When on, the value below is sent to the bot's{" "}
+                              <code>code</code> field instead of the emitted
+                              voucher.
+                            </p>
+                          </div>
+                          {isShell && (
+                            <div>
+                              <label htmlFor="shell_value">Shell value</label>
+                              <input
+                                id="shell_value"
+                                type="text"
+                                className="form_input"
+                                value={shellValue}
+                                onChange={(e) =>
+                                  setShellValue(e.target.value)
+                                }
+                                placeholder="e.g. SHELL-CODE-001"
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
 
