@@ -38,7 +38,7 @@ const autoOrder = async (
       }),
     });
 
-    console.log('[autoOrder] bot response:', response);
+    console.log('[autoOrder] bot response:', response, response.status, response.statusText);
 
     if (!response.ok) {
       console.error('[autoOrder] non-ok status from bot:', response.status, response.statusText);
