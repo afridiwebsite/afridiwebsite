@@ -29,7 +29,7 @@ export default (sequelize: Sequelize) => {
         public completed_by!: number;
 
 
-        static associate({ Admin, User, TopupProduct, Voucher }: typeof Schema) {
+        static associate({ Admin, User, TopupProduct, TopupPackage, Voucher }: typeof Schema) {
             this.belongsTo(Admin, {
                 foreignKey: "completed_by",
                 constraints: false,
@@ -40,6 +40,13 @@ export default (sequelize: Sequelize) => {
             });
             this.belongsTo(TopupProduct, {
                 foreignKey: "product_id",
+                constraints: false,
+            });
+            // Needed by the admin orders table so the UC column can show
+            // a shell package's configured shell string instead of an
+            // (empty) voucher.
+            this.belongsTo(TopupPackage, {
+                foreignKey: "topuppackage_id",
                 constraints: false,
             });
             this.hasMany(Voucher, {

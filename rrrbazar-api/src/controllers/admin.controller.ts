@@ -135,6 +135,14 @@ class AdminController {
             required: false,
             attributes: ['id', 'data'],
           },
+          {
+            // Package info — the admin orders table needs `is_shell` /
+            // `shell` so the UC column can show the shell string for
+            // shell-mode auto-delivery orders (which don't carry a voucher).
+            model: TopupPackage,
+            required: false,
+            attributes: ['id', 'name', 'is_shell', 'shell'],
+          },
         ]
       })
 

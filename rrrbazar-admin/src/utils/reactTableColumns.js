@@ -56,9 +56,12 @@ export const ordersTableColumns = [
         accessor: 'amount',
     },
     {
-        // "UC" column. For voucher-pool orders the allocated voucher code
-        // lives on the joined Voucher row, so render that first and fall
-        // back to the legacy `uc` field (UniPin / bot path).
+        // "UC" column. Resolution order:
+        //   1. Shell-mode package → render the package's configured shell
+        //      string (these orders never carry a voucher).
+        //   2. Voucher-pool orders → render the allocated voucher code(s)
+        //      from the joined Voucher row(s).
+        //   3. Legacy `uc` field (UniPin / bot path).
         Header: 'UC / Voucher',
         accessor: 'uc',
         // Wide column so multi-voucher orders (auto-delivery / bulk) can
@@ -66,6 +69,25 @@ export const ordersTableColumns = [
         className: 'w-[300px] min-w-[300px]',
         Cell: (e) => {
             const row = e.row.original;
+            const pkg = row?.TopupPackage;
+            // Shell mode wins — the bot uses the shell string in `code`,
+            // no voucher is emitted, so this is the only meaningful value
+            // to show in the UC column.
+            if (Number(pkg?.is_shell) === 1 && String(pkg?.shell || '').trim()) {
+                const shellText = String(pkg.shell);
+                return (
+                    <span
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold text-xs font-mono cursor-pointer hover:bg-purple-200 break-all whitespace-normal"
+                        title="Shell value — click to copy"
+                        onClick={() => {
+                            navigator.clipboard.writeText(shellText);
+                            toast.info(`Copied shell: ${shellText}`, toastDefault);
+                        }}
+                    >
+                        {shellText}
+                    </span>
+                );
+            }
             // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
             // the legacy hasOne shape (`Voucher: {…}`) so older payloads still
             // render correctly.
