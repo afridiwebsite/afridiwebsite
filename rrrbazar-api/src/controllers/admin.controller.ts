@@ -175,15 +175,15 @@ class AdminController {
       return res.status(400).send(response.response)
     }
 
-    if (!['pending'].includes(order.status)) {
-      response.message = `Order is not available for edit`;
-      response.status = 400;
-      response.success = false;
-      return res.status(400).send(response.response)
-    }
+    // Status modification is allowed regardless of the current status —
+    // admins occasionally need to correct already-completed/cancelled
+    // orders. The cancel-refund path below is still gated on the new
+    // status to avoid double-refunding on repeated cancel writes.
 
-
-    if (statusToUpdate == 'cancel') {
+    // Only refund on the transition INTO 'cancel' from a non-cancelled
+    // state. Without this guard, an admin saving the modal twice on an
+    // already-cancelled order would credit the wallet a second time.
+    if (statusToUpdate == 'cancel' && order.status !== 'cancel') {
       let product = await TopupProduct.findByPk(order.product_id);
       let user = await User.findByPk(order.user_id);
 

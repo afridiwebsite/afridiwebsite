@@ -52,13 +52,21 @@ class SpinController {
 
             let coins = 0;
             let spinsToday = 0;
+            let freeSpins = 0;
             const userId = (req as any).user?.id;
             if (userId) {
                 const user = await User.findByPk(userId);
                 coins = user?.coins || 0;
+                freeSpins = Number((user as any)?.spin_free_count) || 0;
                 const since = new Date(Date.now() - 24 * 3600 * 1000);
+                // Free spins (granted by try-again) don't count toward the
+                // daily quota — filter them out of the rolling 24h count.
                 spinsToday = await SpinResult.count({
-                    where: { user_id: userId, created_at: { [Op.gte]: since } },
+                    where: {
+                        user_id: userId,
+                        created_at: { [Op.gte]: since },
+                        is_free: 0,
+                    },
                 });
             }
 
@@ -71,10 +79,12 @@ class SpinController {
                     amount: r.amount,
                     color: r.color,
                     icon: r.icon,
+                    try_again_count: r.try_again_count,
                 })),
                 cost: Number(settings.spin_cost_coins) || 0,
                 daily_limit: Number(settings.spin_daily_limit) || 0,
                 spins_today: spinsToday,
+                free_spins: freeSpins,
                 coins,
                 coin_to_money_rate: Number(settings.coin_to_money_rate) || 0,
             };
@@ -112,10 +122,21 @@ class SpinController {
             const cost = Number(settings.spin_cost_coins) || 0;
             const limit = Number(settings.spin_daily_limit) || 0;
 
-            if (limit > 0) {
+            // If the user has free spins banked from a previous try-again,
+            // this spin runs free: no cost deducted, doesn't count toward
+            // the daily limit, no daily-limit check at all.
+            const freeSpinsAvailable =
+                Number((user as any).spin_free_count) || 0;
+            const usingBankedFree = freeSpinsAvailable > 0;
+
+            if (!usingBankedFree && limit > 0) {
                 const since = new Date(Date.now() - 24 * 3600 * 1000);
                 const spinsToday = await SpinResult.count({
-                    where: { user_id: userId, created_at: { [Op.gte]: since } },
+                    where: {
+                        user_id: userId,
+                        created_at: { [Op.gte]: since },
+                        is_free: 0,
+                    },
                 });
                 if (spinsToday >= limit) {
                     response.status = 400;
@@ -125,17 +146,23 @@ class SpinController {
                 }
             }
 
-            if (cost > 0 && (user.coins || 0) < cost) {
+            if (!usingBankedFree && cost > 0 && (user.coins || 0) < cost) {
                 response.status = 400;
                 response.success = false;
                 response.message = `Not enough coins — need ${cost} to spin.`;
                 return res.status(400).send(response.response);
             }
 
-            // Deduct cost (if any) before picking, so failure modes are
-            // easier to reason about (no half-applied state).
-            if (cost > 0) {
+            // Banked free spin → just decrement the counter, no charge.
+            // Otherwise → deduct cost (if any) before picking, so failure
+            // modes are easier to reason about (no half-applied state).
+            let costApplied = 0;
+            if (usingBankedFree) {
+                (user as any).spin_free_count = freeSpinsAvailable - 1;
+                await user.save();
+            } else if (cost > 0) {
                 user.coins = (user.coins || 0) - cost;
+                costApplied = cost;
                 await user.save();
                 await CoinTransaction.create({
                     user_id: user.id,
@@ -146,6 +173,11 @@ class SpinController {
             }
 
             const { rewardIndex, reward } = weightedPick(rewards);
+            // `is_free` on the resulting row tracks whether this spin
+            // consumed a try. Banked free spins always count as free; a
+            // paid spin that lands on try-again also flips this on (and
+            // refunds the cost) so the user truly doesn't lose the try.
+            let isFreeOutcome = usingBankedFree;
 
             // Apply reward by type. Defaults to 'coin' so admins can add new
             // types in the DB without an immediate code change (those just
@@ -165,8 +197,31 @@ class SpinController {
             } else if (reward.type === 'wallet' && appliedAmount > 0) {
                 user.wallet = Number(user.wallet || 0) + appliedAmount;
                 await user.save();
+            } else if (reward.type === 'try_again') {
+                // Refund the cost (if we just deducted one) and grant any
+                // extra free spins configured on the reward.
+                isFreeOutcome = true;
+                if (costApplied > 0) {
+                    user.coins = (user.coins || 0) + costApplied;
+                    await CoinTransaction.create({
+                        user_id: user.id,
+                        amount: costApplied,
+                        type: 'spin_refund',
+                        note: `Refund — landed on ${reward.label}`,
+                    });
+                }
+                const grant = Math.max(
+                    0,
+                    Number((reward as any).try_again_count) || 0,
+                );
+                if (grant > 0) {
+                    (user as any).spin_free_count =
+                        (Number((user as any).spin_free_count) || 0) + grant;
+                }
+                await user.save();
+                appliedAmount = 0;
             } else {
-                // Unknown / 'none' / 'try-again' — just log the result.
+                // Unknown / legacy 'none' — just log the result.
                 appliedAmount = 0;
             }
 
@@ -177,6 +232,7 @@ class SpinController {
                 amount: appliedAmount,
                 label: reward.label,
                 note,
+                is_free: isFreeOutcome ? 1 : 0,
             });
 
             response.data = {
@@ -188,13 +244,23 @@ class SpinController {
                     amount: appliedAmount,
                     color: reward.color,
                     icon: reward.icon,
+                    try_again_count: (reward as any).try_again_count,
                 },
                 coins: user.coins,
                 wallet: user.wallet,
+                free_spins: Number((user as any).spin_free_count) || 0,
+                is_free: isFreeOutcome,
             };
-            response.message = appliedAmount > 0
-                ? `You won ${reward.label}!`
-                : `Result: ${reward.label}`;
+            response.message =
+                reward.type === 'try_again'
+                    ? `Try again! ${
+                          Number((reward as any).try_again_count) > 0
+                              ? `+${(reward as any).try_again_count} free spin(s)`
+                              : ''
+                      }`.trim()
+                    : appliedAmount > 0
+                      ? `You won ${reward.label}!`
+                      : `Result: ${reward.label}`;
             res.send(response.response);
         } catch (e) {
             console.log(e);
@@ -286,22 +352,30 @@ class SpinController {
 
     async adminCreate(req: express.Request, res: express.Response) {
         const response = new responseUtils();
-        const { label, type, amount, weight, color, icon, is_active, serial } = req.body;
+        const { label, type, amount, weight, color, icon, is_active, serial, try_again_count } = req.body;
         if (!label) {
             response.status = 400;
             response.success = false;
             response.message = 'Label is required';
             return res.status(400).send(response.response);
         }
+        const resolvedType = type || 'coin';
         const r = await SpinReward.create({
             label,
-            type: type || 'coin',
+            type: resolvedType,
             amount: Number(amount) || 0,
             weight: Number(weight) || 1,
             color: color || null,
             icon: icon || null,
             is_active: is_active === 0 ? 0 : 1,
             serial: Number(serial) || 0,
+            // try_again_count is only meaningful for type='try_again'; force
+            // 0 on every other type so admins can't accidentally arm a
+            // bonus-spin grant on a coin reward.
+            try_again_count:
+                resolvedType === 'try_again'
+                    ? Math.max(0, Number(try_again_count) || 0)
+                    : 0,
         });
         response.data = r;
         response.message = 'Reward created';
@@ -318,7 +392,7 @@ class SpinController {
             response.message = 'Reward not found';
             return res.status(400).send(response.response);
         }
-        const { label, type, amount, weight, color, icon, is_active, serial } = req.body;
+        const { label, type, amount, weight, color, icon, is_active, serial, try_again_count } = req.body;
         if (label !== undefined) r.label = label;
         if (type !== undefined) r.type = type;
         if (amount !== undefined) r.amount = Number(amount) || 0;
@@ -327,6 +401,19 @@ class SpinController {
         if (icon !== undefined) r.icon = icon || null;
         if (is_active !== undefined) r.is_active = is_active ? 1 : 0;
         if (serial !== undefined) r.serial = Number(serial) || 0;
+        // Keep try_again_count consistent with the type — clamp to 0 for
+        // anything else so a leftover non-zero value can't grant free spins
+        // on a coin/wallet reward.
+        if (r.type === 'try_again') {
+            if (try_again_count !== undefined) {
+                (r as any).try_again_count = Math.max(
+                    0,
+                    Number(try_again_count) || 0,
+                );
+            }
+        } else {
+            (r as any).try_again_count = 0;
+        }
         await r.save();
         response.data = r;
         response.message = 'Reward updated';

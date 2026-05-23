@@ -455,7 +455,10 @@ function AddPackage(props) {
                         </div>
                       )}
 
-                      {autoDeliveryOn && (
+                      {/* Mapped voucher packages — shell-only auto-delivery
+                          doesn't draw from voucher pools, so the mapping UI is
+                          hidden when "Is shell" is on to keep the form tidy. */}
+                      {autoDeliveryOn && !isShell && (
                         <div className="mt-3 border border-gray-200 rounded p-3 bg-gray-50">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-semibold">

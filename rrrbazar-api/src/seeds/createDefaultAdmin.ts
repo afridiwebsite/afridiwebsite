@@ -37,15 +37,18 @@ const DEFAULT_SPIN_REWARDS: Array<{
     weight: number;
     color: string;
     serial: number;
+    try_again_count?: number;
 }> = [
-    { label: '1 Coin',      type: 'coin', amount: 1,   weight: 35, color: '#f59e0b', serial: 1 },
-    { label: '3 Coins',     type: 'coin', amount: 3,   weight: 25, color: '#10b981', serial: 2 },
-    { label: '5 Coins',     type: 'coin', amount: 5,   weight: 18, color: '#3b82f6', serial: 3 },
-    { label: 'Try Again',   type: 'none', amount: 0,   weight: 12, color: '#94a3b8', serial: 4 },
-    { label: '10 Coins',    type: 'coin', amount: 10,  weight: 10, color: '#a855f7', serial: 5 },
-    { label: '25 Coins',    type: 'coin', amount: 25,  weight: 6,  color: '#06b6d4', serial: 6 },
-    { label: '50 Coins',    type: 'coin', amount: 50,  weight: 3,  color: '#ef4444', serial: 7 },
-    { label: 'Jackpot 100', type: 'coin', amount: 100, weight: 1,  color: '#facc15', serial: 8 },
+    { label: '1 Coin',      type: 'coin',       amount: 1,   weight: 35, color: '#f59e0b', serial: 1 },
+    { label: '3 Coins',     type: 'coin',       amount: 3,   weight: 25, color: '#10b981', serial: 2 },
+    { label: '5 Coins',     type: 'coin',       amount: 5,   weight: 18, color: '#3b82f6', serial: 3 },
+    // Try Again refunds the spin and grants `try_again_count` bonus free
+    // spins. Default is 1 — admins can crank it via the spin-rewards UI.
+    { label: 'Try Again',   type: 'try_again',  amount: 0,   weight: 12, color: '#94a3b8', serial: 4, try_again_count: 1 },
+    { label: '10 Coins',    type: 'coin',       amount: 10,  weight: 10, color: '#a855f7', serial: 5 },
+    { label: '25 Coins',    type: 'coin',       amount: 25,  weight: 6,  color: '#06b6d4', serial: 6 },
+    { label: '50 Coins',    type: 'coin',       amount: 50,  weight: 3,  color: '#ef4444', serial: 7 },
+    { label: 'Jackpot 100', type: 'coin',       amount: 100, weight: 1,  color: '#facc15', serial: 8 },
 ];
 
 // Endpoints we always want present as `auth_module` rows, regardless of
@@ -185,7 +188,14 @@ async function seedDefaultSpinRewards() {
     const existing = await SpinReward.count();
     if (existing > 0) return { created: 0, existing };
     await SpinReward.bulkCreate(
-        DEFAULT_SPIN_REWARDS.map((r) => ({ ...r, is_active: 1 })),
+        DEFAULT_SPIN_REWARDS.map((r) => ({
+            ...r,
+            // Only carry try_again_count on the try-again row; others get
+            // the default 0 so they can never accidentally grant free spins.
+            try_again_count:
+                r.type === 'try_again' ? (r.try_again_count ?? 1) : 0,
+            is_active: 1,
+        })),
     );
     return { created: DEFAULT_SPIN_REWARDS.length, existing: 0 };
 }

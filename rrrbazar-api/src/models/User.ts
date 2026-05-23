@@ -19,6 +19,10 @@ export default (sequelize: Sequelize) => {
     public coins!: number;
     public last_coin_claim_at!: Date;
     public claim_streak!: number;
+    // Accumulated free spins granted by 'try_again' rewards. Each spin
+    // started while this is > 0 decrements the counter, doesn't cost
+    // coins, and doesn't count toward the daily limit.
+    public spin_free_count!: number;
     public password!: string;
     public city!: string;
     public address!: string;
@@ -76,6 +80,11 @@ export default (sequelize: Sequelize) => {
       defaultValue: null,
     },
     claim_streak: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    spin_free_count: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0,

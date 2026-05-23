@@ -1303,6 +1303,112 @@ class UserController {
       );
 
       if ((topupPackage as any).auto_delivery == 1) {
+        // Shell mode short-circuit: when the package is configured as a
+        // shell delivery, the bot uses the admin-configured shell string in
+        // `code` and NO voucher is consumed from the pool. We resolve this
+        // before loading PackageVoucherMap rows so a leftover mapping (from
+        // when the package wasn't yet shell) can't accidentally emit and
+        // burn pool vouchers.
+        const isShellOnly =
+          Number((topupPackage as any).is_shell) === 1 &&
+          String((topupPackage as any).shell || "").trim().length > 0;
+
+        if (isShellOnly) {
+          const botUrl = String((topupPackage as any).bot_url || "").trim();
+          const shellOverride = String(
+            (topupPackage as any).shell || "",
+          ).trim();
+          const shellQuantity = Math.max(
+            1,
+            Number((topupPackage as any).shell_quantity) || 1,
+          );
+          console.log(
+            "[topupPackageOrder][auto-delivery][shell-only] entering (no voucher consumed)",
+            {
+              order_id: order.id,
+              package_id: topupPackage.id,
+              bot_url: botUrl,
+              shell_quantity_resolved: shellQuantity,
+            },
+          );
+
+          const botErrors: string[] = [];
+          let bot_failures = 0;
+
+          if (!botUrl) {
+            console.warn(
+              "[topupPackageOrder][auto-delivery][shell-only] bot_url missing",
+              { order_id: order.id, package_id: topupPackage.id },
+            );
+            botErrors.push("auto-bot URL is not configured for this package");
+          } else {
+            for (let i = 0; i < shellQuantity; i++) {
+              console.log(
+                `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} → POST ${botUrl}`,
+                { order_id: order.id, playerid, uc: topupPackage.uc },
+              );
+              try {
+                const ok = await autoOrder(
+                  order.id,
+                  playerid,
+                  topupPackage.uc,
+                  "", // no voucher to log — pure shell mode
+                  botUrl,
+                  topupPackage.name,
+                  shellOverride,
+                );
+                console.log(
+                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} result:`,
+                  { order_id: order.id, ok },
+                );
+                if (!ok) {
+                  bot_failures += 1;
+                  botErrors.push(
+                    `shell dispatch #${i + 1}/${shellQuantity} rejected (no response from ${botUrl})`,
+                  );
+                }
+              } catch (e: any) {
+                bot_failures += 1;
+                const msg =
+                  (e && (e.message || e.code || e.toString())) ||
+                  "unknown error";
+                console.error(
+                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} threw`,
+                  { order_id: order.id, err: msg },
+                );
+                botErrors.push(
+                  `shell dispatch #${i + 1}/${shellQuantity} threw: ${String(msg).slice(0, 200)}`,
+                );
+              }
+            }
+          }
+
+          order.status = "In Progress";
+          let detailHtml = `<strong>Shell dispatches: ${shellQuantity - bot_failures}/${shellQuantity} ok, ${bot_failures} failed</strong>`;
+          if (!botUrl)
+            detailHtml += "<br/><span style='color:red;'>URL missing</span>";
+          if (botErrors.length > 0) {
+            detailHtml +=
+              "<ul style='text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;'>";
+            for (const err of botErrors) {
+              detailHtml += `<li>${err}</li>`;
+            }
+            detailHtml += "</ul>";
+          }
+          (order as any).details = detailHtml;
+          await order.save();
+
+          const {
+            uc: ucAliasShellTop,
+            ingamepassword: ingamepasswordAliasShellTop,
+            bprice: bpriceAliasShellTop,
+            ...filteredOrderShellTop
+          } = order.get({ plain: true });
+          response.message = "Order placed successfully";
+          response.data = filteredOrderShellTop;
+          return res.send(response.response);
+        }
+
         const maps = await PackageVoucherMap.findAll({
           where: { topup_package_id: topupPackage.id },
           raw: true,
@@ -1318,10 +1424,10 @@ class UserController {
         );
         if (maps.length === 0) {
           // No voucher mappings is normal for shell-only auto-delivery —
-          // the dedicated shell-only branch below picks it up. Otherwise
+          // the dedicated shell-only branch above picks it up. Otherwise
           // we fall through to the legacy bot path.
           console.warn(
-            "[topupPackageOrder][auto-delivery] no PackageVoucherMap rows — trying shell-only branch / legacy bot path",
+            "[topupPackageOrder][auto-delivery] no PackageVoucherMap rows — falling through to legacy bot path",
             {
               order_id: order.id,
               package_id: topupPackage.id,
@@ -1544,109 +1650,10 @@ class UserController {
           response.data = filteredOrderAd;
           return res.send(response.response);
         }
-
-        // Shell-only auto-delivery: no PackageVoucherMap rows are needed
-        // because the bot uses the admin-configured shell value instead of
-        // a pool voucher. Without this branch the flow falls through to
-        // the legacy bot path, which is gated on `topupPackage.uc > 0` and
-        // is typically skipped for shell packages — so the bot was never
-        // hit. Fire the shell dispatch loop here directly.
-        const isShellOnly =
-          Number((topupPackage as any).is_shell) === 1 &&
-          String((topupPackage as any).shell || "").trim().length > 0;
-        if (isShellOnly) {
-          const botUrl = String((topupPackage as any).bot_url || "").trim();
-          const shellOverride = String((topupPackage as any).shell || "").trim();
-          const shellQuantity = Math.max(
-            1,
-            Number((topupPackage as any).shell_quantity) || 1,
-          );
-          console.log(
-            "[topupPackageOrder][auto-delivery][shell-only] entering",
-            {
-              order_id: order.id,
-              package_id: topupPackage.id,
-              bot_url: botUrl,
-              shell_quantity_resolved: shellQuantity,
-            },
-          );
-
-          const botErrors: string[] = [];
-          let bot_failures = 0;
-
-          if (!botUrl) {
-            console.warn(
-              "[topupPackageOrder][auto-delivery][shell-only] bot_url missing",
-              { order_id: order.id, package_id: topupPackage.id },
-            );
-            botErrors.push("auto-bot URL is not configured for this package");
-          } else {
-            for (let i = 0; i < shellQuantity; i++) {
-              console.log(
-                `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} → POST ${botUrl}`,
-                { order_id: order.id, playerid, uc: topupPackage.uc },
-              );
-              try {
-                const ok = await autoOrder(
-                  order.id,
-                  playerid,
-                  topupPackage.uc,
-                  "", // no voucher to log — pure shell mode
-                  botUrl,
-                  topupPackage.name,
-                  shellOverride,
-                );
-                console.log(
-                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} result:`,
-                  { order_id: order.id, ok },
-                );
-                if (!ok) {
-                  bot_failures += 1;
-                  botErrors.push(
-                    `shell dispatch #${i + 1}/${shellQuantity} rejected (no response from ${botUrl})`,
-                  );
-                }
-              } catch (e: any) {
-                bot_failures += 1;
-                const msg =
-                  (e && (e.message || e.code || e.toString())) ||
-                  "unknown error";
-                console.error(
-                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} threw`,
-                  { order_id: order.id, err: msg },
-                );
-                botErrors.push(
-                  `shell dispatch #${i + 1}/${shellQuantity} threw: ${String(msg).slice(0, 200)}`,
-                );
-              }
-            }
-          }
-
-          order.status = "In Progress";
-          let detailHtml = `<strong>Shell dispatches: ${shellQuantity - bot_failures}/${shellQuantity} ok, ${bot_failures} failed</strong>`;
-          if (!botUrl)
-            detailHtml += "<br/><span style='color:red;'>URL missing</span>";
-          if (botErrors.length > 0) {
-            detailHtml +=
-              "<ul style='text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;'>";
-            for (const err of botErrors) {
-              detailHtml += `<li>${err}</li>`;
-            }
-            detailHtml += "</ul>";
-          }
-          (order as any).details = detailHtml;
-          await order.save();
-
-          const {
-            uc: ucAliasShell,
-            ingamepassword: ingamepasswordAliasShell,
-            bprice: bpriceAliasShell,
-            ...filteredOrderShell
-          } = order.get({ plain: true });
-          response.message = "Order placed successfully";
-          response.data = filteredOrderShell;
-          return res.send(response.response);
-        }
+        // Note: shell-only mode is handled by the early short-circuit at
+        // the top of the auto-delivery block (no voucher consumed). If we
+        // reach here with no maps and not in shell mode, we fall through
+        // to the legacy bot path below.
       }
       // AUTO-DELIVERY END
 
