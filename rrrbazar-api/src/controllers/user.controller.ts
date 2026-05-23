@@ -1288,13 +1288,43 @@ class UserController {
       // nothing: if any pool is empty we release the ones we already
       // grabbed, refund the wallet and abort.
 
+      console.log(
+        "[topupPackageOrder] branch decision",
+        {
+          order_id: order.id,
+          package_id: topupPackage.id,
+          auto_delivery: (topupPackage as any).auto_delivery,
+          is_shell: (topupPackage as any).is_shell,
+          shell_quantity: (topupPackage as any).shell_quantity,
+          bot_url: (topupPackage as any).bot_url,
+          uc: topupPackage.uc,
+          current_status: order.status,
+        },
+      );
+
       if ((topupPackage as any).auto_delivery == 1) {
         const maps = await PackageVoucherMap.findAll({
           where: { topup_package_id: topupPackage.id },
           raw: true,
         });
 
-        console.log("hit auto", maps);
+        console.log(
+          "[topupPackageOrder][auto-delivery] entering branch, maps:",
+          {
+            order_id: order.id,
+            map_count: maps.length,
+            maps,
+          },
+        );
+        if (maps.length === 0) {
+          console.warn(
+            "[topupPackageOrder][auto-delivery] no PackageVoucherMap rows for this package — falling through to legacy bot path",
+            {
+              order_id: order.id,
+              package_id: topupPackage.id,
+            },
+          );
+        }
         if (maps.length > 0) {
           const emitted: any[] = [];
           let pool_exhausted = false;
@@ -1340,6 +1370,17 @@ class UserController {
           let bot_failures = 0;
 
           if (!botUrl) {
+            console.warn(
+              "[topupPackageOrder][auto-delivery] bot_url missing on package",
+              {
+                order_id: order.id,
+                package_id: topupPackage.id,
+                package_name: topupPackage.name,
+                is_shell: (topupPackage as any).is_shell,
+                shell: (topupPackage as any).shell,
+                shell_quantity: (topupPackage as any).shell_quantity,
+              },
+            );
             botErrors.push("auto-bot URL is not configured for this package");
           } else {
             console.log("found emitted", emitted, topupPackage);
@@ -1356,6 +1397,21 @@ class UserController {
                   Number((topupPackage as any).shell_quantity) || 1,
                 )
               : 1;
+            console.log(
+              "[topupPackageOrder][auto-delivery] resolved shell config",
+              {
+                order_id: order.id,
+                package_id: topupPackage.id,
+                package_name: topupPackage.name,
+                bot_url: botUrl,
+                is_shell_raw: (topupPackage as any).is_shell,
+                shell_raw: (topupPackage as any).shell,
+                shell_quantity_raw: (topupPackage as any).shell_quantity,
+                shell_active: !!shellOverride,
+                shell_quantity_resolved: shellQuantity,
+                emitted_count: emitted.length,
+              },
+            );
 
             if (shellOverride) {
               // In shell mode the bot doesn't care about emitted vouchers —
@@ -1363,7 +1419,23 @@ class UserController {
               // emitted voucher's data for traceability (logged inside the
               // helper) but each call still sends the shell in `code`.
               const voucherForLog = emitted[0]?.data || "";
+              console.log(
+                `[topupPackageOrder][auto-delivery] entering shell loop: ${shellQuantity} dispatch(es) to ${botUrl}`,
+                {
+                  order_id: order.id,
+                  shell_masked: shellOverride
+                    ? `${shellOverride.substring(0, 4)}...`
+                    : "(empty)",
+                  voucher_for_log_masked: voucherForLog
+                    ? `${String(voucherForLog).substring(0, 4)}...`
+                    : "(none)",
+                },
+              );
               for (let i = 0; i < shellQuantity; i++) {
+                console.log(
+                  `[topupPackageOrder][auto-delivery] shell dispatch ${i + 1}/${shellQuantity} → POST ${botUrl}`,
+                  { order_id: order.id, playerid, uc: topupPackage.uc },
+                );
                 try {
                   const ok = await autoOrder(
                     order.id,
@@ -1373,6 +1445,10 @@ class UserController {
                     botUrl,
                     topupPackage.name,
                     shellOverride,
+                  );
+                  console.log(
+                    `[topupPackageOrder][auto-delivery] shell dispatch ${i + 1}/${shellQuantity} result:`,
+                    { order_id: order.id, ok },
                   );
                   if (!ok) {
                     bot_failures += 1;
@@ -1385,11 +1461,19 @@ class UserController {
                   const msg =
                     (e && (e.message || e.code || e.toString())) ||
                     "unknown error";
+                  console.error(
+                    `[topupPackageOrder][auto-delivery] shell dispatch ${i + 1}/${shellQuantity} threw`,
+                    { order_id: order.id, err: msg },
+                  );
                   botErrors.push(
                     `shell dispatch #${i + 1}/${shellQuantity} threw: ${String(msg).slice(0, 200)}`,
                   );
                 }
               }
+              console.log(
+                `[topupPackageOrder][auto-delivery] shell loop done: ${shellQuantity - bot_failures}/${shellQuantity} ok, ${bot_failures} failed`,
+                { order_id: order.id },
+              );
             } else {
               for (const v of emitted) {
                 try {
@@ -1460,6 +1544,18 @@ class UserController {
       // AUTO-DELIVERY END
 
       // AUTO BOT SET IN CODE START
+      console.log(
+        "[topupPackageOrder][regular-bot] guard check",
+        {
+          order_id: order.id,
+          status: order.status,
+          uc: topupPackage.uc,
+          will_enter: order.status == "pending" && topupPackage.uc > 0,
+          // Common reason shell never hits the bot: the package has no UC
+          // tier set, so this branch is skipped entirely and the function
+          // returns with the order still pending and no autoOrder call.
+        },
+      );
       if (order.status == "pending" && topupPackage.uc > 0) {
         const store_unipin_auto = await StoreUnipin.findOne({
           where: {
@@ -1497,6 +1593,17 @@ class UserController {
         if (!pkgBotUrl) {
           // Auto-bot URL not configured. Don't even attempt — note the
           // reason on the order and leave it pending for a human to retry.
+          console.warn(
+            "[topupPackageOrder][regular-bot] bot_url missing on package",
+            {
+              order_id: order.id,
+              package_id: topupPackage.id,
+              package_name: topupPackage.name,
+              is_shell: (topupPackage as any).is_shell,
+              shell: (topupPackage as any).shell,
+              shell_quantity: (topupPackage as any).shell_quantity,
+            },
+          );
           botError = "auto-bot URL is not configured for this package";
         } else {
           const shellOverride =
@@ -1506,11 +1613,37 @@ class UserController {
           const shellQuantity = shellOverride
             ? Math.max(1, Number((topupPackage as any).shell_quantity) || 1)
             : 1;
+          console.log(
+            "[topupPackageOrder][regular-bot] resolved shell config",
+            {
+              order_id: order.id,
+              package_id: topupPackage.id,
+              package_name: topupPackage.name,
+              bot_url: pkgBotUrl,
+              is_shell_raw: (topupPackage as any).is_shell,
+              shell_raw: (topupPackage as any).shell,
+              shell_quantity_raw: (topupPackage as any).shell_quantity,
+              shell_active: !!shellOverride,
+              shell_quantity_resolved: shellQuantity,
+              voucher_masked: send_unipin
+                ? `${String(send_unipin).substring(0, 4)}...`
+                : "(none)",
+            },
+          );
           // Shell mode → fire the bot shellQuantity times. Non-shell stays
           // a single call (existing behavior). `botStatus` ends up as the
           // last successful call's return value (URL) for traceability;
           // any failure within the loop is captured in `botError`.
           for (let i = 0; i < shellQuantity; i++) {
+            console.log(
+              `[topupPackageOrder][regular-bot] dispatch ${i + 1}/${shellQuantity} → POST ${pkgBotUrl}`,
+              {
+                order_id: order.id,
+                playerid,
+                uc: topupPackage.uc,
+                shell_mode: !!shellOverride,
+              },
+            );
             try {
               const ok = await autoOrder(
                 order.id,
@@ -1521,7 +1654,10 @@ class UserController {
                 topupPackage.name,
                 shellOverride,
               );
-              console.log(ok, `botStatus**## attempt ${i + 1}/${shellQuantity}`);
+              console.log(
+                `[topupPackageOrder][regular-bot] dispatch ${i + 1}/${shellQuantity} result:`,
+                { order_id: order.id, ok },
+              );
               if (!ok) {
                 botError = `bot returned no acceptance on attempt ${i + 1}/${shellQuantity} (no response from ${pkgBotUrl})`;
                 botStatus = null;
@@ -1531,6 +1667,10 @@ class UserController {
             } catch (e: any) {
               const msg =
                 (e && (e.message || e.code || e.toString())) || "unknown error";
+              console.error(
+                `[topupPackageOrder][regular-bot] dispatch ${i + 1}/${shellQuantity} threw`,
+                { order_id: order.id, err: msg },
+              );
               botError = `bot call threw on attempt ${i + 1}/${shellQuantity}: ${String(msg).slice(0, 200)}`;
               botStatus = null;
               break;
