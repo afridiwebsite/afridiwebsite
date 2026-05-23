@@ -296,14 +296,13 @@ class VoucherController {
         return res.status(400).send(response.internalError);
       }
       const raw = req.body?.voucher_package_ids;
+      // Duplicates are now meaningful: each occurrence of the same
+      // voucher_package_id emits one extra voucher per order. We keep the
+      // multiset as supplied (only filtering out garbage values).
       const voucherIds = Array.isArray(raw)
-        ? Array.from(
-            new Set(
-              raw
-                .map((x: any) => Number(x))
-                .filter((n: number) => Number.isFinite(n) && n > 0),
-            ),
-          )
+        ? raw
+            .map((x: any) => Number(x))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
         : [];
       await PackageVoucherMap.destroy({
         where: { topup_package_id: package_id },

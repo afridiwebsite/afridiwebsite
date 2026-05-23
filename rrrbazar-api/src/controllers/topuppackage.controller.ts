@@ -67,6 +67,7 @@ class TopupPackageController {
             stock_quantity,
             is_shell,
             shell,
+            shell_quantity,
         } = req.body
 
         try {
@@ -92,6 +93,10 @@ class TopupPackageController {
                 // is_shell=0/shell='' regardless of what was sent.
                 is_shell: auto_delivery == 1 && is_shell == 1 ? 1 : 0,
                 shell: auto_delivery == 1 && is_shell == 1 ? String(shell || '').trim() : '',
+                shell_quantity:
+                    auto_delivery == 1 && is_shell == 1
+                        ? Math.max(1, Number(shell_quantity) || 1)
+                        : 1,
             })
 
             response.message = 'Created successfully'
@@ -129,6 +134,7 @@ class TopupPackageController {
             stock_quantity,
             is_shell,
             shell,
+            shell_quantity,
         } = req.body
 
         try {
@@ -187,11 +193,28 @@ class TopupPackageController {
                 topupPackage.is_shell = isAutoOn && is_shell == 1 ? 1 : 0;
                 if (topupPackage.is_shell === 0) {
                     topupPackage.shell = '';
-                } else if (shell !== undefined) {
+                    topupPackage.shell_quantity = 1;
+                } else {
+                    if (shell !== undefined) {
+                        topupPackage.shell = String(shell || '').trim();
+                    }
+                    if (shell_quantity !== undefined) {
+                        topupPackage.shell_quantity = Math.max(
+                            1,
+                            Number(shell_quantity) || 1,
+                        );
+                    }
+                }
+            } else if (isAutoOn && topupPackage.is_shell === 1) {
+                if (shell !== undefined) {
                     topupPackage.shell = String(shell || '').trim();
                 }
-            } else if (shell !== undefined && isAutoOn && topupPackage.is_shell === 1) {
-                topupPackage.shell = String(shell || '').trim();
+                if (shell_quantity !== undefined) {
+                    topupPackage.shell_quantity = Math.max(
+                        1,
+                        Number(shell_quantity) || 1,
+                    );
+                }
             }
             await topupPackage.save()
 

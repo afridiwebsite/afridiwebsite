@@ -69,10 +69,12 @@ function EditPackage(props) {
   // the saved package, defaults off.
   const [isShell, setIsShell] = useState(false);
   const [shellValue, setShellValue] = useState("");
+  const [shellQuantity, setShellQuantity] = useState(1);
   useEffect(() => {
     if (!data) return;
     setIsShell(Number(data.is_shell) === 1);
     setShellValue(String(data.shell || ""));
+    setShellQuantity(Math.max(1, Number(data.shell_quantity) || 1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
   const [mappings, setMappings] = useState([]);
@@ -117,10 +119,9 @@ function EditPackage(props) {
       return;
     }
     const pid = Number(pickedPackageId);
-    if (mappings.some((m) => m.voucher_package_id === pid)) {
-      toast.error("That package is already mapped", toastDefault);
-      return;
-    }
+    // Duplicates are allowed: each row counts as another voucher to emit on
+    // order, so an admin who wants two of the same voucher just adds the
+    // mapping twice.
     const pack = availablePackages.find((p) => p.id === pid);
     setMappings((prev) => [
       ...prev,
@@ -164,6 +165,10 @@ function EditPackage(props) {
         stock_quantity: stockTracking ? Math.max(0, Number(stockQuantity) || 0) : 0,
         is_shell: autoDeliveryOn && isShell ? 1 : 0,
         shell: autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
+        shell_quantity:
+          autoDeliveryOn && isShell
+            ? Math.max(1, Number(shellQuantity) || 1)
+            : 1,
       })
       .then(async () => {
         // Replace voucher-map rows. When auto_delivery is off we still
@@ -477,6 +482,29 @@ function EditPackage(props) {
                               />
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {autoDeliveryOn && isShell && (
+                        <div className="form_grid">
+                          <div>
+                            <label htmlFor="shell_quantity">Shell quantity</label>
+                            <input
+                              id="shell_quantity"
+                              type="number"
+                              min="1"
+                              className="form_input"
+                              value={shellQuantity}
+                              onChange={(e) =>
+                                setShellQuantity(e.target.value)
+                              }
+                              placeholder="1"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Number of times the shell request is sent per
+                              order. Defaults to 1.
+                            </p>
+                          </div>
                         </div>
                       )}
 

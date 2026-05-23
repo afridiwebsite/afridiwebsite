@@ -36,10 +36,17 @@ export default function VoucherStatistic() {
     group.totals.unused += Number(row.unused) || 0;
     return acc;
   }, new Map());
-  // Convert to an array so we can sort: keep product order stable by name.
+  // Convert to an array so we can sort: keep product order stable by name,
+  // and packages within each product ordered by package_id ascending so
+  // the list stays in a predictable creation order.
   const groups = Array.from(grouped.values()).sort((a, b) =>
     a.product_name.localeCompare(b.product_name)
   );
+  for (const g of groups) {
+    g.packages.sort(
+      (a, b) => (Number(a.package_id) || 0) - (Number(b.package_id) || 0),
+    );
+  }
 
   const grandTotals = groups.reduce(
     (acc, g) => {

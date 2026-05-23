@@ -1314,7 +1314,7 @@ class UserController {
             // other orders in the meantime.
             for (const v of emitted) await releaseVoucher(v);
             order.status = "pending";
-            order.brief_note = "Awaiting voucher restock";
+            order.brief_note = "ভাউচার স্টক শেষ। নতুন স্টক আসার অপেক্ষায় রয়েছে। সহায়তার জন্য সাপোর্ট টিমের সাথে যোগাযোগ করুন।";
             (order as any).details =
               "<span style='color:orange;'><strong>Auto-delivery skipped:</strong> one of the linked voucher pools was empty at order time. Order kept pending for manual fulfilment.</span>";
             await order.save();
@@ -1350,33 +1350,74 @@ class UserController {
               Number((topupPackage as any).is_shell) === 1
                 ? String((topupPackage as any).shell || "").trim()
                 : "";
-            for (const v of emitted) {
-              try {
-                const ok = await autoOrder(
-                  order.id,
-                  playerid,
-                  topupPackage.uc,
-                  v.data,
-                  botUrl,
-                  topupPackage.name,
-                  shellOverride,
-                );
+            const shellQuantity = shellOverride
+              ? Math.max(
+                  1,
+                  Number((topupPackage as any).shell_quantity) || 1,
+                )
+              : 1;
 
-                console.log("autoOrder", ok);
-                if (!ok) {
+            if (shellOverride) {
+              // In shell mode the bot doesn't care about emitted vouchers —
+              // it just needs the shell payload N times. Use the first
+              // emitted voucher's data for traceability (logged inside the
+              // helper) but each call still sends the shell in `code`.
+              const voucherForLog = emitted[0]?.data || "";
+              for (let i = 0; i < shellQuantity; i++) {
+                try {
+                  const ok = await autoOrder(
+                    order.id,
+                    playerid,
+                    topupPackage.uc,
+                    voucherForLog,
+                    botUrl,
+                    topupPackage.name,
+                    shellOverride,
+                  );
+                  if (!ok) {
+                    bot_failures += 1;
+                    botErrors.push(
+                      `shell dispatch #${i + 1}/${shellQuantity} rejected (no response from ${botUrl})`,
+                    );
+                  }
+                } catch (e: any) {
                   bot_failures += 1;
+                  const msg =
+                    (e && (e.message || e.code || e.toString())) ||
+                    "unknown error";
                   botErrors.push(
-                    `bot rejected voucher #${v.id} (no response from ${botUrl})`,
+                    `shell dispatch #${i + 1}/${shellQuantity} threw: ${String(msg).slice(0, 200)}`,
                   );
                 }
-              } catch (e: any) {
-                bot_failures += 1;
-                const msg =
-                  (e && (e.message || e.code || e.toString())) ||
-                  "unknown error";
-                botErrors.push(
-                  `bot call threw for voucher #${v.id}: ${String(msg).slice(0, 200)}`,
-                );
+              }
+            } else {
+              for (const v of emitted) {
+                try {
+                  const ok = await autoOrder(
+                    order.id,
+                    playerid,
+                    topupPackage.uc,
+                    v.data,
+                    botUrl,
+                    topupPackage.name,
+                    shellOverride,
+                  );
+                  console.log("autoOrder", ok);
+                  if (!ok) {
+                    bot_failures += 1;
+                    botErrors.push(
+                      `bot rejected voucher #${v.id} (no response from ${botUrl})`,
+                    );
+                  }
+                } catch (e: any) {
+                  bot_failures += 1;
+                  const msg =
+                    (e && (e.message || e.code || e.toString())) ||
+                    "unknown error";
+                  botErrors.push(
+                    `bot call threw for voucher #${v.id}: ${String(msg).slice(0, 200)}`,
+                  );
+                }
               }
             }
           }
@@ -1458,28 +1499,42 @@ class UserController {
           // reason on the order and leave it pending for a human to retry.
           botError = "auto-bot URL is not configured for this package";
         } else {
-          try {
-            const shellOverride =
-              Number((topupPackage as any).is_shell) === 1
-                ? String((topupPackage as any).shell || "").trim()
-                : "";
-            botStatus = await autoOrder(
-              order.id,
-              playerid,
-              topupPackage.uc,
-              send_unipin,
-              pkgBotUrl,
-              topupPackage.name,
-              shellOverride,
-            );
-            console.log(botStatus, "botStatus**##");
-            if (!botStatus) {
-              botError = `bot returned no acceptance (no response from ${pkgBotUrl})`;
+          const shellOverride =
+            Number((topupPackage as any).is_shell) === 1
+              ? String((topupPackage as any).shell || "").trim()
+              : "";
+          const shellQuantity = shellOverride
+            ? Math.max(1, Number((topupPackage as any).shell_quantity) || 1)
+            : 1;
+          // Shell mode → fire the bot shellQuantity times. Non-shell stays
+          // a single call (existing behavior). `botStatus` ends up as the
+          // last successful call's return value (URL) for traceability;
+          // any failure within the loop is captured in `botError`.
+          for (let i = 0; i < shellQuantity; i++) {
+            try {
+              const ok = await autoOrder(
+                order.id,
+                playerid,
+                topupPackage.uc,
+                send_unipin,
+                pkgBotUrl,
+                topupPackage.name,
+                shellOverride,
+              );
+              console.log(ok, `botStatus**## attempt ${i + 1}/${shellQuantity}`);
+              if (!ok) {
+                botError = `bot returned no acceptance on attempt ${i + 1}/${shellQuantity} (no response from ${pkgBotUrl})`;
+                botStatus = null;
+                break;
+              }
+              botStatus = ok;
+            } catch (e: any) {
+              const msg =
+                (e && (e.message || e.code || e.toString())) || "unknown error";
+              botError = `bot call threw on attempt ${i + 1}/${shellQuantity}: ${String(msg).slice(0, 200)}`;
+              botStatus = null;
+              break;
             }
-          } catch (e: any) {
-            const msg =
-              (e && (e.message || e.code || e.toString())) || "unknown error";
-            botError = `bot call threw: ${String(msg).slice(0, 200)}`;
           }
         }
 
@@ -2521,15 +2576,25 @@ class UserController {
                       Number((topupPackage as any).is_shell) === 1
                         ? String((topupPackage as any).shell || "").trim()
                         : "";
-                    const botStatus = await autoOrder(
-                      order.id,
-                      order.playerid,
-                      topupPackage.uc,
-                      myunipincode,
-                      (topupPackage as any).bot_url || "",
-                      topupPackage.name,
-                      shellOverride,
-                    );
+                    const shellQuantity = shellOverride
+                      ? Math.max(
+                          1,
+                          Number((topupPackage as any).shell_quantity) || 1,
+                        )
+                      : 1;
+                    let botStatus: any = null;
+                    for (let i = 0; i < shellQuantity; i++) {
+                      botStatus = await autoOrder(
+                        order.id,
+                        order.playerid,
+                        topupPackage.uc,
+                        myunipincode,
+                        (topupPackage as any).bot_url || "",
+                        topupPackage.name,
+                        shellOverride,
+                      );
+                      if (!botStatus) break;
+                    }
                     if (botStatus) {
                       order.status = "In Progress";
                       order.uc = myunipincode;

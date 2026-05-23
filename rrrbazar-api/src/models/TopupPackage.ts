@@ -33,8 +33,11 @@ export default (sequelize: Sequelize) => {
         // use the configured `shell` string in the `code` field instead of
         // the emitted voucher code. Lets a single auto-bot pipeline handle
         // both voucher delivery and shell/code-injection style products.
+        // `shell_quantity` controls how many times the bot is fired with
+        // that shell payload (defaults to 1).
         public is_shell!: number;
         public shell!: string;
+        public shell_quantity!: number;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -155,6 +158,11 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING(512),
             allowNull: true,
             defaultValue: '',
+        },
+        shell_quantity: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 1,
         },
         created_at: {
             type: DataTypes.DATE,
