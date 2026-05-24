@@ -11,9 +11,6 @@ function SiteSettings() {
     const [data, loading] = useGet('admin/site-settings', '', refresh)
 
     const site_name = useRef(null)
-    const primary_color = useRef(null)
-    const secondary_color = useRef(null)
-    const accent_color = useRef(null)
     const coin_to_money_rate = useRef(null)
     const dayRewardRefs = [
         useRef(null), useRef(null), useRef(null), useRef(null),
@@ -31,6 +28,10 @@ function SiteSettings() {
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
     const [savedLogo, setSavedLogo] = useState('')
 
+    const [faviconFile, setFaviconFile] = useState(null)
+    const { path: uploadedFavicon, uploading: faviconUploading } = useUpload(faviconFile)
+    const [savedFavicon, setSavedFavicon] = useState('')
+
     // Image shown on the "Wallet Pay" tile of the topup payment picker.
     // Uploaded through the same hook the logo uses; the saved filename comes
     // back through site settings on refresh.
@@ -44,19 +45,18 @@ function SiteSettings() {
     // State for local color values to allow syncing text input and color picker
     const [colors, setColors] = useState({
         primary: '',
-        secondary: '',
-        accent: ''
+        secondary: ''
     })
 
     useEffect(() => {
         if (data) {
             setSavedLogo(data.logo || '')
+            setSavedFavicon(data.favicon || '')
             setSavedWalletPay(data.wallet_pay_image || '')
             setSavedWalletPayFullUrl(data.wallet_pay_image_full_url || '')
             setColors({
                 primary: data.primary_color || '#2563eb',
-                secondary: data.secondary_color || '#1e40af',
-                accent: data.accent_color || '#f59e0b'
+                secondary: data.secondary_color || '#1e40af'
             })
         }
     }, [data])
@@ -67,14 +67,14 @@ function SiteSettings() {
 
     const submit = (e) => {
         e.preventDefault()
-        if (uploading || walletPayUploading) return
+        if (uploading || faviconUploading || walletPayUploading) return
         setBusy(true)
         const payload = {
             site_name: site_name.current.value,
             logo: uploadedLogo || savedLogo,
+            favicon: uploadedFavicon || savedFavicon,
             primary_color: colors.primary,
             secondary_color: colors.secondary,
-            accent_color: colors.accent,
             coin_to_money_rate: parseFloat(coin_to_money_rate.current.value || 0),
             day_1_reward: parseInt(dayRewardRefs[0].current?.value || 0, 10),
             day_2_reward: parseInt(dayRewardRefs[1].current?.value || 0, 10),
@@ -133,6 +133,21 @@ function SiteSettings() {
                                             />
                                         )}
                                     </div>
+                                    <div>
+                                        <label>Favicon (uploaded image)</label>
+                                        <input
+                                            type="file"
+                                            className="form_input"
+                                            onChange={(e) => setFaviconFile(e.target.files[0])}
+                                        />
+                                        {(uploadedFavicon || data.favicon) && (
+                                            <img
+                                                alt="favicon preview"
+                                                src={data.favicon_full_url || ''}
+                                                style={{ maxHeight: 60, marginTop: 8 }}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
 
                                 <h4 className="font-bold mt-6 mb-2">Theme colors</h4>
@@ -166,25 +181,6 @@ function SiteSettings() {
                                             <input 
                                                 value={colors.secondary} 
                                                 onChange={(e) => handleColorChange('secondary', e.target.value)} 
-                                                className="form_input flex-1" 
-                                                placeholder="#000000"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="form_grid">
-                                    <div>
-                                        <label>Accent</label>
-                                        <div className="flex gap-2">
-                                            <input 
-                                                value={colors.accent} 
-                                                onChange={(e) => handleColorChange('accent', e.target.value)} 
-                                                type="color" 
-                                                className="w-12 h-10 p-0 border-0 cursor-pointer" 
-                                            />
-                                            <input 
-                                                value={colors.accent} 
-                                                onChange={(e) => handleColorChange('accent', e.target.value)} 
                                                 className="form_input flex-1" 
                                                 placeholder="#000000"
                                             />

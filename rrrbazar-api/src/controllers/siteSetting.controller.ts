@@ -19,6 +19,7 @@ class SiteSettingController {
         const reqPath = req.protocol + '://' + req.get('host');
         const json: any = settings.toJSON();
         json.logo_full_url = json.logo ? `${reqPath}/images/${json.logo}` : '';
+        json.favicon_full_url = json.favicon ? `${reqPath}/images/${json.favicon}` : '';
         json.wallet_pay_image_full_url = json.wallet_pay_image
             ? `${reqPath}/images/${json.wallet_pay_image}`
             : '';
@@ -31,9 +32,9 @@ class SiteSettingController {
         const {
             site_name,
             logo,
+            favicon,
             primary_color,
             secondary_color,
-            accent_color,
             coin_to_money_rate,
             day_1_reward,
             day_2_reward,
@@ -56,9 +57,9 @@ class SiteSettingController {
 
         if (site_name !== undefined) settings.site_name = site_name;
         if (logo !== undefined) settings.logo = logo;
+        if (favicon !== undefined) settings.favicon = favicon;
         if (primary_color !== undefined) settings.primary_color = primary_color;
         if (secondary_color !== undefined) settings.secondary_color = secondary_color;
-        if (accent_color !== undefined) settings.accent_color = accent_color;
         if (coin_to_money_rate !== undefined) settings.coin_to_money_rate = coin_to_money_rate;
         if (day_1_reward !== undefined) settings.day_1_reward = Number(day_1_reward) || 0;
         if (day_2_reward !== undefined) settings.day_2_reward = Number(day_2_reward) || 0;

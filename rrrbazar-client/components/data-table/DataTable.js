@@ -22,7 +22,7 @@ function DataTable({ children, apiKey, apiFunc, title, columns }) {
   return (
     <div className="container md:border border-gray-200 md:rounded-md pt-7 relative">
       {title && (
-        <p className="_subtitle2 font-semibold text-white bg-primary-500 absolute top-0 -translate-y-1/2 py-1 px-4 rounded-full border border-primary-500 tracking-wide">
+        <p className="_subtitle2 font-semibold text-white theme-gradient-primary absolute top-0 -translate-y-1/2 py-1 px-4 rounded-full border-none tracking-wide shadow-md">
           {title}
         </p>
       )}

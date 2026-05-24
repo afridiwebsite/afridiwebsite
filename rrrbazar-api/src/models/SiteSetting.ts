@@ -6,9 +6,9 @@ export default (sequelize: Sequelize) => {
         public id!: number;
         public site_name!: string;
         public logo!: string;
+        public favicon!: string;
         public primary_color!: string;
         public secondary_color!: string;
-        public accent_color!: string;
         public coin_to_money_rate!: number;
         public day_1_reward!: number;
         public day_2_reward!: number;
@@ -43,6 +43,11 @@ export default (sequelize: Sequelize) => {
             allowNull: true,
             defaultValue: ''
         },
+        favicon: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: ''
+        },
         primary_color: {
             type: DataTypes.STRING,
             allowNull: true,
@@ -52,11 +57,6 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING,
             allowNull: true,
             defaultValue: '#1e40af'
-        },
-        accent_color: {
-            type: DataTypes.STRING,
-            allowNull: true,
-            defaultValue: '#f59e0b'
         },
         coin_to_money_rate: {
             type: DataTypes.DOUBLE,

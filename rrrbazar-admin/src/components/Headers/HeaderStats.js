@@ -87,6 +87,22 @@ export default function HeaderStats() {
                   statIconColor="bg-green-500"
                   loading={loading}
                 />
+                <CardStats
+                  statSubtitle="Coins Converted Today"
+                  statTitle={`${stats?.todaysConvertedMoney} BDT`}
+                  statDescripiron={`Today: ${stats?.todaysConvertedCoins} | Month: ${stats?.monthlyConvertedCoins} (${stats?.monthlyConvertedMoney} BDT)`}
+                  statIconName="fas fa-coins"
+                  statIconColor="bg-yellow-500"
+                  loading={loading}
+                />
+                <CardStats
+                  statSubtitle="Total User Coins"
+                  statTitle={`${stats?.totalCoinsAcrossUsers} Coins`}
+                  statDescripiron={`Equivalent to ${stats?.totalCoinsMoney} BDT`}
+                  statIconName="fas fa-coins"
+                  statIconColor="bg-orange-500"
+                  loading={loading}
+                />
               </div>
             ) : (
               <ul className="text-center py-4" >

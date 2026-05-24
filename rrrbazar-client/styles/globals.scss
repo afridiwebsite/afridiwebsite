@@ -26,6 +26,10 @@ body {
   background-color: var(--theme-primary);
   color: #fff;
 }
+.theme-gradient-primary {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%) !important;
+  color: #fff !important;
+}
 .theme-border-primary {
   border-color: var(--theme-primary);
 }
@@ -1291,10 +1295,7 @@ body {
 
 .game-card-link {
   display: block;
-  background: #fff;
-  border-radius: 14px;
-
-  /* Transparent border so the gradient border can show */
+   /* Transparent border so the gradient border can show */
   border-bottom: 3px solid var(--theme-primary, #2563eb);
 
   /* Two layered backgrounds:
@@ -1309,6 +1310,7 @@ body {
       var(--theme-secondary, #4D67D8) 100%
     ) border-box;
 
+  border-radius: 14px;
   overflow: hidden;
   position: relative;
 
@@ -1316,6 +1318,18 @@ body {
     transform 0.25s ease,
     border-color 0.2s ease,
     box-shadow 0.25s ease;
+}
+.game-card-gradient-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    90deg,
+    var(--theme-primary, #2563eb) 0%,
+    var(--theme-secondary, #4D67D8) 100%
+  );
+  opacity: 0.9;
 }
 .game-card:hover .game-card-link {
   transform: translateY(-3px);

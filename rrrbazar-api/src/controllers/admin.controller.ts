@@ -29,6 +29,7 @@ const {
   CoinTransaction,
   OrderComment,
   Voucher,
+  SiteSetting,
 } = Schema;
 
 // Crude HTML → plaintext for the saved-comment picker. Doesn't try to be
@@ -1323,6 +1324,31 @@ class AdminController {
         }
       })
 
+      const todaysConvertedCoins = await CoinTransaction.sum('amount', {
+        where: {
+          type: 'convert',
+          created_at: {
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
+          }
+        }
+      })
+
+      const monthlyConvertedCoins = await CoinTransaction.sum('amount', {
+        where: {
+          type: 'convert',
+          created_at: {
+            [Op.gte]: MONTH_START,
+            [Op.lte]: NOW
+          }
+        }
+      })
+
+      const totalCoinsAcrossUsers = await User.sum('coins')
+
+      const settings = await SiteSetting.findOne()
+      const rate = settings?.coin_to_money_rate || 0
+
       const uniAvaiCount = await StoreUnipin.findAll({
         attributes: ["package_id", [sequelize.fn('COUNT', 'id'), 'TotalAvailable']],
         where: {
@@ -1344,7 +1370,13 @@ class AdminController {
         totalWallet: (adminId == 1) ? Number(totalWallet || 0) : 0,
         todaysTotalWallet: (adminId == 1) ? Number(todaysTotalWallet || 0) : 0,
         todaysUser,
-        uniPin: uniAvaiCount
+        uniPin: uniAvaiCount,
+        todaysConvertedCoins: Math.abs(Number(todaysConvertedCoins || 0)),
+        monthlyConvertedCoins: Math.abs(Number(monthlyConvertedCoins || 0)),
+        todaysConvertedMoney: Math.abs(Number((todaysConvertedCoins || 0) * rate)),
+        monthlyConvertedMoney: Math.abs(Number((monthlyConvertedCoins || 0) * rate)),
+        totalCoinsAcrossUsers: Number(totalCoinsAcrossUsers || 0),
+        totalCoinsMoney: Number((totalCoinsAcrossUsers || 0) * rate),
       }
 
       res.send(response.getResponse())
