@@ -77,16 +77,16 @@ export const ordersTableColumns = [
                 const shellText = String(pkg?.shell || '').trim();
                 let tagList = [];
                 try {
-                    const raw = pkg?.tags;
-                    if (Array.isArray(raw)) tagList = raw;
-                    else if (typeof raw === 'string' && raw.trim().length > 0)
-                        tagList = JSON.parse(raw);
+                    // const raw = pkg?.tags;
+                    // if (Array.isArray(raw)) tagList = raw;
+                    // else if (typeof raw === 'string' && raw.trim().length > 0)
+                    //     tagList = JSON.parse(raw);
                 } catch {
                     tagList = [];
                 }
-                tagList = (Array.isArray(tagList) ? tagList : [])
-                    .map((v) => String(v == null ? '' : v))
-                    .filter((v) => v.length > 0);
+                // tagList = (Array.isArray(tagList) ? tagList : [])
+                //     .map((v) => String(v == null ? '' : v))
+                //     .filter((v) => v.length > 0);
                 if (shellText || tagList.length > 0) {
                     return (
                         <div className="flex flex-wrap gap-1 min-w-[300px]">

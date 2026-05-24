@@ -190,7 +190,7 @@ function TopupOrderPage() {
   // has packages to pick from — otherwise the form is in info-only mode and
   // the submit just records the dynamic input values.
   const requirePlayerId = !!playerIdInput;
-  const validationSchema = Yup.object().shape({
+  const validationFields = {
     playerid: requirePlayerId
       ? Yup.string().required("Player ID is required").trim()
       : Yup.string().trim(),
@@ -200,7 +200,17 @@ function TopupOrderPage() {
     payment_mathod: hasPackages
       ? Yup.string().required().trim().label("Payment method")
       : Yup.string().trim().nullable(),
+  };
+  // Every non-PlayerID dynamic input is required so the admin-defined
+  // Account Info section can't be submitted with blanks. PlayerID is
+  // already covered above via the `requirePlayerId` rule.
+  dynamicInputs.forEach((inp) => {
+    if (inp.is_player_id) return;
+    validationFields[`dyn_${inp.id}`] = Yup.string()
+      .trim()
+      .required(`${inp.title} is required`);
   });
+  const validationSchema = Yup.object().shape(validationFields);
 
   return (
     <>

@@ -52,9 +52,7 @@ function formatOrderTime(value) {
   if (m.isSame(now, "day")) return `Today, ${m.format("h:mm A")}`;
   if (m.isSame(now.clone().subtract(1, "day"), "day"))
     return `Yesterday, ${m.format("h:mm A")}`;
-  const fmt = m.isSame(now, "year")
-    ? "MMM D, h:mm A"
-    : "MMM D, YYYY, h:mm A";
+  const fmt = m.isSame(now, "year") ? "MMM D, h:mm A" : "MMM D, YYYY, h:mm A";
   return m.format(fmt);
 }
 
@@ -267,7 +265,13 @@ function Home({
               >
                 {banners.map((banner, index) => (
                   <SwiperSlide key={index}>
-                    <div className={banner.note === "mobile" ? "md:hidden" : "hidden md:block"}>
+                    <div
+                      className={
+                        banner.note === "mobile"
+                          ? "md:hidden"
+                          : "hidden md:block"
+                      }
+                    >
                       <a href={banner.link} target="_blank" rel="noreferrer">
                         <img
                           src={imgPath(banner.banner)}
@@ -327,13 +331,13 @@ function Home({
             <SectionTitle>Latest Orders</SectionTitle>
 
             <div
-              className="pointer-events-none mx-auto mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
+              className="order-design pointer-events-none mx-auto mt-2 mb-8 flex max-w-md items-center justify-center gap-2 px-4"
               aria-hidden="true"
             >
-              <span className="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-r from-transparent via-primary-400/50 to-primary-500/70"></span>
+              <span className="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-r from-transparent via-secondary-400/50 to-secondary-500/70"></span>
               <span className="relative shrink-0">
                 <span className="absolute inset-0 scale-150 rounded-full bg-primary-500/20 blur-md"></span>
-                <span className="relative block h-1.5 w-10 rounded-full bg-gradient-to-r from-primary-400 via-primary-600 to-primary-400 shadow-[0_2px_14px_rgba(0,65,194,0.35)]"></span>
+                <span className="relative block h-1.5 w-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 shadow-[0_2px_14px_rgba(0,65,194,0.35)]"></span>
               </span>
               <span className="h-px min-w-[2.5rem] flex-1 rounded-full bg-gradient-to-l from-transparent via-primary-400/50 to-primary-500/70"></span>
             </div>

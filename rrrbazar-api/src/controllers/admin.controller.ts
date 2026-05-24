@@ -5,6 +5,7 @@ import { Op, QueryTypes } from 'sequelize';
 import Schema from '../models';
 import { sequelize } from '../models/Schemas';
 import responseUtils from '../utils/response.utils';
+import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // import bcrypt from 'bcryptjs'
@@ -210,10 +211,26 @@ class AdminController {
       await user.save()
     }
 
+    const previousStatus = order.status;
     order.status = statusToUpdate;
     order.brief_note = orderNote;
     order.completed_by = completedById;
     await order.save()
+
+    // Sync coin rewards on terminal transitions. Award on first move to
+    // "completed", reverse on first move to "cancel". The helper is
+    // idempotent — saving the modal twice won't double-credit.
+    console.log('[admin.updateOrderStatus] coin sync decision', {
+      order_id: order.id,
+      previousStatus,
+      statusToUpdate,
+      will_call_sync: statusToUpdate !== previousStatus,
+      topuppackage_id: (order as any).topuppackage_id,
+      user_id: order.user_id,
+    });
+    if (statusToUpdate !== previousStatus) {
+      await syncOrderCoinsForStatus(order, statusToUpdate);
+    }
 
     response.message = 'Order updated successfully';
     response.data = order

@@ -8,6 +8,7 @@ import smsHelper from "../helpers/sms";
 import fastPay from "../helpers/fastpay";
 import autoOrder from "../helpers/autoorder";
 import playerName from "../helpers/playername";
+import syncOrderCoinsForStatus from "../helpers/orderCoinSync";
 const {
   User,
   Banner,
@@ -1206,6 +1207,14 @@ class UserController {
         await (topupPackage as any).save();
       }
 
+      // Orders that complete inline at creation (type=2 / UniPin direct
+      // path) need their coin reward awarded now — they never hit the
+      // checkOrder webhook. Idempotent: the voucher branch below has its
+      // own quantity-multiplied award, so the helper no-ops there.
+      if (order.status === "completed") {
+        await syncOrderCoinsForStatus(order, "completed");
+      }
+
       // Voucher-pool products: pull `quantity` codes from the pool and
       // complete the order. If the pool can't fulfil the full requested
       // quantity we keep the order open in "pending" so an admin (or a
@@ -1819,67 +1828,10 @@ class UserController {
       }
       await order.save();
 
-      // Coin reward sync. The reward is deferred from topupPackageOrder so
-      // cancelled/failed orders never credit the user. Both branches are
-      // idempotent — re-running checkOrder for the same order won't
-      // double-credit or double-reverse.
-      try {
-        if ((order as any).topuppackage_id && order.user_id) {
-          if (mystatus === "completed") {
-            const existingAward = await CoinTransaction.findOne({
-              where: { reference_id: order.id, type: "purchase" },
-            });
-            if (!existingAward) {
-              const orderPackage = await TopupPackage.findByPk(
-                (order as any).topuppackage_id,
-              );
-              const coinReward = Number(orderPackage?.coin_value || 0);
-              if (orderPackage && coinReward > 0) {
-                const orderUser = await User.findByPk(order.user_id);
-                if (orderUser) {
-                  orderUser.coins = (orderUser.coins || 0) + coinReward;
-                  await orderUser.save();
-                  await CoinTransaction.create({
-                    user_id: orderUser.id,
-                    amount: coinReward,
-                    type: "purchase",
-                    note: `Order #${order.id} (${orderPackage.name})`,
-                    reference_id: order.id,
-                  });
-                }
-              }
-            }
-          } else if (mystatus === "cancel") {
-            // Reverse any previously-awarded coins (legacy orders or
-            // admin-awarded). No-op when nothing to reverse.
-            const priorAward = await CoinTransaction.findOne({
-              where: { reference_id: order.id, type: "purchase" },
-            });
-            const priorReversal = await CoinTransaction.findOne({
-              where: { reference_id: order.id, type: "refund" },
-            });
-            if (priorAward && !priorReversal && Number(priorAward.amount) > 0) {
-              const orderUser = await User.findByPk(order.user_id);
-              if (orderUser) {
-                const reward = Number(priorAward.amount);
-                orderUser.coins = Math.max(0, (orderUser.coins || 0) - reward);
-                await orderUser.save();
-                await CoinTransaction.create({
-                  user_id: orderUser.id,
-                  amount: -reward,
-                  type: "refund",
-                  note: `Order #${order.id} cancelled — coin reward reversed`,
-                  reference_id: order.id,
-                });
-              }
-            }
-          }
-        }
-      } catch (e) {
-        // Never block the bot callback on a coin sync error — admins can
-        // reconcile from the CoinTransaction table later.
-        console.error("[checkOrder] coin sync failed", e);
-      }
+      // Coin reward sync — award on "completed", reverse on "cancel".
+      // Helper is idempotent so repeated checkOrder calls for the same
+      // order never double-credit or double-reverse.
+      await syncOrderCoinsForStatus(order, mystatus);
 
       const vouchers = await Voucher.findAll({
         where: {
