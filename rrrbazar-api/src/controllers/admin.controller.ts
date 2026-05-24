@@ -141,7 +141,7 @@ class AdminController {
             // shell-mode auto-delivery orders (which don't carry a voucher).
             model: TopupPackage,
             required: false,
-            attributes: ['id', 'name', 'is_shell', 'shell'],
+            attributes: ['id', 'name', 'is_shell', 'shell', 'tags'],
           },
         ]
       })

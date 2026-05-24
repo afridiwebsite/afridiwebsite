@@ -14,7 +14,6 @@ import AuthGuard from "../components/AuthGuard";
 import Button from "../components/Button";
 import FormikErrorMessage from "../components/formik/FormikErrorMessage";
 import FormikInput from "../components/formik/FormikInput";
-import SelectedRadio from "../components/SelectedRadio";
 import ShowErrorAfterSubmit from "../components/ShowErrorAfterSubmit";
 import {
   __page_title_end,
@@ -132,7 +131,7 @@ function AddMoneyPage() {
                   .post("/addwallet", { ...values, purpose: "addwallet" })
                   .then((res) => {
                     resetForm();
-                    if (res.data.message == "Payment Url") {
+                    if (res.data.message == "Payment Url" || res.data.message == "Payment Initiated") {
                       window.location.assign(res.data.payment_url);
                     } else {
                       setFlashMessage("Your add money request was successful.");
@@ -199,31 +198,42 @@ function AddMoneyPage() {
                         {hasData(payment_methods) && (
                           <>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
-                              {payment_methods.map((payment_method, index) => (
-                                <SelectedRadio
-                                  key={index}
-                                  bottomComponent={payment_method?.name}
-                                  topComponent={
-                                    <img
-                                      src={imgPath(payment_method?.logo)}
-                                      className="w-[70%] mx-auto"
-                                      alt={payment_method?.name}
-                                    />
-                                  }
-                                  isSelected={
-                                    selectedPaymentMethod?.id ===
-                                    payment_method?.id
-                                  }
-                                  isError={isPaymentMethodError}
-                                  onClick={() => {
-                                    setSelectedPaymentMethod(payment_method);
-                                    setFieldValue(
-                                      "paymentmethod",
-                                      payment_method?.id,
-                                    );
-                                  }}
-                                />
-                              ))}
+                              {payment_methods.map((payment_method, index) => {
+                                const isSelected =
+                                  selectedPaymentMethod?.id ===
+                                  payment_method?.id;
+                                return (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    className={`topup-pay-card ${
+                                      isSelected ? "is-selected" : ""
+                                    } ${
+                                      isPaymentMethodError && !isSelected
+                                        ? "is-error"
+                                        : ""
+                                    }`}
+                                    onClick={() => {
+                                      setSelectedPaymentMethod(payment_method);
+                                      setFieldValue(
+                                        "paymentmethod",
+                                        payment_method?.id,
+                                      );
+                                    }}
+                                  >
+                                    <div className="topup-pay-card-body">
+                                      <img
+                                        src={imgPath(payment_method?.logo)}
+                                        alt={payment_method?.name}
+                                        className="topup-pay-card-img"
+                                      />
+                                    </div>
+                                    <div className="topup-pay-card-cta">
+                                      {payment_method?.name}
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                             <FormikErrorMessage name="paymentmethod" />
                           </>
@@ -353,7 +363,7 @@ function AddMoneyPage() {
                             <Button
                               type="submit"
                               onClick={handleSubmit}
-                              className="w-full"
+                              className="w-full primary topup-buy-now py-3 text-base"
                               loading={isSubmitting}
                             >
                               {isDirect ? "Add Money" : "Request Add Money"}

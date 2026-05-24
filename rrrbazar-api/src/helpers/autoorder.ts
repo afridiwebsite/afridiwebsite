@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 /**
  * Dispatch an order to a per-package auto-bot endpoint.
@@ -24,89 +24,103 @@ const autoOrder = async (
   package_uc: number,
   unipin: string,
   bot_url: string,
-  package_name: string = '',
-  shellOverride: string = '',
-  dtype: string = '80',
+  package_name: string = "",
+  shellOverride: string = "",
+  dtype: string = "80",
 ) => {
   // When the package is a shell-style delivery, the admin-configured shell
   // string replaces the voucher code in the `code` field. The voucher (if
   // any) is still tracked on our side via `unipin`, but the bot expects the
   // shell.
-  const codeForBot = shellOverride && shellOverride.length > 0
-    ? shellOverride
-    : unipin;
+  const codeForBot =
+    shellOverride && shellOverride.length > 0 ? shellOverride : unipin;
 
-  console.log('[autoOrder] Starting dispatch:', {
+  console.log("[autoOrder] Starting dispatch:", {
     order_id,
     player_id,
     package_uc,
     package_name,
-    code_kind: shellOverride ? 'shell' : 'voucher',
-    code_masked: codeForBot ? `${String(codeForBot).substring(0, 4)}...` : 'empty',
+    code_kind: shellOverride ? "shell" : "voucher",
+    code_masked: codeForBot
+      ? `${String(codeForBot).substring(0, 4)}...`
+      : "empty",
     bot_url,
     dtype,
   });
 
-  const url = String(bot_url || '').trim();
+  const url = String(bot_url || "").trim();
   if (!url) {
-    console.warn('[autoOrder] no bot_url configured for this package — skipping bot dispatch');
+    console.warn(
+      "[autoOrder] no bot_url configured for this package — skipping bot dispatch",
+    );
     return false;
   }
 
-  const callbackUrl = `${process.env.API_URL || 'https://api.rrrbazar.com'}/api/v1/check_order?type=${dtype}`;
+  const callbackUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}`;
   const requestBody = {
     playerid: player_id,
-    pacakge: package_name || '',
+    pacakge: package_name || "",
+    package: package_name || "",
     code: codeForBot,
     orderid: order_id,
     url: callbackUrl,
   };
 
-  console.log('[autoOrder] Sending request to:', url);
-  console.log('[autoOrder] Request body:', JSON.stringify(requestBody, null, 2));
+  console.log("[autoOrder] Sending request to:", url);
+  console.log(
+    "[autoOrder] Request body:",
+    JSON.stringify(requestBody, null, 2),
+  );
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     });
 
-    console.log('[autoOrder] Raw response received:', {
+    console.log("[autoOrder] Raw response received:", {
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries()),
     });
 
     let responseData: any;
-    const contentType = response.headers.get('content-type') || '';
+    const contentType = response.headers.get("content-type") || "";
 
     try {
-      if (contentType.includes('application/json')) {
+      if (contentType.includes("application/json")) {
         responseData = await response.json();
       } else {
         responseData = await response.text();
       }
     } catch (parseError) {
-      console.error('[autoOrder] Failed to parse response body:', parseError);
-      responseData = '(unparseable)';
+      console.error("[autoOrder] Failed to parse response body:", parseError);
+      responseData = "(unparseable)";
     }
 
-    console.log('[autoOrder] Bot response body:', JSON.stringify(responseData, null, 2));
+    console.log(
+      "[autoOrder] Bot response body:",
+      JSON.stringify(responseData, null, 2),
+    );
 
     if (!response.ok) {
-      console.error('[autoOrder] Bot returned non-ok status:', response.status, response.statusText);
+      console.error(
+        "[autoOrder] Bot returned non-ok status:",
+        response.status,
+        response.statusText,
+      );
       return false;
     }
 
-    console.log('[autoOrder] Dispatch successful for order:', order_id);
+    console.log("[autoOrder] Dispatch successful for order:", order_id);
     // Return the URL we hit so callers can stash it on order.ingamepassword
     // for traceability (matches the previous helper's contract).
     return url;
   } catch (error) {
-    console.error('[autoOrder] Critical error dispatching to bot:', error);
+    console.error("[autoOrder] Critical error dispatching to bot:", error);
     return false;
   }
 };

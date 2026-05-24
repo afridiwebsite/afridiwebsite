@@ -29,15 +29,23 @@ export default (sequelize: Sequelize) => {
         // is treated as out-of-stock once the count hits 0.
         public stock_tracking!: number;
         public stock_quantity!: number;
-        // Shell-mode delivery. When `is_shell = 1` the auto-bot is told to
-        // use the configured `shell` string in the `code` field instead of
-        // the emitted voucher code. Lets a single auto-bot pipeline handle
-        // both voucher delivery and shell/code-injection style products.
-        // `shell_quantity` controls how many times the bot is fired with
-        // that shell payload (defaults to 1).
+        // Shell-mode delivery. When `is_shell = 1`:
+        //   - `shell`: single admin-configured string sent to the bot's
+        //     `code` field on every dispatch.
+        //   - `tags`: JSON-encoded array of strings. The bot is fired once
+        //     per tag; the tag value is sent in the bot payload's
+        //     `pacakge`/`package` fields so the bot can route on it.
+        // At least one tag is required when `is_shell = 1` (admin form
+        // enforces it; the order endpoint also rejects shell orders that
+        // somehow have an empty tag list).
+        //
+        // `shell_quantity` is the legacy count field replaced by `tags`.
+        // Kept on the model so old rows still load; new writes leave it
+        // at its default.
         public is_shell!: number;
         public shell!: string;
         public shell_quantity!: number;
+        public tags!: string;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -163,6 +171,14 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: true,
             defaultValue: 1,
+        },
+        tags: {
+            // JSON-encoded array of strings. One bot dispatch is fired per
+            // tag on order; each tag value goes into the bot payload's
+            // `pacakge`/`package` fields. Required (≥1) when is_shell = 1.
+            type: DataTypes.TEXT,
+            allowNull: true,
+            defaultValue: '[]',
         },
         created_at: {
             type: DataTypes.DATE,

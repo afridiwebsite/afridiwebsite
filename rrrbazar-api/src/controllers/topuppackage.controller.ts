@@ -7,6 +7,25 @@ const {
     User,
     Order, AuthModule, Admin, AdminAuth, TopupPackage, TopupPackagePermission, StoreUnipin
 } = Schema;
+
+// Accepts the array the admin form sends, or a stringified array, and
+// returns a clean array of trimmed, non-empty strings. Anything that
+// isn't an array (or string that parses to one) collapses to [].
+function normalizeTagList(raw: any): string[] {
+    let arr: any = raw;
+    if (typeof arr === 'string') {
+        try {
+            arr = JSON.parse(arr);
+        } catch {
+            arr = [];
+        }
+    }
+    if (!Array.isArray(arr)) return [];
+    return arr
+        .map((v: any) => String(v == null ? '' : v).trim())
+        .filter((s: string) => s.length > 0);
+}
+
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -67,10 +86,26 @@ class TopupPackageController {
             stock_quantity,
             is_shell,
             shell,
-            shell_quantity,
+            tags,
         } = req.body
 
         try {
+
+            const shellOn = auto_delivery == 1 && is_shell == 1;
+            const cleanShell = shellOn ? String(shell || '').trim() : '';
+            const cleanTags = shellOn ? normalizeTagList(tags) : [];
+
+            // Shell packages must have a shell code AND at least one tag.
+            // The admin form enforces this client-side, but reject here
+            // too in case someone POSTs around the form.
+            if (shellOn && (!cleanShell || cleanTags.length === 0)) {
+                response.message = !cleanShell
+                    ? 'Shell value is required when "Is shell" is on'
+                    : 'At least one tag is required when "Is shell" is on';
+                response.status = 400;
+                response.success = false;
+                return res.status(400).send(response.response);
+            }
 
             const topupPackage = await TopupPackage.create({
                 product_id,
@@ -88,15 +123,12 @@ class TopupPackageController {
                 allow_quantity: allow_quantity == 1 ? 1 : 0,
                 stock_tracking: stock_tracking == 1 ? 1 : 0,
                 stock_quantity: stock_tracking == 1 ? Math.max(0, Number(stock_quantity) || 0) : 0,
-                // Shell only makes sense when auto-delivery is on — the bot is
-                // the thing that uses it. Off auto-delivery rows fall back to
-                // is_shell=0/shell='' regardless of what was sent.
-                is_shell: auto_delivery == 1 && is_shell == 1 ? 1 : 0,
-                shell: auto_delivery == 1 && is_shell == 1 ? String(shell || '').trim() : '',
-                shell_quantity:
-                    auto_delivery == 1 && is_shell == 1
-                        ? Math.max(1, Number(shell_quantity) || 1)
-                        : 1,
+                // Shell only makes sense when auto-delivery is on — the bot
+                // is the thing that uses it. Off auto-delivery rows clear
+                // shell+tags back to defaults regardless of what was sent.
+                is_shell: shellOn ? 1 : 0,
+                shell: cleanShell,
+                tags: JSON.stringify(cleanTags),
             })
 
             response.message = 'Created successfully'
@@ -134,7 +166,7 @@ class TopupPackageController {
             stock_quantity,
             is_shell,
             shell,
-            shell_quantity,
+            tags,
         } = req.body
 
         try {
@@ -186,35 +218,40 @@ class TopupPackageController {
                 topupPackage.stock_quantity = Math.max(0, Number(stock_quantity) || 0);
             }
             // Shell: scoped to auto-delivery. If auto-delivery is off, force
-            // both fields back to defaults so a stale value doesn't haunt the
-            // bot dispatch later.
+            // shell + tags back to defaults so a stale value doesn't haunt
+            // the bot dispatch later.
             const isAutoOn = (topupPackage.auto_delivery as any) == 1;
-            if (is_shell !== undefined) {
-                topupPackage.is_shell = isAutoOn && is_shell == 1 ? 1 : 0;
-                if (topupPackage.is_shell === 0) {
-                    topupPackage.shell = '';
-                    topupPackage.shell_quantity = 1;
-                } else {
-                    if (shell !== undefined) {
-                        topupPackage.shell = String(shell || '').trim();
-                    }
-                    if (shell_quantity !== undefined) {
-                        topupPackage.shell_quantity = Math.max(
-                            1,
-                            Number(shell_quantity) || 1,
-                        );
-                    }
+            const shellWillBeOn =
+                is_shell !== undefined
+                    ? isAutoOn && is_shell == 1
+                    : isAutoOn && topupPackage.is_shell === 1;
+
+            if (shellWillBeOn) {
+                // Resolve the new shell/tags values from the request, falling
+                // back to current saved values when not provided.
+                const nextShell =
+                    shell !== undefined
+                        ? String(shell || '').trim()
+                        : String(topupPackage.shell || '').trim();
+                const nextTags =
+                    tags !== undefined
+                        ? normalizeTagList(tags)
+                        : normalizeTagList(topupPackage.tags);
+                if (!nextShell || nextTags.length === 0) {
+                    response.message = !nextShell
+                        ? 'Shell value is required when "Is shell" is on'
+                        : 'At least one tag is required when "Is shell" is on';
+                    response.status = 400;
+                    response.success = false;
+                    return res.status(400).send(response.response);
                 }
-            } else if (isAutoOn && topupPackage.is_shell === 1) {
-                if (shell !== undefined) {
-                    topupPackage.shell = String(shell || '').trim();
-                }
-                if (shell_quantity !== undefined) {
-                    topupPackage.shell_quantity = Math.max(
-                        1,
-                        Number(shell_quantity) || 1,
-                    );
-                }
+                topupPackage.is_shell = 1;
+                topupPackage.shell = nextShell;
+                topupPackage.tags = JSON.stringify(nextTags);
+            } else if (is_shell !== undefined || !isAutoOn) {
+                topupPackage.is_shell = 0;
+                topupPackage.shell = '';
+                topupPackage.tags = '[]';
             }
             await topupPackage.save()
 

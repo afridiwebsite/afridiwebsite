@@ -58,6 +58,26 @@ async function releaseVoucher(voucher: any) {
   voucher.order_id = null;
   await voucher.save();
 }
+
+// Parse the package's stored tags into an array of trimmed, non-empty
+// strings. Stored as JSON in the `tags` TEXT column; accepts an
+// already-parsed array too (defensive).
+function parseTags(raw: any): string[] {
+  let arr: any = raw;
+  if (typeof arr === "string") {
+    const s = arr.trim();
+    if (s.length === 0) return [];
+    try {
+      arr = JSON.parse(s);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((v: any) => String(v == null ? "" : v).trim())
+    .filter((v: string) => v.length > 0);
+}
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -1288,6 +1308,10 @@ class UserController {
       // nothing: if any pool is empty we release the ones we already
       // grabbed, refund the wallet and abort.
 
+      const tagsParsed = parseTags((topupPackage as any).tags);
+      const shellValueRaw = String((topupPackage as any).shell || "").trim();
+      const isShellPackage = Number((topupPackage as any).is_shell) === 1;
+
       console.log(
         "[topupPackageOrder] branch decision",
         {
@@ -1295,40 +1319,52 @@ class UserController {
           package_id: topupPackage.id,
           auto_delivery: (topupPackage as any).auto_delivery,
           is_shell: (topupPackage as any).is_shell,
-          shell_quantity: (topupPackage as any).shell_quantity,
+          shell_value_present: shellValueRaw.length > 0,
+          tag_count: tagsParsed.length,
           bot_url: (topupPackage as any).bot_url,
           uc: topupPackage.uc,
           current_status: order.status,
         },
       );
 
+      // Shell packages must have a shell value AND at least one tag.
+      // Reject the order before any side effects (no voucher allocation,
+      // no bot dispatch) so the package can be fixed.
+      if (isShellPackage && (!shellValueRaw || tagsParsed.length === 0)) {
+        console.warn(
+          "[topupPackageOrder] shell package missing config — rejecting",
+          {
+            order_id: order.id,
+            package_id: topupPackage.id,
+            shell_value_present: shellValueRaw.length > 0,
+            tag_count: tagsParsed.length,
+          },
+        );
+        response.message = !shellValueRaw
+          ? "This package is misconfigured (no shell value). Please contact support."
+          : "This package is misconfigured (no tags). Please contact support.";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
       if ((topupPackage as any).auto_delivery == 1) {
         // Shell mode short-circuit: when the package is configured as a
-        // shell delivery, the bot uses the admin-configured shell string in
-        // `code` and NO voucher is consumed from the pool. We resolve this
-        // before loading PackageVoucherMap rows so a leftover mapping (from
-        // when the package wasn't yet shell) can't accidentally emit and
-        // burn pool vouchers.
-        const isShellOnly =
-          Number((topupPackage as any).is_shell) === 1 &&
-          String((topupPackage as any).shell || "").trim().length > 0;
-
-        if (isShellOnly) {
+        // shell delivery, the bot is fired once per saved tag and NO
+        // voucher is consumed from the pool. We resolve this before
+        // loading PackageVoucherMap rows so a leftover mapping (from when
+        // the package wasn't yet shell) can't accidentally emit and burn
+        // pool vouchers.
+        if (isShellPackage) {
           const botUrl = String((topupPackage as any).bot_url || "").trim();
-          const shellOverride = String(
-            (topupPackage as any).shell || "",
-          ).trim();
-          const shellQuantity = Math.max(
-            1,
-            Number((topupPackage as any).shell_quantity) || 1,
-          );
+          const total = tagsParsed.length;
           console.log(
             "[topupPackageOrder][auto-delivery][shell-only] entering (no voucher consumed)",
             {
               order_id: order.id,
               package_id: topupPackage.id,
               bot_url: botUrl,
-              shell_quantity_resolved: shellQuantity,
+              tag_count: total,
             },
           );
 
@@ -1342,29 +1378,38 @@ class UserController {
             );
             botErrors.push("auto-bot URL is not configured for this package");
           } else {
-            for (let i = 0; i < shellQuantity; i++) {
+            for (let i = 0; i < total; i++) {
+              const tagValue = tagsParsed[i];
               console.log(
-                `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} → POST ${botUrl}`,
-                { order_id: order.id, playerid, uc: topupPackage.uc },
+                `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${total} → POST ${botUrl}`,
+                {
+                  order_id: order.id,
+                  playerid,
+                  uc: topupPackage.uc,
+                  tag: tagValue,
+                },
               );
               try {
+                // Shell mode: bot payload's `code` carries the shell value,
+                // `pacakge`/`package` carries the current tag. No voucher
+                // consumed.
                 const ok = await autoOrder(
                   order.id,
                   playerid,
                   topupPackage.uc,
-                  "", // no voucher to log — pure shell mode
+                  "",
                   botUrl,
-                  topupPackage.name,
-                  shellOverride,
+                  tagValue,
+                  shellValueRaw,
                 );
                 console.log(
-                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} result:`,
+                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${total} result:`,
                   { order_id: order.id, ok },
                 );
                 if (!ok) {
                   bot_failures += 1;
                   botErrors.push(
-                    `shell dispatch #${i + 1}/${shellQuantity} rejected (no response from ${botUrl})`,
+                    `shell dispatch #${i + 1}/${total} (tag "${tagValue}") rejected (no response from ${botUrl})`,
                   );
                 }
               } catch (e: any) {
@@ -1373,18 +1418,18 @@ class UserController {
                   (e && (e.message || e.code || e.toString())) ||
                   "unknown error";
                 console.error(
-                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${shellQuantity} threw`,
+                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${total} threw`,
                   { order_id: order.id, err: msg },
                 );
                 botErrors.push(
-                  `shell dispatch #${i + 1}/${shellQuantity} threw: ${String(msg).slice(0, 200)}`,
+                  `shell dispatch #${i + 1}/${total} (tag "${tagValue}") threw: ${String(msg).slice(0, 200)}`,
                 );
               }
             }
           }
 
           order.status = "In Progress";
-          let detailHtml = `<strong>Shell dispatches: ${shellQuantity - bot_failures}/${shellQuantity} ok, ${bot_failures} failed</strong>`;
+          let detailHtml = `<strong>Shell dispatches: ${total - bot_failures}/${total} ok, ${bot_failures} failed</strong>`;
           if (!botUrl)
             detailHtml += "<br/><span style='color:red;'>URL missing</span>";
           if (botErrors.length > 0) {
@@ -1486,132 +1531,40 @@ class UserController {
                 order_id: order.id,
                 package_id: topupPackage.id,
                 package_name: topupPackage.name,
-                is_shell: (topupPackage as any).is_shell,
-                shell: (topupPackage as any).shell,
-                shell_quantity: (topupPackage as any).shell_quantity,
               },
             );
             botErrors.push("auto-bot URL is not configured for this package");
           } else {
             console.log("found emitted", emitted, topupPackage);
-            // Shell-mode packages send the admin-configured string in place
-            // of the emitted voucher; we still pass `v.data` so the helper
-            // logs the voucher (for traceability) but the bot sees `shell`.
-            const shellOverride =
-              Number((topupPackage as any).is_shell) === 1
-                ? String((topupPackage as any).shell || "").trim()
-                : "";
-            const shellQuantity = shellOverride
-              ? Math.max(
-                  1,
-                  Number((topupPackage as any).shell_quantity) || 1,
-                )
-              : 1;
-            console.log(
-              "[topupPackageOrder][auto-delivery] resolved shell config",
-              {
-                order_id: order.id,
-                package_id: topupPackage.id,
-                package_name: topupPackage.name,
-                bot_url: botUrl,
-                is_shell_raw: (topupPackage as any).is_shell,
-                shell_raw: (topupPackage as any).shell,
-                shell_quantity_raw: (topupPackage as any).shell_quantity,
-                shell_active: !!shellOverride,
-                shell_quantity_resolved: shellQuantity,
-                emitted_count: emitted.length,
-              },
-            );
-
-            if (shellOverride) {
-              // In shell mode the bot doesn't care about emitted vouchers —
-              // it just needs the shell payload N times. Use the first
-              // emitted voucher's data for traceability (logged inside the
-              // helper) but each call still sends the shell in `code`.
-              const voucherForLog = emitted[0]?.data || "";
-              console.log(
-                `[topupPackageOrder][auto-delivery] entering shell loop: ${shellQuantity} dispatch(es) to ${botUrl}`,
-                {
-                  order_id: order.id,
-                  shell_masked: shellOverride
-                    ? `${shellOverride.substring(0, 4)}...`
-                    : "(empty)",
-                  voucher_for_log_masked: voucherForLog
-                    ? `${String(voucherForLog).substring(0, 4)}...`
-                    : "(none)",
-                },
-              );
-              for (let i = 0; i < shellQuantity; i++) {
-                console.log(
-                  `[topupPackageOrder][auto-delivery] shell dispatch ${i + 1}/${shellQuantity} → POST ${botUrl}`,
-                  { order_id: order.id, playerid, uc: topupPackage.uc },
+            // This branch only runs for non-shell auto-delivery: shell
+            // packages short-circuited above. Fire the bot once per
+            // emitted voucher.
+            for (const v of emitted) {
+              try {
+                const ok = await autoOrder(
+                  order.id,
+                  playerid,
+                  topupPackage.uc,
+                  v.data,
+                  botUrl,
+                  topupPackage.name,
+                  "",
                 );
-                try {
-                  const ok = await autoOrder(
-                    order.id,
-                    playerid,
-                    topupPackage.uc,
-                    voucherForLog,
-                    botUrl,
-                    topupPackage.name,
-                    shellOverride,
-                  );
-                  console.log(
-                    `[topupPackageOrder][auto-delivery] shell dispatch ${i + 1}/${shellQuantity} result:`,
-                    { order_id: order.id, ok },
-                  );
-                  if (!ok) {
-                    bot_failures += 1;
-                    botErrors.push(
-                      `shell dispatch #${i + 1}/${shellQuantity} rejected (no response from ${botUrl})`,
-                    );
-                  }
-                } catch (e: any) {
+                console.log("autoOrder", ok);
+                if (!ok) {
                   bot_failures += 1;
-                  const msg =
-                    (e && (e.message || e.code || e.toString())) ||
-                    "unknown error";
-                  console.error(
-                    `[topupPackageOrder][auto-delivery] shell dispatch ${i + 1}/${shellQuantity} threw`,
-                    { order_id: order.id, err: msg },
-                  );
                   botErrors.push(
-                    `shell dispatch #${i + 1}/${shellQuantity} threw: ${String(msg).slice(0, 200)}`,
+                    `bot rejected voucher #${v.id} (no response from ${botUrl})`,
                   );
                 }
-              }
-              console.log(
-                `[topupPackageOrder][auto-delivery] shell loop done: ${shellQuantity - bot_failures}/${shellQuantity} ok, ${bot_failures} failed`,
-                { order_id: order.id },
-              );
-            } else {
-              for (const v of emitted) {
-                try {
-                  const ok = await autoOrder(
-                    order.id,
-                    playerid,
-                    topupPackage.uc,
-                    v.data,
-                    botUrl,
-                    topupPackage.name,
-                    shellOverride,
-                  );
-                  console.log("autoOrder", ok);
-                  if (!ok) {
-                    bot_failures += 1;
-                    botErrors.push(
-                      `bot rejected voucher #${v.id} (no response from ${botUrl})`,
-                    );
-                  }
-                } catch (e: any) {
-                  bot_failures += 1;
-                  const msg =
-                    (e && (e.message || e.code || e.toString())) ||
-                    "unknown error";
-                  botErrors.push(
-                    `bot call threw for voucher #${v.id}: ${String(msg).slice(0, 200)}`,
-                  );
-                }
+              } catch (e: any) {
+                bot_failures += 1;
+                const msg =
+                  (e && (e.message || e.code || e.toString())) ||
+                  "unknown error";
+                botErrors.push(
+                  `bot call threw for voucher #${v.id}: ${String(msg).slice(0, 200)}`,
+                );
               }
             }
           }
@@ -1713,82 +1666,52 @@ class UserController {
               order_id: order.id,
               package_id: topupPackage.id,
               package_name: topupPackage.name,
-              is_shell: (topupPackage as any).is_shell,
-              shell: (topupPackage as any).shell,
-              shell_quantity: (topupPackage as any).shell_quantity,
             },
           );
           botError = "auto-bot URL is not configured for this package";
         } else {
-          const shellOverride =
-            Number((topupPackage as any).is_shell) === 1
-              ? String((topupPackage as any).shell || "").trim()
-              : "";
-          const shellQuantity = shellOverride
-            ? Math.max(1, Number((topupPackage as any).shell_quantity) || 1)
-            : 1;
+          // Shell packages short-circuited above, so this is a single
+          // dispatch with the emitted voucher in `code`.
           console.log(
-            "[topupPackageOrder][regular-bot] resolved shell config",
+            `[topupPackageOrder][regular-bot] dispatch → POST ${pkgBotUrl}`,
             {
               order_id: order.id,
-              package_id: topupPackage.id,
-              package_name: topupPackage.name,
-              bot_url: pkgBotUrl,
-              is_shell_raw: (topupPackage as any).is_shell,
-              shell_raw: (topupPackage as any).shell,
-              shell_quantity_raw: (topupPackage as any).shell_quantity,
-              shell_active: !!shellOverride,
-              shell_quantity_resolved: shellQuantity,
+              playerid,
+              uc: topupPackage.uc,
               voucher_masked: send_unipin
                 ? `${String(send_unipin).substring(0, 4)}...`
                 : "(none)",
             },
           );
-          // Shell mode → fire the bot shellQuantity times. Non-shell stays
-          // a single call (existing behavior). `botStatus` ends up as the
-          // last successful call's return value (URL) for traceability;
-          // any failure within the loop is captured in `botError`.
-          for (let i = 0; i < shellQuantity; i++) {
-            console.log(
-              `[topupPackageOrder][regular-bot] dispatch ${i + 1}/${shellQuantity} → POST ${pkgBotUrl}`,
-              {
-                order_id: order.id,
-                playerid,
-                uc: topupPackage.uc,
-                shell_mode: !!shellOverride,
-              },
+          try {
+            const ok = await autoOrder(
+              order.id,
+              playerid,
+              topupPackage.uc,
+              send_unipin,
+              pkgBotUrl,
+              topupPackage.name,
+              "",
             );
-            try {
-              const ok = await autoOrder(
-                order.id,
-                playerid,
-                topupPackage.uc,
-                send_unipin,
-                pkgBotUrl,
-                topupPackage.name,
-                shellOverride,
-              );
-              console.log(
-                `[topupPackageOrder][regular-bot] dispatch ${i + 1}/${shellQuantity} result:`,
-                { order_id: order.id, ok },
-              );
-              if (!ok) {
-                botError = `bot returned no acceptance on attempt ${i + 1}/${shellQuantity} (no response from ${pkgBotUrl})`;
-                botStatus = null;
-                break;
-              }
-              botStatus = ok;
-            } catch (e: any) {
-              const msg =
-                (e && (e.message || e.code || e.toString())) || "unknown error";
-              console.error(
-                `[topupPackageOrder][regular-bot] dispatch ${i + 1}/${shellQuantity} threw`,
-                { order_id: order.id, err: msg },
-              );
-              botError = `bot call threw on attempt ${i + 1}/${shellQuantity}: ${String(msg).slice(0, 200)}`;
+            console.log(
+              `[topupPackageOrder][regular-bot] dispatch result:`,
+              { order_id: order.id, ok },
+            );
+            if (!ok) {
+              botError = `bot returned no acceptance (no response from ${pkgBotUrl})`;
               botStatus = null;
-              break;
+            } else {
+              botStatus = ok;
             }
+          } catch (e: any) {
+            const msg =
+              (e && (e.message || e.code || e.toString())) || "unknown error";
+            console.error(
+              `[topupPackageOrder][regular-bot] dispatch threw`,
+              { order_id: order.id, err: msg },
+            );
+            botError = `bot call threw: ${String(msg).slice(0, 200)}`;
+            botStatus = null;
           }
         }
 
@@ -1977,12 +1900,15 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
+
+
       if (!user_id || amount < 0) {
         response.message = "Please Refresh The Page And Send Again";
         return res.status(400).send(response.response);
       }
 
       const pm = await PaymentMethod.findByPk(paymentmethod);
+            console.log(pm,'test')
       if (!pm) {
         response.message = "Payment method not found";
         return res.status(400).send(response.response);
@@ -2826,26 +2752,26 @@ class UserController {
                     store_unipin_auto.status = order.id;
                     await store_unipin_auto.save();
 
-                    const shellOverride =
-                      Number((topupPackage as any).is_shell) === 1
-                        ? String((topupPackage as any).shell || "").trim()
-                        : "";
-                    const shellQuantity = shellOverride
-                      ? Math.max(
-                          1,
-                          Number((topupPackage as any).shell_quantity) || 1,
-                        )
-                      : 1;
+                    const tagsHere = parseTags((topupPackage as any).tags);
+                    const shellValueHere = String(
+                      (topupPackage as any).shell || "",
+                    ).trim();
+                    const shellActiveHere =
+                      Number((topupPackage as any).is_shell) === 1 &&
+                      shellValueHere.length > 0 &&
+                      tagsHere.length > 0;
+                    const dispatches = shellActiveHere ? tagsHere : [""];
                     let botStatus: any = null;
-                    for (let i = 0; i < shellQuantity; i++) {
+                    for (let i = 0; i < dispatches.length; i++) {
+                      const tagValue = dispatches[i];
                       botStatus = await autoOrder(
                         order.id,
                         order.playerid,
                         topupPackage.uc,
                         myunipincode,
                         (topupPackage as any).bot_url || "",
-                        topupPackage.name,
-                        shellOverride,
+                        shellActiveHere ? tagValue : topupPackage.name,
+                        shellActiveHere ? shellValueHere : "",
                       );
                       if (!botStatus) break;
                     }

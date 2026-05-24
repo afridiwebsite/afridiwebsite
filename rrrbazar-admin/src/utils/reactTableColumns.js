@@ -70,23 +70,54 @@ export const ordersTableColumns = [
         Cell: (e) => {
             const row = e.row.original;
             const pkg = row?.TopupPackage;
-            // Shell mode wins — the bot uses the shell string in `code`,
-            // no voucher is emitted, so this is the only meaningful value
-            // to show in the UC column.
-            if (Number(pkg?.is_shell) === 1 && String(pkg?.shell || '').trim()) {
-                const shellText = String(pkg.shell);
-                return (
-                    <span
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold text-xs font-mono cursor-pointer hover:bg-purple-200 break-all whitespace-normal"
-                        title="Shell value — click to copy"
-                        onClick={() => {
-                            navigator.clipboard.writeText(shellText);
-                            toast.info(`Copied shell: ${shellText}`, toastDefault);
-                        }}
-                    >
-                        {shellText}
-                    </span>
-                );
+            // Shell mode wins — the bot uses the shell string in `code`
+            // and fires once per tag (sent in `pacakge`/`package`). No
+            // voucher is emitted, so this is the meaningful info to show.
+            if (Number(pkg?.is_shell) === 1) {
+                const shellText = String(pkg?.shell || '').trim();
+                let tagList = [];
+                try {
+                    const raw = pkg?.tags;
+                    if (Array.isArray(raw)) tagList = raw;
+                    else if (typeof raw === 'string' && raw.trim().length > 0)
+                        tagList = JSON.parse(raw);
+                } catch {
+                    tagList = [];
+                }
+                tagList = (Array.isArray(tagList) ? tagList : [])
+                    .map((v) => String(v == null ? '' : v))
+                    .filter((v) => v.length > 0);
+                if (shellText || tagList.length > 0) {
+                    return (
+                        <div className="flex flex-wrap gap-1 min-w-[300px]">
+                            {shellText && (
+                                <span
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold text-xs font-mono cursor-pointer hover:bg-purple-200 break-all whitespace-normal"
+                                    title="Shell value — click to copy"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(shellText);
+                                        toast.info(`Copied shell: ${shellText}`, toastDefault);
+                                    }}
+                                >
+                                    {shellText}
+                                </span>
+                            )}
+                            {tagList.map((tag, idx) => (
+                                <span
+                                    key={`tag-${idx}-${tag}`}
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold text-xs font-mono cursor-pointer hover:bg-indigo-200 break-all whitespace-normal"
+                                    title="Tag — click to copy"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(tag);
+                                        toast.info(`Copied tag: ${tag}`, toastDefault);
+                                    }}
+                                >
+                                    #{tag}
+                                </span>
+                            ))}
+                        </div>
+                    );
+                }
             }
             // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
             // the legacy hasOne shape (`Voucher: {…}`) so older payloads still

@@ -48,14 +48,19 @@ function AddPackage(props) {
   const isVoucherProduct = selectedProduct?.is_voucher == 1;
 
   const [autoDeliveryOn, setAutoDeliveryOn] = useState(false);
-  // Shell mode — only relevant while auto-delivery is on. When `isShell`
-  // flips off, we also clear `shellValue` so a stale string can't leak to
-  // the bot on the next dispatch.
+  // Shell mode — only relevant while auto-delivery is on. The shell value
+  // is a single admin-configured string sent in the bot's `code` field.
+  // Tags is a dynamic list — the bot fires once per tag, with the tag in
+  // the payload's `pacakge`/`package` fields. At least one tag is
+  // required when isShell is on (validated on submit and server-side).
   const [isShell, setIsShell] = useState(false);
   const [shellValue, setShellValue] = useState("");
-  // How many times to fire the shell request per order. Only meaningful
-  // when `isShell` is on; min 1.
-  const [shellQuantity, setShellQuantity] = useState(1);
+  const [tags, setTags] = useState([]);
+  const addTag = () => setTags((prev) => [...prev, ""]);
+  const updateTag = (idx, value) =>
+    setTags((prev) => prev.map((v, i) => (i === idx ? value : v)));
+  const removeTag = (idx) =>
+    setTags((prev) => prev.filter((_, i) => i !== idx));
   const [mappings, setMappings] = useState([]); // [{ voucher_package_id, voucher_package_name, voucher_product_name }]
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
@@ -102,6 +107,26 @@ function AddPackage(props) {
 
   const addPackageHandler = (e) => {
     e.preventDefault();
+    if (autoDeliveryOn && isShell) {
+      const cleanShell = String(shellValue || "").trim();
+      const cleanTags = tags
+        .map((t) => String(t || "").trim())
+        .filter((t) => t.length > 0);
+      if (!cleanShell) {
+        toast.error(
+          'Shell value is required when "Is shell" is on',
+          toastDefault,
+        );
+        return;
+      }
+      if (cleanTags.length === 0) {
+        toast.error(
+          'At least one tag is required when "Is shell" is on',
+          toastDefault,
+        );
+        return;
+      }
+    }
     setLoading(true);
     axiosInstance
       .post(`/admin/topup-package/add`, {
@@ -122,11 +147,14 @@ function AddPackage(props) {
         stock_tracking: stockTracking ? 1 : 0,
         stock_quantity: stockTracking ? Math.max(0, Number(stockQuantity) || 0) : 0,
         is_shell: autoDeliveryOn && isShell ? 1 : 0,
-        shell: autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
-        shell_quantity:
+        shell:
+          autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
+        tags:
           autoDeliveryOn && isShell
-            ? Math.max(1, Number(shellQuantity) || 1)
-            : 1,
+            ? tags
+                .map((v) => String(v || "").trim())
+                .filter((v) => v.length > 0)
+            : [],
       })
       .then(async (res) => {
         // Persist voucher-map rows once we know the new package id.
@@ -409,9 +437,10 @@ function AddPackage(props) {
                               <span className="ml-2">Is shell</span>
                             </label>
                             <p className="text-xs text-gray-500 mt-1">
-                              When on, the value below is sent to the bot's{" "}
-                              <code>code</code> field instead of the emitted
-                              voucher.
+                              When on, the shell value below is sent to the
+                              bot's <code>code</code> field. The bot is fired
+                              once per tag, with the tag value in{" "}
+                              <code>pacakge</code>/<code>package</code>.
                             </p>
                           </div>
                           {isShell && (
@@ -433,25 +462,57 @@ function AddPackage(props) {
                       )}
 
                       {autoDeliveryOn && isShell && (
-                        <div className="form_grid">
-                          <div>
-                            <label htmlFor="shell_quantity">Shell quantity</label>
-                            <input
-                              id="shell_quantity"
-                              type="number"
-                              min="1"
-                              className="form_input"
-                              value={shellQuantity}
-                              onChange={(e) =>
-                                setShellQuantity(e.target.value)
-                              }
-                              placeholder="1"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Number of times the shell request is sent per
-                              order. Defaults to 1.
-                            </p>
+                        <div className="mt-3 border border-gray-200 rounded p-3 bg-gray-50">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold">
+                              Tags ({tags.length})
+                              <span className="text-xs font-normal text-red-600 ml-1">
+                                * at least one required
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={addTag}
+                              className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                            >
+                              + Add tag
+                            </button>
                           </div>
+                          {tags.length === 0 && (
+                            <p className="text-xs text-gray-500 italic">
+                              No tags yet. Click "Add tag" to add one.
+                            </p>
+                          )}
+                          {tags.length > 0 && (
+                            <ul className="flex flex-col gap-1.5">
+                              {tags.map((v, i) => (
+                                <li
+                                  key={i}
+                                  className="flex items-center gap-2 bg-white border border-gray-200 rounded px-2 py-1.5"
+                                >
+                                  <span className="text-xs text-gray-500 w-6 text-right">
+                                    #{i + 1}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    className="form_input !mb-0 flex-1"
+                                    value={v}
+                                    onChange={(e) =>
+                                      updateTag(i, e.target.value)
+                                    }
+                                    placeholder="e.g. 60UC"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeTag(i)}
+                                    className="text-red-600 hover:text-red-800 text-xs"
+                                  >
+                                    Remove
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       )}
 
