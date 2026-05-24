@@ -1008,8 +1008,7 @@ class UserController {
       // Quantity-tracked stock gate. We re-read the live count from the
       // already-loaded `topupPackage` and reject upfront so we never charge
       // a wallet or open a payment session against a sold-out package.
-      const stockTracking =
-        Number((topupPackage as any).stock_tracking) === 1;
+      const stockTracking = Number((topupPackage as any).stock_tracking) === 1;
       const stockBefore = Number((topupPackage as any).stock_quantity) || 0;
       if (stockTracking) {
         if (stockBefore <= 0) {
@@ -1230,7 +1229,8 @@ class UserController {
           for (const v of emitted) await releaseVoucher(v);
           order.status = "pending";
           order.brief_note = "Awaiting voucher restock";
-          (order as any).details = `<span style="color:orange;"><strong>Voucher pool ran dry</strong> — only ${emitted.length} of ${quantity} unit(s) were available at order time. Order kept pending for manual fulfilment.</span>`;
+          (order as any).details =
+            `<span style="color:orange;"><strong>Voucher pool ran dry</strong> — only ${emitted.length} of ${quantity} unit(s) were available at order time. Order kept pending for manual fulfilment.</span>`;
           await order.save();
 
           const {
@@ -1312,20 +1312,17 @@ class UserController {
       const shellValueRaw = String((topupPackage as any).shell || "").trim();
       const isShellPackage = Number((topupPackage as any).is_shell) === 1;
 
-      console.log(
-        "[topupPackageOrder] branch decision",
-        {
-          order_id: order.id,
-          package_id: topupPackage.id,
-          auto_delivery: (topupPackage as any).auto_delivery,
-          is_shell: (topupPackage as any).is_shell,
-          shell_value_present: shellValueRaw.length > 0,
-          tag_count: tagsParsed.length,
-          bot_url: (topupPackage as any).bot_url,
-          uc: topupPackage.uc,
-          current_status: order.status,
-        },
-      );
+      console.log("[topupPackageOrder] branch decision", {
+        order_id: order.id,
+        package_id: topupPackage.id,
+        auto_delivery: (topupPackage as any).auto_delivery,
+        is_shell: (topupPackage as any).is_shell,
+        shell_value_present: shellValueRaw.length > 0,
+        tag_count: tagsParsed.length,
+        bot_url: (topupPackage as any).bot_url,
+        uc: topupPackage.uc,
+        current_status: order.status,
+      });
 
       // Shell packages must have a shell value AND at least one tag.
       // Reject the order before any side effects (no voucher allocation,
@@ -1499,7 +1496,8 @@ class UserController {
             // other orders in the meantime.
             for (const v of emitted) await releaseVoucher(v);
             order.status = "pending";
-            order.brief_note = "ভাউচার স্টক শেষ। নতুন স্টক আসার অপেক্ষায় রয়েছে। সহায়তার জন্য সাপোর্ট টিমের সাথে যোগাযোগ করুন।";
+            order.brief_note =
+              "ভাউচার স্টক শেষ। নতুন স্টক আসার অপেক্ষায় রয়েছে। সহায়তার জন্য সাপোর্ট টিমের সাথে যোগাযোগ করুন।";
             (order as any).details =
               "<span style='color:orange;'><strong>Auto-delivery skipped:</strong> one of the linked voucher pools was empty at order time. Order kept pending for manual fulfilment.</span>";
             await order.save();
@@ -1611,18 +1609,15 @@ class UserController {
       // AUTO-DELIVERY END
 
       // AUTO BOT SET IN CODE START
-      console.log(
-        "[topupPackageOrder][regular-bot] guard check",
-        {
-          order_id: order.id,
-          status: order.status,
-          uc: topupPackage.uc,
-          will_enter: order.status == "pending" && topupPackage.uc > 0,
-          // Common reason shell never hits the bot: the package has no UC
-          // tier set, so this branch is skipped entirely and the function
-          // returns with the order still pending and no autoOrder call.
-        },
-      );
+      console.log("[topupPackageOrder][regular-bot] guard check", {
+        order_id: order.id,
+        status: order.status,
+        uc: topupPackage.uc,
+        will_enter: order.status == "pending" && topupPackage.uc > 0,
+        // Common reason shell never hits the bot: the package has no UC
+        // tier set, so this branch is skipped entirely and the function
+        // returns with the order still pending and no autoOrder call.
+      });
       if (order.status == "pending" && topupPackage.uc > 0) {
         const store_unipin_auto = await StoreUnipin.findOne({
           where: {
@@ -1693,10 +1688,10 @@ class UserController {
               topupPackage.name,
               "",
             );
-            console.log(
-              `[topupPackageOrder][regular-bot] dispatch result:`,
-              { order_id: order.id, ok },
-            );
+            console.log(`[topupPackageOrder][regular-bot] dispatch result:`, {
+              order_id: order.id,
+              ok,
+            });
             if (!ok) {
               botError = `bot returned no acceptance (no response from ${pkgBotUrl})`;
               botStatus = null;
@@ -1706,10 +1701,10 @@ class UserController {
           } catch (e: any) {
             const msg =
               (e && (e.message || e.code || e.toString())) || "unknown error";
-            console.error(
-              `[topupPackageOrder][regular-bot] dispatch threw`,
-              { order_id: order.id, err: msg },
-            );
+            console.error(`[topupPackageOrder][regular-bot] dispatch threw`, {
+              order_id: order.id,
+              err: msg,
+            });
             botError = `bot call threw: ${String(msg).slice(0, 200)}`;
             botStatus = null;
           }
@@ -1812,14 +1807,14 @@ class UserController {
         order.brief_note =
           "আপনার দেওয়া প্লেয়ার আইডি সঠিক নয়। অনুগ্রহ করে সঠিক আইডি দিয়ে আবার অর্ডার করুন।";
         (order as any).details =
-          "<span style=\"color:#dc2626;\"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>";
+          '<span style="color:#dc2626;"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>';
         // Free the reserved voucher so it isn't burnt on a dead order.
         order.uc = "";
       } else if (isInvalidRegion) {
         order.brief_note =
           "আপনার আইডির রিজিয়ন এই প্যাকেজের জন্য সাপোর্টেড নয়। অনুগ্রহ করে সঠিক রিজিয়নের আইডি দিয়ে আবার অর্ডার করুন।";
         (order as any).details =
-          "<span style=\"color:#dc2626;\"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>";
+          '<span style="color:#dc2626;"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>';
         order.uc = "";
       } else {
         // Server failure with no specific error code. Bengali message tells
@@ -1835,21 +1830,28 @@ class UserController {
       }
       await order.save();
 
-      const store_unipin = await StoreUnipin.findOne({
+      const vouchers = await Voucher.findAll({
         where: {
-          status: orderid,
+          order_id: orderid,
           package_id: order.topuppackage_id,
         },
         order: Sequelize.literal("RAND()"),
       });
-      if (!store_unipin) {
+      if (vouchers.length == 0) {
         response.message = "NOT FOUND";
         return res.status(404).send(response.response);
       }
       // On success → mark voucher used (2). On failure → return it to the
       // pool (1) so it can be re-sold, instead of leaving it held (5).
-      store_unipin.status = mystatus == "completed" ? 2 : 1;
-      await store_unipin.save();
+      let promises= [];
+      vouchers.forEach((voucher) => {
+        voucher.is_used = mystatus == "completed" ? 1 : 0;
+        promises.push(voucher.save());
+      });
+
+      const voucherSave = await Promise.all(promises);
+
+      console.log(voucherSave,'save')
 
       if (mystatus == "Failed") {
         // const user = await User.findByPk(order.user_id);
@@ -1900,15 +1902,13 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-
-
       if (!user_id || amount < 0) {
         response.message = "Please Refresh The Page And Send Again";
         return res.status(400).send(response.response);
       }
 
       const pm = await PaymentMethod.findByPk(paymentmethod);
-            console.log(pm,'test')
+      console.log(pm, "test");
       if (!pm) {
         response.message = "Payment method not found";
         return res.status(400).send(response.response);
