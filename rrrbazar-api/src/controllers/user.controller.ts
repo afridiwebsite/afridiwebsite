@@ -1843,7 +1843,7 @@ class UserController {
       }
       // On success → mark voucher used (2). On failure → return it to the
       // pool (1) so it can be re-sold, instead of leaving it held (5).
-      let promises= [];
+      let promises: any[] = [];
       vouchers.forEach((voucher) => {
         voucher.is_used = mystatus == "completed" ? 1 : 0;
         promises.push(voucher.save());
@@ -1851,7 +1851,7 @@ class UserController {
 
       const voucherSave = await Promise.all(promises);
 
-      console.log(voucherSave,'save')
+      console.log(voucherSave, "save");
 
       if (mystatus == "Failed") {
         // const user = await User.findByPk(order.user_id);
