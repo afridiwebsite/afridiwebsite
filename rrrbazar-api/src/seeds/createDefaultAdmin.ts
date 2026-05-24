@@ -100,6 +100,8 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/tutorial/create',     method: 'POST' },
     { path: '/tutorial/update/:id', method: 'POST' },
     { path: '/tutorial/delete/:id', method: 'POST' },
+    // Bulk / single bot-dispatch retry (admin Orders page action menu).
+    { path: '/orders/bot-retry',    method: 'POST' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

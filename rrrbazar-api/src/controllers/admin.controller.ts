@@ -6,6 +6,7 @@ import Schema from '../models';
 import { sequelize } from '../models/Schemas';
 import responseUtils from '../utils/response.utils';
 import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
+import { executeDispatch, MAX_DISPATCH_ATTEMPTS } from '../helpers/dispatchBot';
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // import bcrypt from 'bcryptjs'
@@ -31,6 +32,7 @@ const {
   OrderComment,
   Voucher,
   SiteSetting,
+  BotDispatch,
 } = Schema;
 
 // Crude HTML → plaintext for the saved-comment picker. Doesn't try to be
@@ -145,6 +147,17 @@ class AdminController {
             required: false,
             attributes: ['id', 'name', 'is_shell', 'shell', 'tags'],
           },
+          {
+            // Per-dispatch bot rows so the admin Orders table + modal can
+            // surface failure granularity and offer Retry.
+            model: BotDispatch,
+            required: false,
+            attributes: [
+              'id', 'voucher_id', 'tag', 'code', 'package_name_sent',
+              'bot_url', 'status', 'error_reason', 'attempt_count',
+              'last_attempted_at', 'created_at', 'updated_at',
+            ],
+          },
         ]
       })
 
@@ -235,6 +248,105 @@ class AdminController {
     response.message = 'Order updated successfully';
     response.data = order
     res.send(response.response)
+  }
+
+  /**
+   * Resend the auto-bot for every `failed` BotDispatch row belonging to
+   * each order in `order_ids`. Cancelled dispatches (Invalid player ID,
+   * Invalid region) are intentionally NOT retried — those are permanent.
+   * Dispatches already at the retry cap (MAX_DISPATCH_ATTEMPTS) are
+   * skipped and reported back so the admin knows to escalate manually.
+   *
+   * Body: { order_ids: number[] }   (single is fine too)
+   *
+   * Response.data: per-order summary
+   *   [{ order_id, retried, sent, still_failed, skipped_capped, error? }]
+   *
+   * The actual order-status transition happens later via the bot's
+   * checkOrder callback. Immediately after retry the order stays at
+   * whatever aggregate state checkOrder computed last time; the dispatch
+   * rows are flipped to `sent` (or `failed` if the POST itself errored).
+   */
+  async retryBotDispatches(req: express.Request, res: express.Response) {
+    const response = new responseUtils()
+    try {
+      const raw = req.body?.order_ids;
+      const idArr: number[] = (Array.isArray(raw) ? raw : [raw])
+        .map((v: any) => Number(v))
+        .filter((v: number) => Number.isFinite(v) && v > 0);
+      if (idArr.length === 0) {
+        response.message = 'order_ids (array) is required';
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      console.log('[retryBotDispatches] requested', { order_ids: idArr });
+
+      const summary: any[] = [];
+      for (const order_id of idArr) {
+        const order = await Order.findByPk(order_id);
+        if (!order) {
+          summary.push({ order_id, error: 'order not found' });
+          continue;
+        }
+        const topupPackage = await TopupPackage.findByPk(
+          (order as any).topuppackage_id,
+        );
+        const ucForCall = Number((topupPackage as any)?.uc) || 0;
+
+        const failed = await BotDispatch.findAll({
+          where: { order_id, status: 'failed' },
+        });
+        if (failed.length === 0) {
+          summary.push({
+            order_id,
+            retried: 0,
+            sent: 0,
+            still_failed: 0,
+            skipped_capped: 0,
+            message: 'no failed dispatches to retry',
+          });
+          continue;
+        }
+
+        let sent = 0;
+        let stillFailed = 0;
+        let skippedCapped = 0;
+        for (const dispatch of failed) {
+          if (
+            Number(dispatch.attempt_count || 0) >= MAX_DISPATCH_ATTEMPTS
+          ) {
+            skippedCapped += 1;
+            continue;
+          }
+          const { ok } = await executeDispatch(dispatch, {
+            player_id: order.playerid || '',
+            uc: ucForCall,
+          });
+          if (ok) sent += 1;
+          else stillFailed += 1;
+        }
+
+        summary.push({
+          order_id,
+          retried: sent + stillFailed,
+          sent,
+          still_failed: stillFailed,
+          skipped_capped: skippedCapped,
+        });
+      }
+
+      response.message = 'Retry triggered';
+      response.data = summary;
+      return res.send(response.response);
+    } catch (error) {
+      console.error('[retryBotDispatches] failed', error);
+      response.message = 'Internal Error! Try again';
+      response.status = 400;
+      response.success = false;
+      return res.status(400).send(response.response);
+    }
   }
 
   async getAdminOrders(req: express.Request, res: express.Response) {

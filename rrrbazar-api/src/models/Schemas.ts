@@ -36,6 +36,7 @@ import OrderComment from './OrderComment'
 import Voucher from './Voucher'
 import PackageVoucherMap from './PackageVoucherMap'
 import Tutorial from './Tutorial'
+import BotDispatch from './BotDispatch'
 
 
 
@@ -92,4 +93,5 @@ export const Schema = {
   Voucher: Voucher(sequelize),
   PackageVoucherMap: PackageVoucherMap(sequelize),
   Tutorial: Tutorial(sequelize),
+  BotDispatch: BotDispatch(sequelize),
 }

@@ -6,9 +6,9 @@ import Schema from "../models";
 import responseUtils from "../utils/response.utils";
 import smsHelper from "../helpers/sms";
 import fastPay from "../helpers/fastpay";
-import autoOrder from "../helpers/autoorder";
 import playerName from "../helpers/playername";
 import syncOrderCoinsForStatus from "../helpers/orderCoinSync";
+import { createAndSendDispatch } from "../helpers/dispatchBot";
 const {
   User,
   Banner,
@@ -34,6 +34,7 @@ const {
   SiteSetting,
   Voucher,
   PackageVoucherMap,
+  BotDispatch,
 } = Schema;
 
 // Allocate one unused voucher to an order. Wraps the find+assign so the
@@ -1375,49 +1376,23 @@ class UserController {
           } else {
             for (let i = 0; i < total; i++) {
               const tagValue = tagsParsed[i];
-              console.log(
-                `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${total} → POST ${botUrl}`,
-                {
-                  order_id: order.id,
-                  playerid,
-                  uc: topupPackage.uc,
-                  tag: tagValue,
-                },
-              );
-              try {
-                // Shell mode: bot payload's `code` carries the shell value,
-                // `pacakge`/`package` carries the current tag. No voucher
-                // consumed.
-                const ok = await autoOrder(
-                  order.id,
-                  playerid,
-                  topupPackage.uc,
-                  "",
-                  botUrl,
-                  tagValue,
-                  shellValueRaw,
-                );
-                console.log(
-                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${total} result:`,
-                  { order_id: order.id, ok },
-                );
-                if (!ok) {
-                  bot_failures += 1;
-                  botErrors.push(
-                    `shell dispatch #${i + 1}/${total} (tag "${tagValue}") rejected (no response from ${botUrl})`,
-                  );
-                }
-              } catch (e: any) {
+              // Shell mode: bot payload's `code` carries the shell value,
+              // `pacakge`/`package` carries the current tag. No voucher
+              // consumed. The BotDispatch row makes the dispatch retryable
+              // if the bot fails or never calls back.
+              const { ok } = await createAndSendDispatch({
+                order_id: order.id,
+                player_id: playerid,
+                uc: topupPackage.uc,
+                bot_url: botUrl,
+                code: shellValueRaw,
+                package_name_sent: tagValue,
+                tag: tagValue,
+              });
+              if (!ok) {
                 bot_failures += 1;
-                const msg =
-                  (e && (e.message || e.code || e.toString())) ||
-                  "unknown error";
-                console.error(
-                  `[topupPackageOrder][auto-delivery][shell-only] dispatch ${i + 1}/${total} threw`,
-                  { order_id: order.id, err: msg },
-                );
                 botErrors.push(
-                  `shell dispatch #${i + 1}/${total} (tag "${tagValue}") threw: ${String(msg).slice(0, 200)}`,
+                  `shell dispatch #${i + 1}/${total} (tag "${tagValue}") rejected — see dispatches list`,
                 );
               }
             }
@@ -1534,32 +1509,22 @@ class UserController {
             console.log("found emitted", emitted, topupPackage);
             // This branch only runs for non-shell auto-delivery: shell
             // packages short-circuited above. Fire the bot once per
-            // emitted voucher.
+            // emitted voucher; each gets its own BotDispatch row so a
+            // partial failure is granularly retryable.
             for (const v of emitted) {
-              try {
-                const ok = await autoOrder(
-                  order.id,
-                  playerid,
-                  topupPackage.uc,
-                  v.data,
-                  botUrl,
-                  topupPackage.name,
-                  "",
-                );
-                console.log("autoOrder", ok);
-                if (!ok) {
-                  bot_failures += 1;
-                  botErrors.push(
-                    `bot rejected voucher #${v.id} (no response from ${botUrl})`,
-                  );
-                }
-              } catch (e: any) {
+              const { ok } = await createAndSendDispatch({
+                order_id: order.id,
+                player_id: playerid,
+                uc: topupPackage.uc,
+                bot_url: botUrl,
+                code: v.data,
+                package_name_sent: topupPackage.name,
+                voucher_id: v.id,
+              });
+              if (!ok) {
                 bot_failures += 1;
-                const msg =
-                  (e && (e.message || e.code || e.toString())) ||
-                  "unknown error";
                 botErrors.push(
-                  `bot call threw for voucher #${v.id}: ${String(msg).slice(0, 200)}`,
+                  `bot rejected voucher #${v.id} — see dispatches list`,
                 );
               }
             }
@@ -1664,47 +1629,21 @@ class UserController {
           botError = "auto-bot URL is not configured for this package";
         } else {
           // Shell packages short-circuited above, so this is a single
-          // dispatch with the emitted voucher in `code`.
-          console.log(
-            `[topupPackageOrder][regular-bot] dispatch → POST ${pkgBotUrl}`,
-            {
-              order_id: order.id,
-              playerid,
-              uc: topupPackage.uc,
-              voucher_masked: send_unipin
-                ? `${String(send_unipin).substring(0, 4)}...`
-                : "(none)",
-            },
-          );
-          try {
-            const ok = await autoOrder(
-              order.id,
-              playerid,
-              topupPackage.uc,
-              send_unipin,
-              pkgBotUrl,
-              topupPackage.name,
-              "",
-            );
-            console.log(`[topupPackageOrder][regular-bot] dispatch result:`, {
-              order_id: order.id,
-              ok,
-            });
-            if (!ok) {
-              botError = `bot returned no acceptance (no response from ${pkgBotUrl})`;
-              botStatus = null;
-            } else {
-              botStatus = ok;
-            }
-          } catch (e: any) {
-            const msg =
-              (e && (e.message || e.code || e.toString())) || "unknown error";
-            console.error(`[topupPackageOrder][regular-bot] dispatch threw`, {
-              order_id: order.id,
-              err: msg,
-            });
-            botError = `bot call threw: ${String(msg).slice(0, 200)}`;
+          // dispatch with the emitted voucher in `code`. Persisted as a
+          // BotDispatch row so the admin retry path can resend it.
+          const { ok, error_reason } = await createAndSendDispatch({
+            order_id: order.id,
+            player_id: playerid,
+            uc: topupPackage.uc,
+            bot_url: pkgBotUrl,
+            code: send_unipin,
+            package_name_sent: topupPackage.name,
+          });
+          if (!ok) {
+            botError = error_reason || `bot returned no acceptance (no response from ${pkgBotUrl})`;
             botStatus = null;
+          } else {
+            botStatus = ok;
           }
         }
 
@@ -1755,9 +1694,20 @@ class UserController {
     try {
       const { orderid, status, content } = req.body;
 
-      console.log(orderid, status, content, req.body, "check order");
+      // Bots may echo `dispatch_id` back from the callback URL we built
+      // in autoOrder. Accept it from either body or query — some bots
+      // POST query params into the body, others preserve them on the URL.
+      const dispatchIdRaw =
+        (req.body && (req.body as any).dispatch_id) ??
+        (req.query && (req.query as any).dispatch_id);
+      const dispatchId = Number(dispatchIdRaw) || 0;
 
-      const botUrl = req.headers["cf-connecting-ip"];
+      console.log("[checkOrder] callback received", {
+        orderid,
+        status,
+        content,
+        dispatch_id: dispatchId,
+      });
 
       const order = await Order.findByPk(orderid);
       if (!order) {
@@ -1765,110 +1715,174 @@ class UserController {
         return res.status(404).send(response.response);
       }
 
-      // Bot callback dispatch.
-      //
-      //   status === "success"
-      //     → order completed, content (if any) recorded in details.
-      //   content matches a known user-facing error
-      //     ("Invalid player ID", "Invalid region")
-      //     → order CANCELLED with a Bengali brief_note explaining why,
-      //       plus admin-facing details. The user sees the Bengali line on
-      //       their order page; no retry possible without correcting the
-      //       inputs.
-      //   anything else (empty content, unknown content, generic failure)
-      //     → treated as a server-side failure: order stays pending so it
-      //       can be retried/refunded, brief_note explains in Bengali that
-      //       a server error occurred, details captures whatever raw text
-      //       the bot returned.
+      // Classify the callback. Same as before: success / known user error
+      // / generic failure. The classification applies to whichever
+      // BotDispatch row(s) we're updating.
       const safeContent = String(content || "").trim();
       const isSuccess = status == "success";
       const isInvalidPlayer = /^invalid\s*player\s*id$/i.test(safeContent);
       const isInvalidRegion = /^invalid\s*region$/i.test(safeContent);
       const isKnownUserError = isInvalidPlayer || isInvalidRegion;
 
+      const dispatchStatus: "success" | "failed" | "cancelled" = isSuccess
+        ? "success"
+        : isKnownUserError
+          ? "cancelled"
+          : "failed";
+      const dispatchError = isSuccess
+        ? null
+        : isInvalidPlayer
+          ? "Invalid player ID"
+          : isInvalidRegion
+            ? "Invalid region"
+            : safeContent || "bot reported failure";
+
+      // Update the dispatch row(s) the callback is for.
+      //   dispatch_id present → just that one
+      //   dispatch_id missing → mark all currently-`sent` rows for this
+      //                         order, since the bot didn't pin the
+      //                         specific one.
+      let targetedDispatchIds: number[] = [];
+      if (dispatchId > 0) {
+        const d = await BotDispatch.findByPk(dispatchId);
+        if (d && Number(d.order_id) === Number(orderid)) {
+          d.status = dispatchStatus;
+          d.error_reason = dispatchError;
+          await d.save();
+          targetedDispatchIds = [d.id];
+        } else {
+          console.warn(
+            "[checkOrder] dispatch_id did not match order — falling back",
+            { dispatch_id: dispatchId, orderid },
+          );
+        }
+      }
+      if (targetedDispatchIds.length === 0) {
+        const sentRows = await BotDispatch.findAll({
+          where: { order_id: orderid, status: "sent" },
+        });
+        for (const d of sentRows) {
+          d.status = dispatchStatus;
+          d.error_reason = dispatchError;
+          await d.save();
+          targetedDispatchIds.push(d.id);
+        }
+      }
+
+      // Re-aggregate the order's terminal status from all of its
+      // dispatches. Orders pre-dating the BotDispatch system have no
+      // rows — for those we keep the legacy single-callback behavior.
+      const allDispatches = await BotDispatch.findAll({
+        where: { order_id: orderid },
+      });
+      const counts = {
+        success: 0,
+        failed: 0,
+        pending: 0,
+        sent: 0,
+        cancelled: 0,
+      } as Record<string, number>;
+      for (const d of allDispatches) {
+        counts[d.status] = (counts[d.status] || 0) + 1;
+      }
+
       let mystatus: string;
-      if (isSuccess) {
-        mystatus = "completed";
-      } else if (isKnownUserError) {
+      if (allDispatches.length === 0) {
+        // Legacy order, no dispatch tracking — preserve previous semantics.
+        mystatus = isSuccess
+          ? "completed"
+          : isKnownUserError
+            ? "cancel"
+            : "pending";
+      } else if (counts.cancelled > 0) {
+        // Any known user-facing rejection cancels the whole order.
         mystatus = "cancel";
+      } else if (
+        counts.success === allDispatches.length &&
+        counts.failed === 0 &&
+        counts.pending === 0 &&
+        counts.sent === 0
+      ) {
+        mystatus = "completed";
+      } else if (counts.failed > 0) {
+        // At least one dispatch failed — surface as In Progress so the
+        // admin can hit Retry. (Order stays unfinished until all succeed.)
+        mystatus = "In Progress";
       } else {
-        // Generic / server failure — keep pending so an admin can retry.
-        mystatus = "pending";
+        // Still some dispatches awaiting callback.
+        mystatus = "In Progress";
       }
       order.status = mystatus;
 
+      // Compose user-facing details + brief_note off the aggregate state.
       if (mystatus === "completed") {
         (order as any).details = safeContent
           ? `<span style="color:#059669;"><strong>Bot delivered:</strong> ${safeContent}</span>`
           : "<span style='color:#059669;'><strong>Bot delivered successfully.</strong></span>";
-      } else if (isInvalidPlayer) {
+      } else if (mystatus === "cancel" && isInvalidPlayer) {
         order.brief_note =
           "আপনার দেওয়া প্লেয়ার আইডি সঠিক নয়। অনুগ্রহ করে সঠিক আইডি দিয়ে আবার অর্ডার করুন।";
         (order as any).details =
           '<span style="color:#dc2626;"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>';
-        // Free the reserved voucher so it isn't burnt on a dead order.
         order.uc = "";
-      } else if (isInvalidRegion) {
+      } else if (mystatus === "cancel" && isInvalidRegion) {
         order.brief_note =
           "আপনার আইডির রিজিয়ন এই প্যাকেজের জন্য সাপোর্টেড নয়। অনুগ্রহ করে সঠিক রিজিয়নের আইডি দিয়ে আবার অর্ডার করুন।";
         (order as any).details =
           '<span style="color:#dc2626;"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>';
         order.uc = "";
-      } else {
-        // Server failure with no specific error code. Bengali message tells
-        // the user to wait or contact support; details captures whatever
-        // the bot returned (often empty) for the admin.
+      } else if (mystatus === "In Progress" && counts.failed > 0) {
+        // Partial delivery with at least one retryable failure — point the
+        // admin at the dispatch list and tell the user we're working on it.
         order.brief_note =
           "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
-        (order as any).details = safeContent
-          ? `<span style="color:#dc2626;"><strong>Bot reported:</strong> ${safeContent}</span>`
-          : "<span style='color:#dc2626;'><strong>Server failure</strong> — bot returned no specific error. Order kept pending for manual retry.</span>";
-        // Bot didn't deliver — release the reserved voucher for retry.
-        order.uc = "";
+        (order as any).details =
+          `<span style="color:#dc2626;"><strong>Partial bot failure:</strong> ${counts.failed} of ${allDispatches.length} dispatch(es) failed — retry available from the order action menu.</span>`;
+      } else if (allDispatches.length === 0) {
+        // Legacy path — preserve previous brief_note/details composition.
+        if (mystatus === "pending") {
+          order.brief_note =
+            "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
+          (order as any).details = safeContent
+            ? `<span style="color:#dc2626;"><strong>Bot reported:</strong> ${safeContent}</span>`
+            : "<span style='color:#dc2626;'><strong>Server failure</strong> — bot returned no specific error. Order kept pending for manual retry.</span>";
+          order.uc = "";
+        }
       }
       await order.save();
 
       // Coin reward sync — award on "completed", reverse on "cancel".
-      // Helper is idempotent so repeated checkOrder calls for the same
-      // order never double-credit or double-reverse.
+      // Idempotent: re-running checkOrder for the same order never
+      // double-credits or double-reverses.
       await syncOrderCoinsForStatus(order, mystatus);
 
+      // Voucher state mirrors order outcome.
+      //   completed → mark used (is_used = 1)
+      //   anything else → return to pool (is_used = 0) so they can be
+      //                   re-sold; retry will re-send the same code from
+      //                   the BotDispatch row.
       const vouchers = await Voucher.findAll({
-        where: {
-          order_id: orderid,
-        },
+        where: { order_id: orderid },
         order: Sequelize.literal("RAND()"),
       });
-
-      if (vouchers.length == 0) {
-        response.message = "NOT FOUND";
-        return res.status(404).send(response.response);
+      if (vouchers.length > 0) {
+        const promises: any[] = [];
+        vouchers.forEach((voucher) => {
+          voucher.is_used = mystatus == "completed" ? 1 : 0;
+          promises.push(voucher.save());
+        });
+        await Promise.all(promises);
       }
-      // On success → mark voucher used (2). On failure → return it to the
-      // pool (1) so it can be re-sold, instead of leaving it held (5).
-      let promises: any[] = [];
-      vouchers.forEach((voucher) => {
-        voucher.is_used = mystatus == "completed" ? 1 : 0;
-        promises.push(voucher.save());
-      });
-
-      const voucherSave = await Promise.all(promises);
-
-      if (mystatus == "Failed") {
-        const user = await User.findByPk(order.user_id);
-        if (!user) {
-          response.message = "User not found";
-          return res.status(400).send(response.response);
-        }
-        user.wallet = user.wallet + order.amount;
-        await user.save();
-      }
-
-
 
       response.message = "Order updated successfully";
+      response.data = {
+        order_status: mystatus,
+        dispatch_counts: counts,
+        targeted_dispatch_ids: targetedDispatchIds,
+      };
       return res.send(response.response);
     } catch (error) {
+      console.error("[checkOrder] failed", error);
       res.status(400).send(response.internalError);
     }
   }
@@ -2733,20 +2747,23 @@ class UserController {
                       Number((topupPackage as any).is_shell) === 1 &&
                       shellValueHere.length > 0 &&
                       tagsHere.length > 0;
-                    const dispatches = shellActiveHere ? tagsHere : [""];
+                    const dispatchList = shellActiveHere ? tagsHere : [""];
                     let botStatus: any = null;
-                    for (let i = 0; i < dispatches.length; i++) {
-                      const tagValue = dispatches[i];
-                      botStatus = await autoOrder(
-                        order.id,
-                        order.playerid,
-                        topupPackage.uc,
-                        myunipincode,
-                        (topupPackage as any).bot_url || "",
-                        shellActiveHere ? tagValue : topupPackage.name,
-                        shellActiveHere ? shellValueHere : "",
-                      );
-                      if (!botStatus) break;
+                    for (let i = 0; i < dispatchList.length; i++) {
+                      const tagValue = dispatchList[i];
+                      const { ok } = await createAndSendDispatch({
+                        order_id: order.id,
+                        player_id: order.playerid,
+                        uc: topupPackage.uc,
+                        bot_url: (topupPackage as any).bot_url || "",
+                        code: shellActiveHere ? shellValueHere : myunipincode,
+                        package_name_sent: shellActiveHere
+                          ? tagValue
+                          : topupPackage.name,
+                        tag: shellActiveHere ? tagValue : null,
+                      });
+                      botStatus = ok;
+                      if (!ok) break;
                     }
                     if (botStatus) {
                       order.status = "In Progress";

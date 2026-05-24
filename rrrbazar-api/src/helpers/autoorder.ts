@@ -27,6 +27,11 @@ const autoOrder = async (
   package_name: string = "",
   shellOverride: string = "",
   dtype: string = "80",
+  // When > 0, appended to the callback URL as `&dispatch_id=...` so the
+  // bot's reply to /check_order can pin a specific BotDispatch row. The
+  // server tolerates bots that strip query params (falls back to "mark
+  // all sent dispatches of this order with the callback outcome").
+  dispatch_id: number = 0,
 ) => {
   // When the package is a shell-style delivery, the admin-configured shell
   // string replaces the voucher code in the `code` field. The voucher (if
@@ -56,7 +61,9 @@ const autoOrder = async (
     return false;
   }
 
-  const callbackUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}`;
+  const callbackUrl =
+    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}` +
+    (dispatch_id && dispatch_id > 0 ? `&dispatch_id=${dispatch_id}` : "");
   const requestBody = {
     playerid: player_id,
     pacakge: package_name || "",

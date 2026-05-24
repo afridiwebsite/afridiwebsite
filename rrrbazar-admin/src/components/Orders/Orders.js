@@ -20,7 +20,75 @@ const escAttr = (s) =>
 function Orders() {
     const [totalDataCount, setTotalDataCount] = useState(null)
     const [savedComments, setSavedComments] = useState([])
+    // Bulk-retry selection mode: when on, each retryable row shows a
+    // leading checkbox and a floating action bar surfaces the count + a
+    // "Retry selected" button. Only orders that have at least one
+    // currently-failed BotDispatch are checkable.
+    const [selectionMode, setSelectionMode] = useState(false)
+    const [selectedIds, setSelectedIds] = useState(() => new Set())
+    const [bulkRetrying, setBulkRetrying] = useState(false)
     const reloadRefFunc = useRef(null)
+
+    const hasRetryableDispatch = (order) => {
+        const list = order?.BotDispatches || order?.bot_dispatches || []
+        if (!Array.isArray(list)) return false
+        return list.some(
+            (d) => d.status === 'failed' && Number(d.attempt_count || 0) < 5,
+        )
+    }
+
+    const toggleSelected = (id) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    const exitSelectionMode = () => {
+        setSelectionMode(false)
+        setSelectedIds(new Set())
+    }
+
+    const submitBulkRetry = async () => {
+        if (selectedIds.size === 0) {
+            toast.error('Select at least one order', toastDefault)
+            return
+        }
+        setBulkRetrying(true)
+        try {
+            const res = await axiosInstance.post(
+                '/admin/orders/bot-retry',
+                { order_ids: Array.from(selectedIds) },
+            )
+            const summary = Array.isArray(res?.data?.data) ? res.data.data : []
+            const totals = summary.reduce(
+                (acc, s) => {
+                    acc.retried += Number(s.retried || 0)
+                    acc.sent += Number(s.sent || 0)
+                    acc.still_failed += Number(s.still_failed || 0)
+                    acc.skipped_capped += Number(s.skipped_capped || 0)
+                    return acc
+                },
+                { retried: 0, sent: 0, still_failed: 0, skipped_capped: 0 },
+            )
+            toast.success(
+                `Retried ${totals.retried} across ${summary.length} order(s) — ` +
+                    `${totals.sent} sent, ${totals.still_failed} still failed` +
+                    (totals.skipped_capped
+                        ? `, ${totals.skipped_capped} skipped (capped)`
+                        : ''),
+                toastDefault,
+            )
+            exitSelectionMode()
+            reloadRefFunc.current && reloadRefFunc.current()
+        } catch (err) {
+            toast.error(getErrors(err, false, true), toastDefault)
+        } finally {
+            setBulkRetrying(false)
+        }
+    }
 
     // Pull the saved comment templates once on mount and refresh whenever
     // the admin returns to this page. The dropdown in the edit modal is
@@ -39,6 +107,8 @@ function Orders() {
     }, [])
 
 
+    const reloadTable = () => reloadRefFunc.current && reloadRefFunc.current()
+
     let actionMenu = {
         id: 'edit',
         Header: "Action",
@@ -48,9 +118,14 @@ function Orders() {
             const status = order.status
             const canEdit = status === 'pending' || status === 'In Progress'
             const hasPlayerId = !!(order.playerid && order.playerid !== 'UNIPIN_VOUCHER')
+            // Make View available whenever there are dispatches to inspect
+            // (or no playerid — legacy behaviour), so the per-order Retry
+            // button inside the modal is always reachable.
+            const dispatches = order?.BotDispatches || order?.bot_dispatches || []
+            const showView = !hasPlayerId || (Array.isArray(dispatches) && dispatches.length > 0)
             return (
                 <ul className="flex space-x-2">
-                    {!hasPlayerId && <ViewOrderModal order={order} />}
+                    {showView && <ViewOrderModal order={order} onUpdated={reloadTable} />}
                     {canEdit && (
                         <li className="cstm_btn_small" onClick={() => openChangeStatusModal(e.value)}>
                             Edit
@@ -60,7 +135,52 @@ function Orders() {
             )
         }
     };
-    let withActionMenu = [...ordersTableColumns, actionMenu]
+
+    // Leading checkbox column — only rendered when selectionMode is on.
+    // Rows without any retryable failed dispatch render disabled cells so
+    // the admin can see at a glance which orders are valid targets.
+    const selectionColumn = {
+        id: 'select',
+        Header: () => {
+            // Master checkbox stays simple — toggling it just clears the
+            // current selection. (Select-all-across-pages is out of scope.)
+            return (
+                <input
+                    type="checkbox"
+                    title="Clear selection"
+                    checked={selectedIds.size > 0}
+                    onChange={() => setSelectedIds(new Set())}
+                />
+            )
+        },
+        accessor: 'id',
+        Cell: (e) => {
+            const order = e.row.original
+            const canSelect = hasRetryableDispatch(order)
+            if (!canSelect) {
+                return (
+                    <span
+                        className="text-gray-300"
+                        title="No failed dispatches"
+                    >
+                        —
+                    </span>
+                )
+            }
+            return (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.has(order.id)}
+                    onChange={() => toggleSelected(order.id)}
+                />
+            )
+        },
+    }
+
+    const columnsWithSelection = selectionMode
+        ? [selectionColumn, ...ordersTableColumns, actionMenu]
+        : [...ordersTableColumns, actionMenu]
+    const withActionMenu = columnsWithSelection
 
 
     const openChangeStatusModal = async (order_id) => {
@@ -193,6 +313,43 @@ function Orders() {
     return (
         <div className="md:px-5" >
             <div className="bg-white py-5 mb-5 px-5">
+                {/* Bulk retry controls live above the table so they don't
+                    conflict with the per-row action menu. Enter selection
+                    mode → checkboxes appear → action bar surfaces. */}
+                <div className="flex items-center justify-end gap-2 mb-3">
+                    {!selectionMode ? (
+                        <button
+                            type="button"
+                            className="cstm_btn_small !bg-blue-600 hover:!bg-blue-700"
+                            onClick={() => setSelectionMode(true)}
+                        >
+                            Bulk retry
+                        </button>
+                    ) : (
+                        <>
+                            <span className="text-sm text-gray-600 mr-2">
+                                {selectedIds.size} selected
+                            </span>
+                            <button
+                                type="button"
+                                disabled={bulkRetrying || selectedIds.size === 0}
+                                className="cstm_btn_small !bg-blue-600 hover:!bg-blue-700 disabled:opacity-60"
+                                onClick={submitBulkRetry}
+                            >
+                                {bulkRetrying
+                                    ? 'Retrying…'
+                                    : `Retry selected (${selectedIds.size})`}
+                            </button>
+                            <button
+                                type="button"
+                                className="cstm_btn_small !bg-gray-300 !text-gray-800 hover:!bg-gray-400"
+                                onClick={exitSelectionMode}
+                            >
+                                Cancel
+                            </button>
+                        </>
+                    )}
+                </div>
                 <Table
                     customGlobalSearch={({ addSearchParam, removeSearchParam }) => (
                         <SearchOrder addSearchParam={addSearchParam} removeSearchParam={removeSearchParam} />

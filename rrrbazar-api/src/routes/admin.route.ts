@@ -30,6 +30,7 @@ router.get('/publish-permission', auth, adminController.publishPermission)
 //router.get('/mmdatab', authController.getTokenData)
 router.get('/orders', auth, adminController.getOrders) // Get all orders
 router.post('/order/update-order-status/:id', auth, adminController.updateOrderStatus) // Get all orders
+router.post('/orders/bot-retry', auth, adminController.retryBotDispatches) // Retry failed bot dispatches for one or many orders
 
 // Saved comment templates used by the order status edit modal.
 router.get('/order-comments', auth, adminController.listOrderComments)

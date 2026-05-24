@@ -29,7 +29,7 @@ export default (sequelize: Sequelize) => {
         public completed_by!: number;
 
 
-        static associate({ Admin, User, TopupProduct, TopupPackage, Voucher }: typeof Schema) {
+        static associate({ Admin, User, TopupProduct, TopupPackage, Voucher, BotDispatch }: typeof Schema) {
             this.belongsTo(Admin, {
                 foreignKey: "completed_by",
                 constraints: false,
@@ -50,6 +50,12 @@ export default (sequelize: Sequelize) => {
                 constraints: false,
             });
             this.hasMany(Voucher, {
+                foreignKey: "order_id",
+                constraints: false,
+            });
+            // Per-dispatch bot rows — admin orders include + retry endpoint
+            // both read these.
+            this.hasMany(BotDispatch, {
                 foreignKey: "order_id",
                 constraints: false,
             });
