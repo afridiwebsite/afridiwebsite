@@ -1833,15 +1833,17 @@ class UserController {
       const vouchers = await Voucher.findAll({
         where: {
           order_id: orderid,
-          package_id: order.topuppackage_id,
         },
         order: Sequelize.literal("RAND()"),
       });
 
-      console.log({
+      console.log(
+        {
           order_id: orderid,
-          package_id: order.topuppackage_id,
-        },vouchers, "vouchers for order");
+        },
+        vouchers,
+        "vouchers for order",
+      );
       if (vouchers.length == 0) {
         response.message = "NOT FOUND";
         return res.status(404).send(response.response);
