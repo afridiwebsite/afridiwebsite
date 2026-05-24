@@ -119,6 +119,11 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-flag-checkered",
     },
     {
+      text: "Tutorials",
+      path: "/tutorials",
+      icon: "fas fa-play-circle",
+    },
+    {
       text: "Site Settings",
       path: "/site-settings",
       icon: "fas fa-cog",

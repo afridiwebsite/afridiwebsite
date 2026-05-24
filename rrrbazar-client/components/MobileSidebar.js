@@ -9,6 +9,7 @@
 import { useRouter } from 'next/dist/client/router';
 import { useContext, useEffect } from 'react';
 import Link from 'next/link';
+import { FaPlayCircle } from 'react-icons/fa';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
 import routes from '../config/routes';
@@ -102,14 +103,14 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
 
                 if (disabled_for_mobile_sidebar) return null;
                 if (auth !== undefined && auth !== isAuth) return null;
-                
+
                 if (component) return <div key={index} className="my-1">{component}</div>;
 
                 const scheme = schemes[index % schemes.length];
 
                 return (
                   <Link key={index} href={link || '#'}>
-                    <a 
+                    <a
                       onClick={closeSidebarForcely}
                       className={`mobile-sidebar-box mobile-sidebar-box--${scheme}`}
                     >
@@ -121,6 +122,21 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
                   </Link>
                 );
               })}
+            </div>
+
+
+            <div className="grid grid-cols-1 gap-3">
+              <Link href={routes.tutorials.name}>
+                <a
+                  onClick={closeSidebarForcely}
+                  className="mobile-sidebar-box mobile-sidebar-box--teal"
+                >
+                  <div className="mobile-sidebar-icon-wrap">
+                    <FaPlayCircle size={20} />
+                  </div>
+                  <span className="font-bold text-sm tracking-wide">Tutorials</span>
+                </a>
+              </Link>
             </div>
           </div>
         </div>

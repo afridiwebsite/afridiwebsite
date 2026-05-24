@@ -9,6 +9,7 @@
 import { useContext, useEffect, useState } from "react";
 import {
   AiOutlineDollarCircle,
+  AiOutlinePlayCircle,
   AiOutlinePoweroff,
   AiOutlineTransaction,
   AiOutlineUser,
@@ -68,6 +69,11 @@ function UserPopoverMenu() {
               icon={<GiShoppingCart size={18} />}
               text="Spin"
               link={"/spin"}
+            />
+            <UserMenuList
+              icon={<AiOutlinePlayCircle size={18} />}
+              text="Tutorials"
+              link={routes.tutorials.name}
             />
             <UserMenuList
               icon={<AiOutlinePoweroff size={18} />}

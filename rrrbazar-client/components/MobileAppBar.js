@@ -35,11 +35,12 @@ function MobileAppBar() {
   const { isAuth: ctxIsAuth, siteSettings } = useContext(globalContext) || {};
 
   // SSR can't see localStorage, so the context's `isAuth` starts as `false`
-  // on the server and during the initial hydrate render. If we trusted that
-  // value, logged-in users would briefly see the unauth bar — which puts
-  // FaUser (Login) where Add Wallet (FaMoneyBill) should sit. Re-derive
-  // auth from storage on mount so the rendered items match reality from
-  // the first client-side render onwards.
+  // on the server. If we render the unauth items during hydration and then
+  // swap to the auth items on mount, React reconciles list children by key
+  // (`href`) but the icon SVG nodes inside the icon-box get re-used — that
+  // produced the visible bug where Add Wallet (FaMoneyBill) showed the
+  // user icon left over from Login (FaUser). Hold rendering until we've
+  // resolved auth on the client to eliminate the mismatch entirely.
   const [hydratedAuth, setHydratedAuth] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -48,7 +49,7 @@ function MobileAppBar() {
     setHydratedAuth(!!(u && t));
     setMounted(true);
   }, [ctxIsAuth]);
-  const isAuth = mounted ? hydratedAuth : !!ctxIsAuth;
+  const isAuth = hydratedAuth;
 
   // Toggle a body class so the CSS can add page padding on mobile.
   useEffect(() => {
@@ -108,6 +109,11 @@ function MobileAppBar() {
     )
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
+  // Wait for the auth check before painting. Avoids a hydration mismatch
+  // that left FaUser (Login) rendered inside the Add Wallet slot after
+  // React swapped the items array.
+  if (!mounted) return null;
+
   return (
     <nav className="mobile-appbar" aria-label="Quick navigation">
       <ul
@@ -119,7 +125,7 @@ function MobileAppBar() {
         {items.map(({ href, label, icon: Icon, scheme }) => {
           const isActive = href === activeHref;
           return (
-            <li key={href}>
+            <li key={`${href}-${label}`}>
               <Link href={href}>
                 <a
                   className={`mobile-appbar-item mobile-appbar-item--${scheme} ${isActive ? "is-active" : ""}`}

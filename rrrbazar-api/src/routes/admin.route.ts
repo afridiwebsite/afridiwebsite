@@ -4,6 +4,7 @@ import adminController from '../controllers/admin.controller';
 import authController from '../controllers/auth.controller';
 import bannerController from '../controllers/banner.controller';
 import noticeController from '../controllers/notice.controller';
+import tutorialController from '../controllers/tutorial.controller';
 import paymentmethodController from '../controllers/paymentmethod.controller';
 import physicalProductController from "../controllers/physicalProduct.controller";
 import topuppackageController from '../controllers/topuppackage.controller';
@@ -85,6 +86,14 @@ router.post('/notice/create', auth, noticeSchema, noticeController.createNotice)
 router.post('/notice/update/:id', auth, noticeSchema, noticeController.updateNotice)
 router.post('/notice/delete/:id', auth, noticeController.deleteNotice)
 // Notice apis ----END----
+
+// Tutorial apis ----START----
+router.get('/tutorials', auth, tutorialController.getTutorials)
+router.get('/tutorial/:id', auth, tutorialController.getTutorialById)
+router.post('/tutorial/create', auth, tutorialController.createTutorial)
+router.post('/tutorial/update/:id', auth, tutorialController.updateTutorial)
+router.post('/tutorial/delete/:id', auth, tutorialController.deleteTutorial)
+// Tutorial apis ----END----
 
 // Notice apis ----START----
 router.get('/banners', auth, bannerController.getBanners)

@@ -9,6 +9,7 @@ import coinController from '../controllers/coin.controller';
 import spinController from '../controllers/spin.controller';
 import searchController from '../controllers/search.controller';
 import publicTopupProductController from '../controllers/publicTopupProduct.controller';
+import tutorialController from '../controllers/tutorial.controller';
 const router = express.Router();
 
 router.get('/products', productController.getProducts);
@@ -23,6 +24,7 @@ router.get('/banner', userController.getBanners)
 router.get('/notice', userController.getNotices)
 router.get('/notice-modal', userController.getNoticModal)
 router.get('/notice-header', userController.getNoticHeader)
+router.get('/tutorials', tutorialController.getActiveTutorials)
 router.get('/topupproduct', userController.getTopupProducts)
 router.get('/topuppackage/:id', userController.getTopupPackagesByProductId) // :id = product id
 router.get('/payment-method', userController.getPaymentMethod)

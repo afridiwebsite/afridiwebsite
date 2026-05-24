@@ -12,6 +12,9 @@ import EditBanner from "./components/Banner/EditBanner";
 import AddNotice from "./components/Notice/AddNotice";
 import EditNotice from "./components/Notice/EditNotice";
 import Notice from "./components/Notice/Notice";
+import Tutorials from "./components/Tutorial/Tutorials";
+import AddTutorial from "./components/Tutorial/AddTutorial";
+import EditTutorial from "./components/Tutorial/EditTutorial";
 import ManageOrderPermission from "./components/Orders/ManageOrderPermission";
 import WithDrawEarnWallet from './components/WithdrawEarnWallet/WithdrawEarnWallet';
 import Orders from "./components/Orders/Orders";
@@ -87,6 +90,10 @@ function App() {
             <Route path="/notice" exact component={Notice} />
             <Route path="/notice/add" exact component={AddNotice} />
             <Route path="/notice/edit/:id" exact component={EditNotice} />
+
+            <Route path="/tutorials" exact component={Tutorials} />
+            <Route path="/tutorials/add" exact component={AddTutorial} />
+            <Route path="/tutorials/edit/:id" exact component={EditTutorial} />
 
             <Route path="/topup-product" exact component={TopupProduct} />
             <Route path="/topup-product/add" exact component={AddTopupProduct} />

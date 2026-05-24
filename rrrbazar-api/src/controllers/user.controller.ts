@@ -1284,23 +1284,12 @@ class UserController {
         return res.send(response.response);
       }
 
-      // Award coins for purchase — coin reward is configured per package.
-      try {
-        const coinReward = Number(topupPackage.coin_value || 0);
-        if (coinReward > 0) {
-          user.coins = (user.coins || 0) + coinReward;
-          await user.save();
-          await CoinTransaction.create({
-            user_id: user.id,
-            amount: coinReward,
-            type: "purchase",
-            note: `Order #${order.id} (${topupPackage.name})`,
-            reference_id: order.id,
-          });
-        }
-      } catch (e) {
-        // never block order on coin rewarding failure
-      }
+      // Coin reward is deferred for non-voucher orders. They reach
+      // "completed" asynchronously via the checkOrder webhook once the bot
+      // reports success — awarding here would credit users for orders that
+      // later cancel (invalid player / region) or stay pending forever.
+      // The voucher branch above awards directly because its orders
+      // complete inline.
 
       // AUTO-DELIVERY START — when the ordered package has auto_delivery on,
       // its `PackageVoucherMap` rows determine how many vouchers to allocate
@@ -1830,6 +1819,68 @@ class UserController {
       }
       await order.save();
 
+      // Coin reward sync. The reward is deferred from topupPackageOrder so
+      // cancelled/failed orders never credit the user. Both branches are
+      // idempotent — re-running checkOrder for the same order won't
+      // double-credit or double-reverse.
+      try {
+        if ((order as any).topuppackage_id && order.user_id) {
+          if (mystatus === "completed") {
+            const existingAward = await CoinTransaction.findOne({
+              where: { reference_id: order.id, type: "purchase" },
+            });
+            if (!existingAward) {
+              const orderPackage = await TopupPackage.findByPk(
+                (order as any).topuppackage_id,
+              );
+              const coinReward = Number(orderPackage?.coin_value || 0);
+              if (orderPackage && coinReward > 0) {
+                const orderUser = await User.findByPk(order.user_id);
+                if (orderUser) {
+                  orderUser.coins = (orderUser.coins || 0) + coinReward;
+                  await orderUser.save();
+                  await CoinTransaction.create({
+                    user_id: orderUser.id,
+                    amount: coinReward,
+                    type: "purchase",
+                    note: `Order #${order.id} (${orderPackage.name})`,
+                    reference_id: order.id,
+                  });
+                }
+              }
+            }
+          } else if (mystatus === "cancel") {
+            // Reverse any previously-awarded coins (legacy orders or
+            // admin-awarded). No-op when nothing to reverse.
+            const priorAward = await CoinTransaction.findOne({
+              where: { reference_id: order.id, type: "purchase" },
+            });
+            const priorReversal = await CoinTransaction.findOne({
+              where: { reference_id: order.id, type: "refund" },
+            });
+            if (priorAward && !priorReversal && Number(priorAward.amount) > 0) {
+              const orderUser = await User.findByPk(order.user_id);
+              if (orderUser) {
+                const reward = Number(priorAward.amount);
+                orderUser.coins = Math.max(0, (orderUser.coins || 0) - reward);
+                await orderUser.save();
+                await CoinTransaction.create({
+                  user_id: orderUser.id,
+                  amount: -reward,
+                  type: "refund",
+                  note: `Order #${order.id} cancelled — coin reward reversed`,
+                  reference_id: order.id,
+                });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Never block the bot callback on a coin sync error — admins can
+        // reconcile from the CoinTransaction table later.
+        console.error("[checkOrder] coin sync failed", e);
+      }
+
       const vouchers = await Voucher.findAll({
         where: {
           order_id: orderid,
@@ -1837,13 +1888,6 @@ class UserController {
         order: Sequelize.literal("RAND()"),
       });
 
-      console.log(
-        {
-          order_id: orderid,
-        },
-        vouchers,
-        "vouchers for order",
-      );
       if (vouchers.length == 0) {
         response.message = "NOT FOUND";
         return res.status(404).send(response.response);
@@ -1858,35 +1902,17 @@ class UserController {
 
       const voucherSave = await Promise.all(promises);
 
-      console.log(voucherSave, "save");
-
       if (mystatus == "Failed") {
-        // const user = await User.findByPk(order.user_id);
-        // if (!user) {
-        //   response.message = 'User not found';
-        //   return res.status(400).send(response.response);
-        // }
-        // user.wallet = user.wallet + order.amount;
-        // await user.save();
+        const user = await User.findByPk(order.user_id);
+        if (!user) {
+          response.message = "User not found";
+          return res.status(400).send(response.response);
+        }
+        user.wallet = user.wallet + order.amount;
+        await user.save();
       }
 
-      const bot = await AutoServer.findOne({
-        where: {
-          status: 2,
-          ip_url: {
-            [Op.like]: "%" + botUrl + "%",
-          },
-        },
-      });
 
-      if (!bot) {
-        response.message = "NOT FOUND";
-        return res.status(404).send(response.response);
-      }
-
-      bot.status = status == "failure_captcha_pending" ? 3 : 1;
-      //bot.total_order = bot.total_order + 1;
-      await bot.save();
 
       response.message = "Order updated successfully";
       return res.send(response.response);
@@ -2726,25 +2752,13 @@ class UserController {
               console.error("webhook voucher emit failed", e);
             }
 
-            // Award coins for purchase
+            // Coin reward is deferred to checkOrder (awarded only after the
+            // bot confirms delivery). Continue with the bot dispatch below.
             try {
               const topupPackage = await TopupPackage.findByPk(
                 order.topuppackage_id,
               );
               if (topupPackage) {
-                const coinReward = Number(topupPackage.coin_value || 0);
-                if (coinReward > 0) {
-                  user.coins = (user.coins || 0) + coinReward;
-                  await user.save();
-                  await CoinTransaction.create({
-                    user_id: user.id,
-                    amount: coinReward,
-                    type: "purchase",
-                    note: `Order #${order.id} (${topupPackage.name})`,
-                    reference_id: order.id,
-                  });
-                }
-
                 // AUTO BOT SET IN CODE START
                 if (order.status == "pending" && topupPackage.uc > 0) {
                   const store_unipin_auto = await StoreUnipin.findOne({

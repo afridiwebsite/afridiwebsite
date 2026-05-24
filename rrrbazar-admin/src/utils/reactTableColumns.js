@@ -605,6 +605,51 @@ export const noticeTableColumns = [
     },
 ];
 
+export const tutorialTableColumns = [
+    {
+        Header: 'Id',
+        accessor: 'id',
+    },
+    {
+        Header: 'Title',
+        accessor: 'title',
+    },
+    {
+        Header: 'Video link',
+        accessor: 'video_link',
+        Cell: (e) => {
+            const v = e.row.original?.video_link
+            if (!v) return <span className="text-gray-400">---</span>
+            return (
+                <a
+                    href={v}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline break-all"
+                >
+                    {v}
+                </a>
+            )
+        }
+    },
+    {
+        Header: 'Serial',
+        accessor: 'serial',
+    },
+    {
+        Header: 'Active',
+        accessor: 'is_active',
+        Cell: (e) => {
+            const v = Number(e.row.original?.is_active) === 1
+            return (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${v ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {v ? 'Active' : 'Inactive'}
+                </span>
+            )
+        }
+    },
+];
+
 export const bannerTableColumns = [
     {
         Header: 'Id',

@@ -54,7 +54,8 @@ function TopupOrderPage() {
   // Wallet Pay tile image: admin-configured via SiteSettings. Falls back to
   // the bundled logo so existing setups don't render a broken image until the
   // admin uploads one.
-  const walletPayImage = siteSettings?.wallet_pay_image_full_url || "/logo.jpeg";
+  const walletPayImage =
+    siteSettings?.wallet_pay_image_full_url || "/logo.jpeg";
 
   // Refetching User Data On Every Time user visit this page
   const { data: userProfileData } = useQuery("user-profile", getUserProfile, {
@@ -476,16 +477,36 @@ function TopupOrderPage() {
                                   className="_order_box_wrapper animate-fade-in-up"
                                   style={{ animationDelay: "80ms" }}
                                 >
-                                  <div className="_order_box_header">
-                                    <div className="_order_header_step_circle">
-                                      {rechargeStep}
+                                  <div className="_order_box_header justify-between flex-wrap">
+                                    <div className="flex gap-3 items-center">
+                                      <div className="_order_header_step_circle">
+                                        {rechargeStep}
+                                      </div>
+                                      <h5 className="_order_header_title">
+                                        Select Recharge
+                                      </h5>
                                     </div>
-                                    <h5 className="_order_header_title">
-                                      Select Recharge
-                                    </h5>
                                     {/* Coin reward only surfaces here when a
                                     package is selected — pulled out of the
                                     cards so they stay clean. */}
+
+                                    {values.selectedpackage &&
+                                      Number(
+                                        values.selectedpackage.stock_tracking,
+                                      ) === 1 && (
+                                        <div className="w-max inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[12px]">
+                                          <span className="font-semibold">
+                                            In stock:
+                                          </span>
+                                          <strong>
+                                            {Number(
+                                              values.selectedpackage
+                                                .stock_quantity,
+                                            ) || 0}
+                                          </strong>
+                                        </div>
+                                      )}
+
                                     {selectedCoin > 0 && (
                                       <span className="topup-pack-header-coin">
                                         <GiTwoCoins /> +{selectedCoin} coins
@@ -529,7 +550,8 @@ function TopupOrderPage() {
                                         // backend's blocked-ids list. We only
                                         // need to know the mode to vary the
                                         // "claimed" label below.
-                                        const reorderMode = Number(pack?.order_once) || 0;
+                                        const reorderMode =
+                                          Number(pack?.order_once) || 0;
                                         const alreadyOrdered =
                                           reorderMode > 0 &&
                                           !!playerIdInput &&
@@ -612,7 +634,7 @@ function TopupOrderPage() {
                                                   />
                                                 </span>
                                               ) : (
-                                              <></>
+                                                <></>
                                               )}
                                               {/* Single bottom row: name + price
                                               side by side. A small rounded
@@ -642,21 +664,22 @@ function TopupOrderPage() {
                                                 badge has the corner to itself
                                                 and we don't dangle a tappable
                                                 control on a disabled card. */}
-                                            {hasPackDescription && !isDisabled && (
-                                              <span className="topup-pack-card-info-wrap">
-                                                <button
-                                                  type="button"
-                                                  className="topup-pack-card-info"
-                                                  aria-label="Package details"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDescPack(pack);
-                                                  }}
-                                                >
-                                                  <FaInfo />
-                                                </button>
-                                              </span>
-                                            )}
+                                            {hasPackDescription &&
+                                              !isDisabled && (
+                                                <span className="topup-pack-card-info-wrap">
+                                                  <button
+                                                    type="button"
+                                                    className="topup-pack-card-info"
+                                                    aria-label="Package details"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setDescPack(pack);
+                                                    }}
+                                                  >
+                                                    <FaInfo />
+                                                  </button>
+                                                </span>
+                                              )}
                                           </div>
                                         );
                                       })}
@@ -666,23 +689,6 @@ function TopupOrderPage() {
                                         only renders when the admin opted into
                                         quantity tracking for the package so
                                         non-tracked packages stay unchanged. */}
-                                    {values.selectedpackage &&
-                                      Number(
-                                        values.selectedpackage.stock_tracking,
-                                      ) === 1 && (
-                                        <div className="mt-4 w-max inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-sm">
-                                          <span className="font-semibold">
-                                            In stock:
-                                          </span>
-                                          <strong>
-                                            {Number(
-                                              values.selectedpackage
-                                                .stock_quantity,
-                                            ) || 0}
-                                          </strong>
-                                        
-                                        </div>
-                                      )}
 
                                     {/* Quantity stepper — voucher-pool products
                                         whose admin flipped on `allow_quantity`
@@ -691,7 +697,8 @@ function TopupOrderPage() {
                                         single-unit. */}
                                     {isVoucherProduct &&
                                       values.selectedpackage &&
-                                      values.selectedpackage.allow_quantity == 1 && (
+                                      values.selectedpackage.allow_quantity ==
+                                        1 && (
                                         <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
                                           <label className="text-sm font-semibold text-gray-700">
                                             Quantity
@@ -823,6 +830,7 @@ function TopupOrderPage() {
                                             label={inp.title}
                                             placeholder={`Enter ${inp.title}`}
                                             className="small"
+                                            required
                                             name={fieldName}
                                           />
                                           {showVerify && (
@@ -1001,12 +1009,13 @@ function TopupOrderPage() {
                                     </span>
                                     <strong className="topup-pay-info-value">
                                       ৳ {totalCost.toFixed(2)}
-                                      {isVoucherProduct && orderQuantity > 1 && (
-                                        <span className="text-xs font-normal text-gray-500 ml-1">
-                                          ({orderQuantity} ×{" "}
-                                          {values.selectedpackage.price})
-                                        </span>
-                                      )}
+                                      {isVoucherProduct &&
+                                        orderQuantity > 1 && (
+                                          <span className="text-xs font-normal text-gray-500 ml-1">
+                                            ({orderQuantity} ×{" "}
+                                            {values.selectedpackage.price})
+                                          </span>
+                                        )}
                                     </strong>
                                   </div>
                                 )}
@@ -1116,7 +1125,7 @@ function TopupOrderPage() {
                             >
                               <div className="_order_box_header">
                                 <div className="_order_header_step_circle">
-                                {rulesStep}
+                                  {rulesStep}
                                 </div>
                                 <h5 className="_order_header_title">
                                   Rules &amp; Conditions

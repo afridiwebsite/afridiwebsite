@@ -59,6 +59,9 @@ const routes = Object.freeze({
     name: '/spin',
     auth: true,
   },
+  tutorials: {
+    name: '/tutorials',
+  },
 });
 
 export default routes;
