@@ -1859,6 +1859,7 @@ class UserController {
       // surfaces the per-dispatch failures (built by the helper) so the
       // admin can read each reason without opening any other view.
       if (mystatus === "completed") {
+        order.brief_note = "";
         (order as any).details =
           agg.status === null
             ? safeContent

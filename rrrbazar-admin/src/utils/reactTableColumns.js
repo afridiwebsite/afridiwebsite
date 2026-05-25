@@ -28,7 +28,7 @@ const copyableCell = (label, accessor) => (e) => {
     );
 };
 
-export const ordersTableColumns = [
+export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
     {
         Header: 'Order id',
         accessor: 'id',
@@ -209,6 +209,7 @@ export const ordersTableColumns = [
                                         `${summary.sent || 0} sent, ${summary.still_failed || 0} still failed`,
                                     toastDefault,
                                 );
+                                onAfterRetry();
                             } catch (err) {
                                 const { getErrors } =
                                     require('./handler.utils');
@@ -236,6 +237,8 @@ export const ordersTableColumns = [
         Cell: copyableCell('User ID', 'user_id'),
     },
 ];
+
+export const ordersTableColumns = makeOrdersTableColumns();
 
 export const tournametnsTableColumns = [
     {

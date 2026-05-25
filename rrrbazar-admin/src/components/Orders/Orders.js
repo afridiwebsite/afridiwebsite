@@ -1,5 +1,5 @@
 import { getErrors, hasData, toastDefault } from "../../utils/handler.utils";
-import { ordersTableColumns } from "../../utils/reactTableColumns";
+import { makeOrdersTableColumns } from "../../utils/reactTableColumns";
 import Table from "../react-table/Table";
 import { toast } from "react-toastify";
 import axiosInstance from "../../common/axios";
@@ -27,6 +27,7 @@ function Orders() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkRetrying, setBulkRetrying] = useState(false);
+  const currentPageOrdersRef = useRef([]);
   const reloadRefFunc = useRef(null);
 
   const hasRetryableDispatch = (order) => {
@@ -49,6 +50,27 @@ function Orders() {
   const exitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedIds(new Set());
+  };
+
+  const handleHeaderCheckbox = () => {
+    const retryableOnPage = currentPageOrdersRef.current.filter(hasRetryableDispatch);
+    const allChecked =
+      retryableOnPage.length > 0 &&
+      retryableOnPage.every((o) => selectedIds.has(o.id));
+
+    if (allChecked) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        retryableOnPage.forEach((o) => next.delete(o.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        retryableOnPage.forEach((o) => next.add(o.id));
+        return next;
+      });
+    }
   };
 
   const submitBulkRetry = async () => {
@@ -149,14 +171,21 @@ function Orders() {
   const selectionColumn = {
     id: "select",
     Header: () => {
-      // Master checkbox stays simple — toggling it just clears the
-      // current selection. (Select-all-across-pages is out of scope.)
+      const retryableOnPage = currentPageOrdersRef.current.filter(hasRetryableDispatch);
+      const allChecked =
+        retryableOnPage.length > 0 &&
+        retryableOnPage.every((o) => selectedIds.has(o.id));
+      const someChecked =
+        !allChecked && retryableOnPage.some((o) => selectedIds.has(o.id));
       return (
         <input
           type="checkbox"
-          title="Clear selection"
-          checked={selectedIds.size > 0}
-          onChange={() => setSelectedIds(new Set())}
+          title={allChecked ? "Deselect all" : "Select all retryable"}
+          checked={allChecked}
+          ref={(el) => {
+            if (el) el.indeterminate = someChecked;
+          }}
+          onChange={handleHeaderCheckbox}
         />
       );
     },
@@ -181,9 +210,10 @@ function Orders() {
     },
   };
 
+  const orderColumns = makeOrdersTableColumns(reloadTable);
   const columnsWithSelection = selectionMode
-    ? [selectionColumn, ...ordersTableColumns, actionMenu]
-    : [...ordersTableColumns, actionMenu];
+    ? [selectionColumn, ...orderColumns, actionMenu]
+    : [...orderColumns, actionMenu];
   const withActionMenu = columnsWithSelection;
 
   const openChangeStatusModal = async (order_id) => {
@@ -365,10 +395,11 @@ function Orders() {
           tableId="order_table"
           url="/admin/orders"
           selectData={(res) => {
+            const orders = res.data.data.orders || [];
             setTotalDataCount(res.data.data.order_count);
-
+            currentPageOrdersRef.current = orders;
             return {
-              data: res.data.data.orders,
+              data: orders,
               total: res.data.data.order_count,
             };
           }}

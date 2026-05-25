@@ -371,7 +371,15 @@ class AdminController {
               ? (oldVoucher as any).package_id
               : dispatch.voucher_package_id;
 
-            console.log('[retryBotDispatches] consumed-voucher error — discarding old voucher, will re-allocate', {
+            // Explicitly mark the consumed voucher as used so it can never
+            // be re-emitted from the pool, regardless of how it was saved
+            // when originally allocated.
+            if (oldVoucher) {
+              (oldVoucher as any).is_used = 1;
+              await oldVoucher.save();
+            }
+
+            console.log('[retryBotDispatches] consumed-voucher error — voucher flagged used, will re-allocate fresh', {
               dispatch_id: dispatch.id,
               old_voucher_id: dispatch.voucher_id,
               pool_package_id: poolPackageId,
