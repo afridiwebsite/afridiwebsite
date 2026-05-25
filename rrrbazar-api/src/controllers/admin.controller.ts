@@ -6,7 +6,12 @@ import Schema from '../models';
 import { sequelize } from '../models/Schemas';
 import responseUtils from '../utils/response.utils';
 import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
-import { executeDispatch, MAX_DISPATCH_ATTEMPTS } from '../helpers/dispatchBot';
+import {
+  aggregateOrderFromDispatches,
+  buildOrderDetailsHtml,
+  executeDispatch,
+  MAX_DISPATCH_ATTEMPTS,
+} from '../helpers/dispatchBot';
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // import bcrypt from 'bcryptjs'
@@ -153,9 +158,9 @@ class AdminController {
             model: BotDispatch,
             required: false,
             attributes: [
-              'id', 'voucher_id', 'tag', 'code', 'package_name_sent',
-              'bot_url', 'status', 'error_reason', 'attempt_count',
-              'last_attempted_at', 'created_at', 'updated_at',
+              'id', 'voucher_id', 'voucher_package_id', 'tag', 'code',
+              'package_name_sent', 'bot_url', 'status', 'error_reason',
+              'attempt_count', 'last_attempted_at', 'created_at', 'updated_at',
             ],
           },
         ]
@@ -313,6 +318,7 @@ class AdminController {
         let sent = 0;
         let stillFailed = 0;
         let skippedCapped = 0;
+        let poolStillEmpty = 0;
         for (const dispatch of failed) {
           if (
             Number(dispatch.attempt_count || 0) >= MAX_DISPATCH_ATTEMPTS
@@ -320,6 +326,45 @@ class AdminController {
             skippedCapped += 1;
             continue;
           }
+
+          // Placeholder for a voucher-pool-exhausted dispatch: try to
+          // emit a fresh voucher from the linked pool first. If the pool
+          // still has no stock, leave the row as `failed` with the same
+          // reason and bump attempt_count via executeDispatch so the cap
+          // eventually triggers cancellation.
+          if (
+            !dispatch.voucher_id &&
+            dispatch.voucher_package_id &&
+            !dispatch.code
+          ) {
+            const v = await Voucher.findOne({
+              where: {
+                is_used: 0,
+                package_id: dispatch.voucher_package_id,
+              },
+              order: [['id', 'ASC']],
+            });
+            if (!v) {
+              // Bump attempt counter so repeated retries against a stuck
+              // pool eventually trip the cap and auto-cancel.
+              dispatch.attempt_count =
+                Number(dispatch.attempt_count || 0) + 1;
+              dispatch.last_attempted_at = new Date();
+              dispatch.error_reason =
+                'No voucher available in pool — awaiting restock';
+              await dispatch.save();
+              poolStillEmpty += 1;
+              stillFailed += 1;
+              continue;
+            }
+            (v as any).is_used = 1;
+            (v as any).order_id = order_id;
+            await v.save();
+            dispatch.voucher_id = v.id;
+            dispatch.code = (v as any).data || '';
+            await dispatch.save();
+          }
+
           const { ok } = await executeDispatch(dispatch, {
             player_id: order.playerid || '',
             uc: ucForCall,
@@ -328,12 +373,40 @@ class AdminController {
           else stillFailed += 1;
         }
 
+        // Re-aggregate the order. If after this retry batch every failed
+        // dispatch is capped (no retryable ones left) the helper flips
+        // the order to "cancel" — admin can't progress it further. We
+        // also refresh the order.details HTML so the Details column
+        // reflects the new state immediately (the bot callbacks will
+        // re-render again later as they arrive).
+        const agg = await aggregateOrderFromDispatches(order_id);
+        if (agg.status) {
+          const previousStatus = order.status;
+          order.status = agg.status;
+          (order as any).details = buildOrderDetailsHtml(agg);
+          if (agg.status === 'cancel' && agg.cappedFailedCount > 0) {
+            order.brief_note =
+              'অর্ডারটি ডেলিভারি করা যায়নি এবং পুনরায় চেষ্টা করার সীমা শেষ হয়ে গেছে। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।';
+          }
+          await order.save();
+          // Reverse any previously-awarded coins on auto-cancel via the
+          // shared sync helper (it's a no-op when nothing to reverse).
+          if (
+            previousStatus !== agg.status &&
+            (agg.status === 'cancel' || agg.status === 'completed')
+          ) {
+            await syncOrderCoinsForStatus(order, agg.status);
+          }
+        }
+
         summary.push({
           order_id,
           retried: sent + stillFailed,
           sent,
           still_failed: stillFailed,
           skipped_capped: skippedCapped,
+          pool_still_empty: poolStillEmpty,
+          order_status: agg.status || order.status,
         });
       }
 

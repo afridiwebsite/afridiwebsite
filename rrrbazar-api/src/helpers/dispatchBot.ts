@@ -9,6 +9,151 @@ const { BotDispatch } = Schema;
 // Counts include the first attempt.
 export const MAX_DISPATCH_ATTEMPTS = 5;
 
+export interface OrderAggregate {
+  // Aggregate order status derived from the BotDispatch rows:
+  //   'completed'   — every dispatch reported success
+  //   'cancel'      — any cancelled (Invalid player/region) OR all failed
+  //                   dispatches are at the retry cap (not retryable)
+  //   'In Progress' — at least one dispatch is still pending/sent OR
+  //                   at least one failed is below the cap (retryable)
+  //   null          — order has no dispatch rows (legacy)
+  status: "completed" | "cancel" | "In Progress" | null;
+  counts: Record<string, number>;
+  total: number;
+  retryableFailedCount: number;
+  cappedFailedCount: number;
+  failedDispatches: any[];
+}
+
+/**
+ * Aggregate an order's terminal status from its BotDispatch rows.
+ * Shared between checkOrder (callback path) and retryBotDispatches
+ * (admin retry path) so both arrive at the same conclusion.
+ *
+ * Cancellation rules:
+ *   - Any `cancelled` dispatch (Invalid player/region) is a hard stop.
+ *   - All failed dispatches at attempt cap with zero retryable ones AND
+ *     no successes/pendings → order is not retryable → cancel.
+ */
+export async function aggregateOrderFromDispatches(
+  orderId: number,
+): Promise<OrderAggregate> {
+  const all = await BotDispatch.findAll({ where: { order_id: orderId } });
+  if (all.length === 0) {
+    return {
+      status: null,
+      counts: {},
+      total: 0,
+      retryableFailedCount: 0,
+      cappedFailedCount: 0,
+      failedDispatches: [],
+    };
+  }
+  const counts: Record<string, number> = {
+    success: 0,
+    failed: 0,
+    pending: 0,
+    sent: 0,
+    cancelled: 0,
+  };
+  const failedDispatches: any[] = [];
+  let retryable = 0;
+  let capped = 0;
+  for (const d of all) {
+    counts[d.status] = (counts[d.status] || 0) + 1;
+    if (d.status === "failed") {
+      failedDispatches.push(d);
+      if (Number(d.attempt_count || 0) < MAX_DISPATCH_ATTEMPTS) retryable += 1;
+      else capped += 1;
+    }
+  }
+
+  let status: OrderAggregate["status"];
+  if (counts.cancelled > 0) {
+    status = "cancel";
+  } else if (
+    counts.success === all.length &&
+    counts.failed === 0 &&
+    counts.pending === 0 &&
+    counts.sent === 0
+  ) {
+    status = "completed";
+  } else if (
+    counts.failed > 0 &&
+    retryable === 0 &&
+    counts.pending === 0 &&
+    counts.sent === 0
+  ) {
+    // Every failed dispatch is at cap and nothing is in flight — admin
+    // can't retry from here, so the order is effectively dead.
+    status = "cancel";
+  } else {
+    status = "In Progress";
+  }
+
+  return {
+    status,
+    counts,
+    total: all.length,
+    retryableFailedCount: retryable,
+    cappedFailedCount: capped,
+    failedDispatches,
+  };
+}
+
+/**
+ * Build the order.details HTML from a dispatch aggregate. Shared between
+ * checkOrder and retryBotDispatches so both keep the details cell
+ * consistent.
+ */
+export function buildOrderDetailsHtml(agg: OrderAggregate): string {
+  const total = agg.total;
+  const c = agg.counts;
+  const headerColor =
+    agg.status === "completed"
+      ? "#059669"
+      : agg.status === "cancel"
+        ? "#dc2626"
+        : c.failed > 0
+          ? "#dc2626"
+          : "#2563eb";
+
+  const summary =
+    `<div style="color:${headerColor};">` +
+    `<strong>Dispatches:</strong> ${c.success || 0}/${total} ok` +
+    (c.failed ? `, ${c.failed} failed` : "") +
+    (c.cancelled ? `, ${c.cancelled} cancelled` : "") +
+    (c.sent ? `, ${c.sent} awaiting callback` : "") +
+    (c.pending ? `, ${c.pending} pending` : "") +
+    `</div>`;
+
+  if (agg.failedDispatches.length === 0) return summary;
+
+  const items = agg.failedDispatches
+    .map((d) => {
+      const label =
+        d.tag != null && String(d.tag).length > 0
+          ? `tag #${d.tag}`
+          : d.voucher_id
+            ? `voucher #${d.voucher_id}`
+            : d.voucher_package_id
+              ? `pool #${d.voucher_package_id}`
+              : `dispatch #${d.id}`;
+      const cap =
+        Number(d.attempt_count || 0) >= MAX_DISPATCH_ATTEMPTS
+          ? " <strong style='color:#dc2626;'>(capped — not retryable)</strong>"
+          : "";
+      const reason = String(d.error_reason || "no reason provided");
+      return `<li><strong>${label}</strong> · attempt ${d.attempt_count || 0}/${MAX_DISPATCH_ATTEMPTS}${cap}<br/><span style="color:#dc2626;">${reason}</span></li>`;
+    })
+    .join("");
+  return (
+    summary +
+    `<div style="margin-top:8px;"><strong>Failures:</strong>` +
+    `<ul style="text-align:left; margin-top:4px; list-style-type:disc; padding-left:20px;">${items}</ul></div>`
+  );
+}
+
 /**
  * Re-fire the bot for an *existing* BotDispatch row, persisting the
  * outcome on the same row. Used by both:

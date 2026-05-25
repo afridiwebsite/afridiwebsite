@@ -160,21 +160,67 @@ export const ordersTableColumns = [
         Header: 'Details',
         accessor: 'details',
         Cell: (e) => {
-            const val = e.row.original['details'];
-            if (!val) return <span className="text-gray-400">---</span>;
+            const row = e.row.original;
+            const val = row['details'];
+            const dispatches = row?.BotDispatches || row?.bot_dispatches || [];
+            const retryable = Array.isArray(dispatches)
+                ? dispatches.filter(
+                      (d) =>
+                          d.status === 'failed' &&
+                          Number(d.attempt_count || 0) < 5,
+                  ).length
+                : 0;
+            if (!val && retryable === 0) return <span className="text-gray-400">---</span>;
             return (
                 <button
                     className="cstm_btn_small !bg-gray-600 hover:!bg-gray-700"
                     onClick={() => {
-                        require('sweetalert2').default.fire({
+                        const Swal = require('sweetalert2').default;
+                        // Per-dispatch failure list is already baked into
+                        // `order.details` HTML server-side by checkOrder /
+                        // retryBotDispatches via buildOrderDetailsHtml.
+                        // When at least one dispatch is retryable we show
+                        // a Retry button alongside Close.
+                        Swal.fire({
                             title: 'Order Details (Internal)',
-                            html: `<div style="text-align:left; font-size:14px;">${val}</div>`,
+                            html: `<div style="text-align:left; font-size:14px;">${val || '<em>No details available.</em>'}</div>`,
                             icon: 'info',
-                            confirmButtonText: 'Close',
+                            showCancelButton: retryable > 0,
+                            confirmButtonText:
+                                retryable > 0
+                                    ? `Retry ${retryable} failed dispatch${retryable === 1 ? '' : 'es'}`
+                                    : 'Close',
+                            cancelButtonText: 'Close',
+                            confirmButtonColor:
+                                retryable > 0 ? '#2563eb' : undefined,
+                        }).then(async (result) => {
+                            // Confirm = Retry. Cancel/dismiss = just close.
+                            if (!result.isConfirmed || retryable === 0) return;
+                            try {
+                                const axiosInstance =
+                                    require('../common/axios').default;
+                                const res = await axiosInstance.post(
+                                    '/admin/orders/bot-retry',
+                                    { order_ids: [row.id] },
+                                );
+                                const summary = res?.data?.data?.[0] || {};
+                                toast.success(
+                                    `Retried ${summary.retried || 0} dispatch(es) — ` +
+                                        `${summary.sent || 0} sent, ${summary.still_failed || 0} still failed`,
+                                    toastDefault,
+                                );
+                            } catch (err) {
+                                const { getErrors } =
+                                    require('./handler.utils');
+                                toast.error(
+                                    getErrors(err, false, true),
+                                    toastDefault,
+                                );
+                            }
                         });
                     }}
                 >
-                    Details
+                    Details{retryable > 0 ? ` · ${retryable}↻` : ''}
                 </button>
             );
         },

@@ -125,7 +125,7 @@ function Orders() {
             const showView = !hasPlayerId || (Array.isArray(dispatches) && dispatches.length > 0)
             return (
                 <ul className="flex space-x-2">
-                    {showView && <ViewOrderModal order={order} onUpdated={reloadTable} />}
+                    {showView && <ViewOrderModal order={order} />}
                     {canEdit && (
                         <li className="cstm_btn_small" onClick={() => openChangeStatusModal(e.value)}>
                             Edit

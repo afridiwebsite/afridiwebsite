@@ -19,6 +19,12 @@ export default (sequelize: Sequelize) => {
         public id!: number;
         public order_id!: number;
         public voucher_id!: number | null;
+        // Set for "no-voucher-available" placeholder dispatches so the
+        // retry endpoint knows which voucher pool to draw from when it
+        // tries to fulfil the dispatch on a later attempt. Stays null for
+        // real dispatches (the voucher was already emitted then) and for
+        // shell dispatches (no pool involved).
+        public voucher_package_id!: number | null;
         public tag!: string | null;
         public code!: string;
         public package_name_sent!: string;
@@ -47,6 +53,10 @@ export default (sequelize: Sequelize) => {
             allowNull: false,
         },
         voucher_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
+        voucher_package_id: {
             type: DataTypes.INTEGER,
             allowNull: true,
         },

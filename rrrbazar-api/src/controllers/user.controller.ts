@@ -8,7 +8,11 @@ import smsHelper from "../helpers/sms";
 import fastPay from "../helpers/fastpay";
 import playerName from "../helpers/playername";
 import syncOrderCoinsForStatus from "../helpers/orderCoinSync";
-import { createAndSendDispatch } from "../helpers/dispatchBot";
+import {
+  aggregateOrderFromDispatches,
+  buildOrderDetailsHtml,
+  createAndSendDispatch,
+} from "../helpers/dispatchBot";
 const {
   User,
   Banner,
@@ -1468,11 +1472,43 @@ class UserController {
             // Release any partially-emitted vouchers so they're free for
             // other orders in the meantime.
             for (const v of emitted) await releaseVoucher(v);
+
+            // Persist one placeholder BotDispatch row per *expected*
+            // dispatch (one per map) so the admin retry path can pick
+            // each one up later — when the pool refills, retry calls
+            // emitProductVoucher first and only then fires the bot. The
+            // placeholders carry `voucher_package_id` (the pool to draw
+            // from) and an empty `code` until a voucher is allocated.
+            const botUrlForPlaceholders = String(
+              (topupPackage as any).bot_url || "",
+            ).trim();
+            for (const m of maps as any[]) {
+              try {
+                await BotDispatch.create({
+                  order_id: order.id,
+                  voucher_id: null,
+                  voucher_package_id: m.voucher_package_id,
+                  tag: null,
+                  code: "",
+                  package_name_sent: topupPackage.name || "",
+                  bot_url: botUrlForPlaceholders,
+                  status: "failed",
+                  error_reason:
+                    "No voucher available in pool — awaiting restock",
+                  attempt_count: 0,
+                });
+              } catch (e) {
+                console.error(
+                  "[topupPackageOrder] failed to persist placeholder dispatch",
+                  { order_id: order.id, err: (e as any)?.message || e },
+                );
+              }
+            }
             order.status = "pending";
             order.brief_note =
               "ভাউচার স্টক শেষ। নতুন স্টক আসার অপেক্ষায় রয়েছে। সহায়তার জন্য সাপোর্ট টিমের সাথে যোগাযোগ করুন।";
             (order as any).details =
-              "<span style='color:orange;'><strong>Auto-delivery skipped:</strong> one of the linked voucher pools was empty at order time. Order kept pending for manual fulfilment.</span>";
+              "<span style='color:orange;'><strong>Auto-delivery skipped:</strong> one of the linked voucher pools was empty at order time. Order kept pending — admin can retry once stock returns.</span>";
             await order.save();
 
             const {
@@ -1770,84 +1806,69 @@ class UserController {
       }
 
       // Re-aggregate the order's terminal status from all of its
-      // dispatches. Orders pre-dating the BotDispatch system have no
-      // rows — for those we keep the legacy single-callback behavior.
-      const allDispatches = await BotDispatch.findAll({
-        where: { order_id: orderid },
-      });
-      const counts = {
-        success: 0,
-        failed: 0,
-        pending: 0,
-        sent: 0,
-        cancelled: 0,
-      } as Record<string, number>;
-      for (const d of allDispatches) {
-        counts[d.status] = (counts[d.status] || 0) + 1;
-      }
+      // dispatches via the shared helper (same logic the admin retry
+      // endpoint uses, so both stay consistent).
+      const agg = await aggregateOrderFromDispatches(Number(orderid));
 
       let mystatus: string;
-      if (allDispatches.length === 0) {
+      if (agg.status === null) {
         // Legacy order, no dispatch tracking — preserve previous semantics.
         mystatus = isSuccess
           ? "completed"
           : isKnownUserError
             ? "cancel"
             : "pending";
-      } else if (counts.cancelled > 0) {
-        // Any known user-facing rejection cancels the whole order.
-        mystatus = "cancel";
-      } else if (
-        counts.success === allDispatches.length &&
-        counts.failed === 0 &&
-        counts.pending === 0 &&
-        counts.sent === 0
-      ) {
-        mystatus = "completed";
-      } else if (counts.failed > 0) {
-        // At least one dispatch failed — surface as In Progress so the
-        // admin can hit Retry. (Order stays unfinished until all succeed.)
-        mystatus = "In Progress";
       } else {
-        // Still some dispatches awaiting callback.
-        mystatus = "In Progress";
+        mystatus = agg.status;
       }
       order.status = mystatus;
 
-      // Compose user-facing details + brief_note off the aggregate state.
+      // Compose user-facing brief_note + details. The details cell now
+      // surfaces the per-dispatch failures (built by the helper) so the
+      // admin can read each reason without opening any other view.
       if (mystatus === "completed") {
-        (order as any).details = safeContent
-          ? `<span style="color:#059669;"><strong>Bot delivered:</strong> ${safeContent}</span>`
-          : "<span style='color:#059669;'><strong>Bot delivered successfully.</strong></span>";
-      } else if (mystatus === "cancel" && isInvalidPlayer) {
-        order.brief_note =
-          "আপনার দেওয়া প্লেয়ার আইডি সঠিক নয়। অনুগ্রহ করে সঠিক আইডি দিয়ে আবার অর্ডার করুন।";
         (order as any).details =
-          '<span style="color:#dc2626;"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>';
-        order.uc = "";
-      } else if (mystatus === "cancel" && isInvalidRegion) {
-        order.brief_note =
-          "আপনার আইডির রিজিয়ন এই প্যাকেজের জন্য সাপোর্টেড নয়। অনুগ্রহ করে সঠিক রিজিয়নের আইডি দিয়ে আবার অর্ডার করুন।";
+          agg.status === null
+            ? safeContent
+              ? `<span style="color:#059669;"><strong>Bot delivered:</strong> ${safeContent}</span>`
+              : "<span style='color:#059669;'><strong>Bot delivered successfully.</strong></span>"
+            : buildOrderDetailsHtml(agg);
+      } else if (mystatus === "cancel") {
+        // Cancel can be reached two ways:
+        //   - explicit Invalid player/region callback
+        //   - all failed dispatches at the retry cap (not retryable)
+        if (isInvalidPlayer) {
+          order.brief_note =
+            "আপনার দেওয়া প্লেয়ার আইডি সঠিক নয়। অনুগ্রহ করে সঠিক আইডি দিয়ে আবার অর্ডার করুন।";
+        } else if (isInvalidRegion) {
+          order.brief_note =
+            "আপনার আইডির রিজিয়ন এই প্যাকেজের জন্য সাপোর্টেড নয়। অনুগ্রহ করে সঠিক রিজিয়নের আইডি দিয়ে আবার অর্ডার করুন।";
+        } else if (agg.cappedFailedCount > 0) {
+          order.brief_note =
+            "অর্ডারটি ডেলিভারি করা যায়নি এবং পুনরায় চেষ্টা করার সীমা শেষ হয়ে গেছে। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
+        }
         (order as any).details =
-          '<span style="color:#dc2626;"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>';
+          agg.status === null
+            ? isInvalidPlayer
+              ? '<span style="color:#dc2626;"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>'
+              : isInvalidRegion
+                ? '<span style="color:#dc2626;"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>'
+                : '<span style="color:#dc2626;"><strong>Cancelled</strong> by the upstream bot.</span>'
+            : buildOrderDetailsHtml(agg);
         order.uc = "";
-      } else if (mystatus === "In Progress" && counts.failed > 0) {
-        // Partial delivery with at least one retryable failure — point the
-        // admin at the dispatch list and tell the user we're working on it.
+      } else if (mystatus === "In Progress") {
         order.brief_note =
           "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
-        (order as any).details =
-          `<span style="color:#dc2626;"><strong>Partial bot failure:</strong> ${counts.failed} of ${allDispatches.length} dispatch(es) failed — retry available from the order action menu.</span>`;
-      } else if (allDispatches.length === 0) {
-        // Legacy path — preserve previous brief_note/details composition.
-        if (mystatus === "pending") {
-          order.brief_note =
-            "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
-          (order as any).details = safeContent
-            ? `<span style="color:#dc2626;"><strong>Bot reported:</strong> ${safeContent}</span>`
-            : "<span style='color:#dc2626;'><strong>Server failure</strong> — bot returned no specific error. Order kept pending for manual retry.</span>";
-          order.uc = "";
-        }
+        (order as any).details = buildOrderDetailsHtml(agg);
+      } else if (mystatus === "pending" && agg.status === null) {
+        // Legacy single-callback fallthrough — kept for orders that
+        // existed before the BotDispatch table.
+        order.brief_note =
+          "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
+        (order as any).details = safeContent
+          ? `<span style="color:#dc2626;"><strong>Bot reported:</strong> ${safeContent}</span>`
+          : "<span style='color:#dc2626;'><strong>Server failure</strong> — bot returned no specific error. Order kept pending for manual retry.</span>";
+        order.uc = "";
       }
       await order.save();
 
@@ -1877,7 +1898,7 @@ class UserController {
       response.message = "Order updated successfully";
       response.data = {
         order_status: mystatus,
-        dispatch_counts: counts,
+        dispatch_counts: agg.counts,
         targeted_dispatch_ids: targetedDispatchIds,
       };
       return res.send(response.response);
