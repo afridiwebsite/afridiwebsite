@@ -14,10 +14,14 @@ export interface OrderAggregate {
   //   'completed'   — every dispatch reported success
   //   'cancel'      — any cancelled (Invalid player/region) OR all failed
   //                   dispatches are at the retry cap (not retryable)
-  //   'In Progress' — at least one dispatch is still pending/sent OR
-  //                   at least one failed is below the cap (retryable)
+  //   'pending'     — every dispatch failed (still retryable) with nothing
+  //                   in flight and no partial successes — admin needs to
+  //                   retry or refund
+  //   'In Progress' — at least one dispatch is still pending/sent, OR a
+  //                   mix of successes and retryable failures (partial
+  //                   delivery)
   //   null          — order has no dispatch rows (legacy)
-  status: "completed" | "cancel" | "In Progress" | null;
+  status: "completed" | "cancel" | "pending" | "In Progress" | null;
   counts: Record<string, number>;
   total: number;
   retryableFailedCount: number;
@@ -69,25 +73,31 @@ export async function aggregateOrderFromDispatches(
   }
 
   let status: OrderAggregate["status"];
+  const inFlight = (counts.pending || 0) + (counts.sent || 0);
   if (counts.cancelled > 0) {
     status = "cancel";
   } else if (
     counts.success === all.length &&
     counts.failed === 0 &&
-    counts.pending === 0 &&
-    counts.sent === 0
+    inFlight === 0
   ) {
     status = "completed";
-  } else if (
-    counts.failed > 0 &&
-    retryable === 0 &&
-    counts.pending === 0 &&
-    counts.sent === 0
-  ) {
+  } else if (counts.failed > 0 && retryable === 0 && inFlight === 0) {
     // Every failed dispatch is at cap and nothing is in flight — admin
     // can't retry from here, so the order is effectively dead.
     status = "cancel";
+  } else if (
+    counts.failed > 0 &&
+    counts.success === 0 &&
+    inFlight === 0
+  ) {
+    // Bot already rejected every dispatch and nothing is awaiting a
+    // callback — surface as "pending" so the admin sees it as needing
+    // action (rather than "In Progress" which implies the bot is still
+    // working). Retry is still possible until the cap.
+    status = "pending";
   } else {
+    // Mix of successes and retryable failures, or some still in flight.
     status = "In Progress";
   }
 
@@ -193,55 +203,45 @@ export async function executeDispatch(
     bot_url: botUrl,
   });
 
-  try {
-    // We use `shellOverride` to carry the code regardless of dispatch
-    // type — autoOrder resolves `codeForBot = shellOverride || unipin`,
-    // and we want exactly what's saved on the row. `package_name` carries
-    // the saved label (tag for shell, package name for voucher).
-    const result = await autoOrder(
-      dispatch.order_id,
-      opts.player_id,
-      opts.uc,
-      "",
-      botUrl,
-      packageToSend,
-      codeToSend,
-      "80",
-      dispatch.id,
-    );
+  // We use `shellOverride` to carry the code regardless of dispatch
+  // type — autoOrder resolves `codeForBot = shellOverride || unipin`,
+  // and we want exactly what's saved on the row. `package_name` carries
+  // the saved label (tag for shell, package name for voucher).
+  // autoOrder always returns `{ ok: true, url } | { ok: false, error_reason }`
+  // — including for HTTP 2xx responses whose body says status=error.
+  const result: any = await autoOrder(
+    dispatch.order_id,
+    opts.player_id,
+    opts.uc,
+    "",
+    botUrl,
+    packageToSend,
+    codeToSend,
+    "80",
+    dispatch.id,
+  );
 
-    if (!result) {
-      dispatch.status = "failed";
-      dispatch.error_reason = `bot returned no acceptance (no response from ${botUrl || "(no url)"})`;
-      await dispatch.save();
-      console.warn("[executeDispatch] rejected", {
-        dispatch_id: dispatch.id,
-        order_id: dispatch.order_id,
-        reason: dispatch.error_reason,
-      });
-      return { ok: false, error_reason: dispatch.error_reason };
-    }
-
-    dispatch.status = "sent";
-    await dispatch.save();
-    console.log("[executeDispatch] sent — awaiting bot callback", {
-      dispatch_id: dispatch.id,
-      order_id: dispatch.order_id,
-    });
-    return { ok: result, error_reason: null };
-  } catch (e: any) {
-    const msg =
-      (e && (e.message || e.code || e.toString())) || "unknown error";
+  if (!result || result.ok !== true) {
     dispatch.status = "failed";
-    dispatch.error_reason = `dispatch threw: ${String(msg).slice(0, 250)}`;
+    dispatch.error_reason =
+      (result && result.error_reason) ||
+      `bot returned no acceptance (no response from ${botUrl || "(no url)"})`;
     await dispatch.save();
-    console.error("[executeDispatch] threw", {
+    console.warn("[executeDispatch] rejected", {
       dispatch_id: dispatch.id,
       order_id: dispatch.order_id,
-      err: msg,
+      reason: dispatch.error_reason,
     });
     return { ok: false, error_reason: dispatch.error_reason };
   }
+
+  dispatch.status = "sent";
+  await dispatch.save();
+  console.log("[executeDispatch] sent — awaiting bot callback", {
+    dispatch_id: dispatch.id,
+    order_id: dispatch.order_id,
+  });
+  return { ok: result.url || true, error_reason: null };
 }
 
 /**

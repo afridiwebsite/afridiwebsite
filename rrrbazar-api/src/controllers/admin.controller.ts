@@ -387,6 +387,9 @@ class AdminController {
           if (agg.status === 'cancel' && agg.cappedFailedCount > 0) {
             order.brief_note =
               'অর্ডারটি ডেলিভারি করা যায়নি এবং পুনরায় চেষ্টা করার সীমা শেষ হয়ে গেছে। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।';
+          } else if (agg.status === 'pending') {
+            order.brief_note =
+              'সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।';
           }
           await order.save();
           // Reverse any previously-awarded coins on auto-cancel via the

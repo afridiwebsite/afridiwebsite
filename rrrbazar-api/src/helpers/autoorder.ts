@@ -58,7 +58,10 @@ const autoOrder = async (
     console.warn(
       "[autoOrder] no bot_url configured for this package — skipping bot dispatch",
     );
-    return false;
+    return {
+      ok: false as const,
+      error_reason: "no bot_url configured for this package",
+    };
   }
 
   const callbackUrl =
@@ -119,16 +122,43 @@ const autoOrder = async (
         response.status,
         response.statusText,
       );
-      return false;
+      return {
+        ok: false as const,
+        error_reason: `bot HTTP ${response.status} ${response.statusText || ""}`.trim(),
+      };
+    }
+
+    // The bot can return HTTP 2xx with a body like
+    //   { "status": "error", "message": "Feedback URL is pending approval", ... }
+    // Without this check we'd treat that as success and the dispatch row
+    // would sit in `sent` forever waiting on a callback that never comes.
+    if (
+      responseData &&
+      typeof responseData === "object" &&
+      typeof (responseData as any).status === "string" &&
+      String((responseData as any).status).toLowerCase() === "error"
+    ) {
+      const message =
+        (responseData as any).message ||
+        (responseData as any).error ||
+        "bot returned status=error";
+      console.error("[autoOrder] Bot reported error in body:", message);
+      return {
+        ok: false as const,
+        error_reason: String(message).slice(0, 300),
+      };
     }
 
     console.log("[autoOrder] Dispatch successful for order:", order_id);
     // Return the URL we hit so callers can stash it on order.ingamepassword
     // for traceability (matches the previous helper's contract).
-    return url;
-  } catch (error) {
+    return { ok: true as const, url };
+  } catch (error: any) {
     console.error("[autoOrder] Critical error dispatching to bot:", error);
-    return false;
+    const msg =
+      (error && (error.message || error.code || error.toString())) ||
+      "unknown error";
+    return { ok: false as const, error_reason: `dispatch threw: ${String(msg).slice(0, 250)}` };
   }
 };
 

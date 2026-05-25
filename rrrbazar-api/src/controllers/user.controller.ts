@@ -1860,6 +1860,13 @@ class UserController {
         order.brief_note =
           "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
         (order as any).details = buildOrderDetailsHtml(agg);
+      } else if (mystatus === "pending" && agg.status === "pending") {
+        // Bot rejected every dispatch with no in-flight calls — order
+        // surfaces as pending so the admin can retry from the Details
+        // modal. Per-dispatch reasons are in the details HTML.
+        order.brief_note =
+          "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
+        (order as any).details = buildOrderDetailsHtml(agg);
       } else if (mystatus === "pending" && agg.status === null) {
         // Legacy single-callback fallthrough — kept for orders that
         // existed before the BotDispatch table.
