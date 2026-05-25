@@ -65,7 +65,8 @@ const autoOrder = async (
   }
 
   const callbackUrl =
-    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}` ;
+    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}` +
+    (dispatch_id && dispatch_id > 0 ? `&dispatch_id=${dispatch_id}` : "");
   const requestBody = {
     playerid: player_id,
     pacakge: package_name || "",
@@ -123,7 +124,8 @@ const autoOrder = async (
       );
       return {
         ok: false as const,
-        error_reason: `bot HTTP ${response.status} ${response.statusText || ""}`.trim(),
+        error_reason:
+          `bot HTTP ${response.status} ${response.statusText || ""}`.trim(),
       };
     }
 
@@ -157,7 +159,10 @@ const autoOrder = async (
     const msg =
       (error && (error.message || error.code || error.toString())) ||
       "unknown error";
-    return { ok: false as const, error_reason: `dispatch threw: ${String(msg).slice(0, 250)}` };
+    return {
+      ok: false as const,
+      error_reason: `dispatch threw: ${String(msg).slice(0, 250)}`,
+    };
   }
 };
 
