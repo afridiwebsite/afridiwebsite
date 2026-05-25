@@ -114,12 +114,8 @@ class AdminController {
         filter[Op.or] = orClauses;
       }
 
-      // Qualify with `Order` so MySQL doesn't see the joined Admin.status / id
-      // and complain "Column 'status' in order clause is ambiguous".
-      let order_by_str = sequelize.literal("CASE `Order`.`status` WHEN 'pending' THEN 1 WHEN 'completed' THEN 2 WHEN 'Failed' THEN 3 WHEN 'cancel' THEN 4 END, `Order`.`created_at` desc, `Order`.`id` desc");
-      if (status == 'cancel' || status == 'completed') {
-        order_by_str = sequelize.literal('`Order`.`id` desc');
-      }
+      // Sort newest-first across all status values.
+      let order_by_str = sequelize.literal('`Order`.`created_at` desc, `Order`.`id` desc');
 
 
       const limit: any = parseInt(req.query.limit?.toString() || '20')
@@ -363,6 +359,37 @@ class AdminController {
             dispatch.voucher_id = v.id;
             dispatch.code = (v as any).data || '';
             await dispatch.save();
+
+            // Pure voucher-pool product: no bot_url means delivery is
+            // done by allocating the voucher directly — no bot needed.
+            // Mark the dispatch success and complete the order inline so
+            // the customer can see their code without a bot round-trip.
+            if (!String(dispatch.bot_url || '').trim()) {
+              dispatch.status = 'success';
+              dispatch.attempt_count = Number(dispatch.attempt_count || 0) + 1;
+              dispatch.last_attempted_at = new Date();
+              await dispatch.save();
+
+              // Pull all sibling dispatches for this order. If every one is
+              // now success, complete the order and surface the codes.
+              const allDispatches = await BotDispatch.findAll({ where: { order_id } });
+              const allSuccess = allDispatches.every((d: any) => d.status === 'success');
+              if (allSuccess) {
+                const codes = allDispatches
+                  .map((d: any) => d.code)
+                  .filter(Boolean);
+                order.status = 'completed';
+                order.brief_note =
+                  codes.length === 1
+                    ? `Voucher: ${codes[0]}`
+                    : `Vouchers (${codes.length}) delivered`;
+                (order as any).details = `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${codes.map((c: string) => `<li>${c}</li>`).join('')}</ul>`;
+                await order.save();
+                await syncOrderCoinsForStatus(order, 'completed');
+              }
+              sent += 1;
+              continue;
+            }
           }
 
           const { ok } = await executeDispatch(dispatch, {

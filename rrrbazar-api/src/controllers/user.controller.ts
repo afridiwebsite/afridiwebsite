@@ -1247,6 +1247,33 @@ class UserController {
             `<span style="color:orange;"><strong>Voucher pool ran dry</strong> — only ${emitted.length} of ${quantity} unit(s) were available at order time. Order kept pending for manual fulfilment.</span>`;
           await order.save();
 
+          // Create one placeholder BotDispatch per requested unit so the
+          // admin retry endpoint can find this order and re-try the
+          // allocation when stock returns. For pure voucher-pool products
+          // bot_url is empty; retryBotDispatches handles that case by
+          // completing the order directly (no bot dispatch needed).
+          for (let i = 0; i < quantity; i++) {
+            try {
+              await BotDispatch.create({
+                order_id: order.id,
+                voucher_id: null,
+                voucher_package_id: topupPackage.id,
+                tag: null,
+                code: "",
+                package_name_sent: topupPackage.name || "",
+                bot_url: String((topupPackage as any).bot_url || ""),
+                status: "failed",
+                error_reason: "No voucher available in pool — awaiting restock",
+                attempt_count: 0,
+              });
+            } catch (e) {
+              console.error(
+                "[topupPackageOrder] failed to persist voucher placeholder dispatch",
+                { order_id: order.id, unit: i, err: (e as any)?.message || e },
+              );
+            }
+          }
+
           const {
             uc: ucAliasPv,
             ingamepassword: ingamepasswordAliasPv,
@@ -1821,6 +1848,10 @@ class UserController {
       } else {
         mystatus = agg.status;
       }
+
+      // Capture the DB status before overwriting — needed for the refund
+      // guard below so we only refund once on the first cancel transition.
+      const previousOrderStatus = order.status;
       order.status = mystatus;
 
       // Compose user-facing brief_note + details. The details cell now
@@ -1856,6 +1887,34 @@ class UserController {
                 : '<span style="color:#dc2626;"><strong>Cancelled</strong> by the upstream bot.</span>'
             : buildOrderDetailsHtml(agg);
         order.uc = "";
+
+        // Refund wallet — mirrors the admin manual-cancel path exactly.
+        // Guard: only on the FIRST transition into "cancel" so a repeated
+        // checkOrder callback for the same order doesn't double-credit.
+        if (previousOrderStatus !== "cancel") {
+          try {
+            const [refundUser, refundProduct] = await Promise.all([
+              User.findByPk((order as any).user_id),
+              TopupProduct.findByPk((order as any).product_id),
+            ]);
+            if (refundUser) {
+              refundUser.wallet =
+                Number(refundUser.wallet) + Number((order as any).amount);
+              await refundUser.save();
+            }
+            if (refundProduct && (order as any).bprice) {
+              refundProduct.price =
+                Number(refundProduct.price) +
+                parseFloat((order as any).bprice);
+              await refundProduct.save();
+            }
+          } catch (e) {
+            console.error("[checkOrder] wallet refund failed", {
+              order_id: (order as any).id,
+              err: (e as any)?.message || e,
+            });
+          }
+        }
       } else if (mystatus === "In Progress") {
         order.brief_note =
           "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";

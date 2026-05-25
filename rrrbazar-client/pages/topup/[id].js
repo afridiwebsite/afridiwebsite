@@ -573,11 +573,6 @@ function TopupOrderPage() {
                                         const packCoin = Number(
                                           pack?.coin_value || 0,
                                         );
-                                        const hasPackDescription =
-                                          !!pack?.description
-                                            ?.replace(/<[^>]*>/g, "")
-                                            .replace(/&nbsp;/gi, "")
-                                            .trim();
                                         return (
                                           <div
                                             key={index}
@@ -668,33 +663,26 @@ function TopupOrderPage() {
                                                 </span>
                                               </span>
                                             </button>
-                                            {/* Info button — hidden while the
-                                                package is out-of-stock /
-                                                already-claimed so the stock
-                                                badge has the corner to itself
-                                                and we don't dangle a tappable
-                                                control on a disabled card. */}
-                                            {hasPackDescription &&
-                                              !isDisabled && (
-                                                <span className="topup-pack-card-info-wrap">
-                                                  <button
-                                                    type="button"
-                                                    className="topup-pack-card-info"
-                                                    aria-label="Package details"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      setDescPack(pack);
-                                                    }}
-                                                  >
-                                                    <FaInfo />
-                                                  </button>
-                                                </span>
-                                              )}
                                           </div>
                                         );
                                       })}
-                                      {/* Single Recharge --End-- */}
+                                        {/* Single Recharge --End-- */}
                                     </div>
+
+                                    {/* Description button — only when the selected package has a description */}
+                                    {values.selectedpackage?.description && (
+                                      <button
+                                        type="button"
+                                        className="topup-pack-desc-btn mt-3"
+                                        onClick={() =>
+                                          setDescPack(values.selectedpackage)
+                                        }
+                                      >
+                                        <FaInfo className="topup-pack-desc-btn-icon" />
+                                        View Description
+                                      </button>
+                                    )}
+
                                     {/* Selected package's tracked stock —
                                         only renders when the admin opted into
                                         quantity tracking for the package so

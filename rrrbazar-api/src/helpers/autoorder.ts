@@ -64,9 +64,12 @@ const autoOrder = async (
     };
   }
 
+  // Always use the plain callback URL — appending dispatch_id creates a
+  // different URL shape that some bots require separate approval for.
+  // checkOrder falls back to updating all `sent` rows for the order when
+  // dispatch_id is absent, which is sufficient.
   const callbackUrl =
-    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}` +
-    (dispatch_id && dispatch_id > 0 ? `&dispatch_id=${dispatch_id}` : "");
+    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}`;
   const requestBody = {
     playerid: player_id,
     pacakge: package_name || "",
