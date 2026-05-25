@@ -65,8 +65,7 @@ const autoOrder = async (
   }
 
   const callbackUrl =
-    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}` +
-    (dispatch_id && dispatch_id > 0 ? `&dispatch_id=${dispatch_id}` : "");
+    `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/check_order?type=${dtype}` ;
   const requestBody = {
     playerid: player_id,
     pacakge: package_name || "",
