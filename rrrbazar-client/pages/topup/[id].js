@@ -249,7 +249,7 @@ function TopupOrderPage() {
                           href={routes.login.name + addRedirectQuery(router)}
                         >
                           <a>
-                            <Button className="small">Login</Button>
+                            <Button className="small topup-cta-gradient-btn " >Login</Button>
                           </a>
                         </Link>
                       }
@@ -271,7 +271,7 @@ function TopupOrderPage() {
                             }
                           >
                             <a>
-                              <Button className="small">Add Money</Button>
+                              <Button className="small topup-cta-gradient-btn">Add Money</Button>
                             </a>
                           </Link>
                         }
@@ -778,7 +778,7 @@ function TopupOrderPage() {
                                                 addRedirectQuery(router)
                                               }
                                             >
-                                              <a className="_link">Add Money</a>
+                                              <a className="_link topup-cta-gradient-btn">Add Money</a>
                                             </Link>
                                           }{" "}
                                           or choose another package.
@@ -1058,7 +1058,7 @@ function TopupOrderPage() {
                                   }
                                 >
                                   <a>
-                                    <Button type="button" className="outlined">
+                                    <Button type="button" className="outlined topup-cta-gradient-btn">
                                       Login
                                     </Button>
                                   </a>

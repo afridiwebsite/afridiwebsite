@@ -3080,6 +3080,19 @@ body {
   flex-shrink: 0;
 }
 
+.topup-cta-gradient-btn {
+ background: linear-gradient(
+    135deg,
+    var(--theme-primary) 0%,
+    var(--theme-secondary) 100%
+  ) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  &:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+  }
+}
+
 // --- Select Payment (matches the ref design) ---
 // Two big rounded cards side-by-side, each with: logo/icon at top,
 // title + subtitle (e.g. balance), and a colored CTA strip at the bottom.
