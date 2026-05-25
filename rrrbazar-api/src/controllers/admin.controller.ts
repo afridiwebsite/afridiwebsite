@@ -366,7 +366,7 @@ class AdminController {
             CONSUMED_PATTERNS.some((p) => p.test(dispatch.error_reason || ''));
 
           if (isConsumedVoucherError) {
-            const oldVoucher = await Voucher.findByPk(dispatch.voucher_id);
+            const oldVoucher = await Voucher.findByPk(dispatch.voucher_id as number);
             const poolPackageId = oldVoucher
               ? (oldVoucher as any).package_id
               : dispatch.voucher_package_id;
