@@ -1769,6 +1769,7 @@ class UserController {
         orderid,
         status,
         content,
+        body: req.body,
         dispatch_id: dispatchId,
       });
 

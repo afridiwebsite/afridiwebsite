@@ -114,8 +114,10 @@ class AdminController {
         filter[Op.or] = orClauses;
       }
 
-      // Sort newest-first across all status values.
-      let order_by_str = sequelize.literal('`Order`.`created_at` desc, `Order`.`id` desc');
+      // Pending orders always surface first; within each group, newest first.
+      let order_by_str = sequelize.literal(
+        "CASE WHEN `Order`.`status` = 'pending' THEN 1 ELSE 2 END, `Order`.`created_at` desc, `Order`.`id` desc"
+      );
 
 
       const limit: any = parseInt(req.query.limit?.toString() || '20')
@@ -315,10 +317,37 @@ class AdminController {
         let stillFailed = 0;
         let skippedCapped = 0;
         let poolStillEmpty = 0;
+
+        console.log('[retryBotDispatches] processing dispatches', {
+          order_id,
+          failed_count: failed.length,
+          dispatch_ids: failed.map((d) => d.id),
+        });
+
         for (const dispatch of failed) {
+          console.log('[retryBotDispatches] dispatch state', {
+            order_id,
+            dispatch_id: dispatch.id,
+            status: dispatch.status,
+            attempt_count: dispatch.attempt_count,
+            voucher_id: dispatch.voucher_id,
+            voucher_package_id: dispatch.voucher_package_id,
+            code_present: !!dispatch.code,
+            code_masked: dispatch.code
+              ? `${String(dispatch.code).substring(0, 4)}...`
+              : '(none)',
+            bot_url: dispatch.bot_url || '(empty)',
+            error_reason: dispatch.error_reason,
+          });
+
           if (
             Number(dispatch.attempt_count || 0) >= MAX_DISPATCH_ATTEMPTS
           ) {
+            console.log('[retryBotDispatches] skipping — at retry cap', {
+              dispatch_id: dispatch.id,
+              attempt_count: dispatch.attempt_count,
+              MAX_DISPATCH_ATTEMPTS,
+            });
             skippedCapped += 1;
             continue;
           }
@@ -328,11 +357,25 @@ class AdminController {
           // still has no stock, leave the row as `failed` with the same
           // reason and bump attempt_count via executeDispatch so the cap
           // eventually triggers cancellation.
-          if (
+          const isVoucherPlaceholder =
             !dispatch.voucher_id &&
             dispatch.voucher_package_id &&
-            !dispatch.code
-          ) {
+            !dispatch.code;
+
+          console.log('[retryBotDispatches] voucher-placeholder check', {
+            dispatch_id: dispatch.id,
+            is_voucher_placeholder: isVoucherPlaceholder,
+            has_voucher_id: !!dispatch.voucher_id,
+            has_voucher_package_id: !!dispatch.voucher_package_id,
+            has_code: !!dispatch.code,
+          });
+
+          if (isVoucherPlaceholder) {
+            console.log('[retryBotDispatches] entering voucher-emit branch', {
+              dispatch_id: dispatch.id,
+              voucher_package_id: dispatch.voucher_package_id,
+            });
+
             const v = await Voucher.findOne({
               where: {
                 is_used: 0,
@@ -340,6 +383,14 @@ class AdminController {
               },
               order: [['id', 'ASC']],
             });
+
+            console.log('[retryBotDispatches] voucher pool query result', {
+              dispatch_id: dispatch.id,
+              voucher_package_id: dispatch.voucher_package_id,
+              found: !!v,
+              voucher_id: v ? (v as any).id : null,
+            });
+
             if (!v) {
               // Bump attempt counter so repeated retries against a stuck
               // pool eventually trip the cap and auto-cancel.
@@ -351,6 +402,10 @@ class AdminController {
               await dispatch.save();
               poolStillEmpty += 1;
               stillFailed += 1;
+              console.log('[retryBotDispatches] pool still empty — bumped attempt_count', {
+                dispatch_id: dispatch.id,
+                new_attempt_count: dispatch.attempt_count,
+              });
               continue;
             }
             (v as any).is_used = 1;
@@ -359,6 +414,12 @@ class AdminController {
             dispatch.voucher_id = v.id;
             dispatch.code = (v as any).data || '';
             await dispatch.save();
+
+            console.log('[retryBotDispatches] voucher allocated to dispatch', {
+              dispatch_id: dispatch.id,
+              voucher_id: v.id,
+              bot_url: dispatch.bot_url || '(empty)',
+            });
 
             // Pure voucher-pool product: no bot_url means delivery is
             // done by allocating the voucher directly — no bot needed.
@@ -374,6 +435,12 @@ class AdminController {
               // now success, complete the order and surface the codes.
               const allDispatches = await BotDispatch.findAll({ where: { order_id } });
               const allSuccess = allDispatches.every((d: any) => d.status === 'success');
+              console.log('[retryBotDispatches] no-bot voucher path — all_success check', {
+                dispatch_id: dispatch.id,
+                order_id,
+                total_dispatches: allDispatches.length,
+                all_success: allSuccess,
+              });
               if (allSuccess) {
                 const codes = allDispatches
                   .map((d: any) => d.code)
@@ -386,16 +453,40 @@ class AdminController {
                 (order as any).details = `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${codes.map((c: string) => `<li>${c}</li>`).join('')}</ul>`;
                 await order.save();
                 await syncOrderCoinsForStatus(order, 'completed');
+                console.log('[retryBotDispatches] order completed inline (no-bot)', { order_id });
               }
               sent += 1;
               continue;
             }
+          } else {
+            console.log('[retryBotDispatches] NOT a placeholder — dispatch already has voucher/code, proceeding to executeDispatch with existing code', {
+              dispatch_id: dispatch.id,
+              voucher_id: dispatch.voucher_id,
+              code_masked: dispatch.code
+                ? `${String(dispatch.code).substring(0, 4)}...`
+                : '(none)',
+            });
           }
 
-          const { ok } = await executeDispatch(dispatch, {
+          console.log('[retryBotDispatches] calling executeDispatch', {
+            dispatch_id: dispatch.id,
+            order_id,
+            player_id: order.playerid || '',
+            uc: ucForCall,
+            bot_url: dispatch.bot_url || '(empty)',
+          });
+
+          const { ok, error_reason } = await executeDispatch(dispatch, {
             player_id: order.playerid || '',
             uc: ucForCall,
           });
+
+          console.log('[retryBotDispatches] executeDispatch result', {
+            dispatch_id: dispatch.id,
+            ok: !!ok,
+            error_reason,
+          });
+
           if (ok) sent += 1;
           else stillFailed += 1;
         }
