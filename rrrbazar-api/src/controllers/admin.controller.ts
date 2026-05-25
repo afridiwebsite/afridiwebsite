@@ -352,6 +352,38 @@ class AdminController {
             continue;
           }
 
+          // If the bot reported the previous voucher was already consumed or
+          // rejected at the unipin layer, the code is permanently invalid —
+          // discard it (leave is_used = 1 so it never re-enters the pool)
+          // and reset the dispatch to placeholder state so the allocation
+          // branch below picks up a fresh voucher.
+          const CONSUMED_PATTERNS = [
+            /Failed to create order in unipin-orders table/i,
+            /Consumed Voucher/i,
+          ];
+          const isConsumedVoucherError =
+            !!dispatch.voucher_id &&
+            CONSUMED_PATTERNS.some((p) => p.test(dispatch.error_reason || ''));
+
+          if (isConsumedVoucherError) {
+            const oldVoucher = await Voucher.findByPk(dispatch.voucher_id);
+            const poolPackageId = oldVoucher
+              ? (oldVoucher as any).package_id
+              : dispatch.voucher_package_id;
+
+            console.log('[retryBotDispatches] consumed-voucher error — discarding old voucher, will re-allocate', {
+              dispatch_id: dispatch.id,
+              old_voucher_id: dispatch.voucher_id,
+              pool_package_id: poolPackageId,
+              error_reason: dispatch.error_reason,
+            });
+
+            dispatch.voucher_id = null;
+            dispatch.code = '';
+            if (poolPackageId) dispatch.voucher_package_id = poolPackageId;
+            await dispatch.save();
+          }
+
           // Placeholder for a voucher-pool-exhausted dispatch: try to
           // emit a fresh voucher from the linked pool first. If the pool
           // still has no stock, leave the row as `failed` with the same
