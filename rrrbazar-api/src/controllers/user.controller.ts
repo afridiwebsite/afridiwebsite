@@ -1799,8 +1799,13 @@ class UserController {
       const isInvalidRegion =
         /^invalid\s*(player\s*)?region/i.test(safeContent);
       const isNotFoundPackage = /^package\s*not\s*found/i.test(safeContent);
+      const isInvalidLiteral =
+        /invalid\s*literal\s*for\s*int/i.test(safeContent);
       const isKnownUserError =
-        isInvalidPlayer || isInvalidRegion || isNotFoundPackage;
+        isInvalidPlayer ||
+        isInvalidRegion ||
+        isNotFoundPackage ||
+        isInvalidLiteral;
 
       const dispatchStatus: "success" | "failed" | "cancelled" = isSuccess
         ? "success"
@@ -1815,7 +1820,9 @@ class UserController {
             ? "Invalid region"
             : isNotFoundPackage
               ? "Package not found"
-              : safeContent || "bot reported failure";
+              : isInvalidLiteral
+                ? "Input parse error (base 10)"
+                : safeContent || "bot reported failure";
 
       // Update the dispatch row(s) the callback is for.
       //   dispatch_id present → just that one
@@ -1897,6 +1904,9 @@ class UserController {
         } else if (isNotFoundPackage) {
           order.brief_note =
             "⚠️আপনার আইডিতে এই প্যাকেজটি একবার নেওয়া হয়েছে। অনুগ্রহ করে আপনার আইডি অথবা সার্ভার চেক করুন।🔰";
+        } else if (isInvalidLiteral) {
+          order.brief_note =
+            "আপনার দেওয়া আইডিটি সঠিক নয় (সংখ্যা হতে হবে)। অনুগ্রহ করে সঠিক আইডি দিয়ে আবার অর্ডার করুন।";
         } else if (agg.cappedFailedCount > 0) {
           order.brief_note =
             "অর্ডারটি ডেলিভারি করা যায়নি এবং পুনরায় চেষ্টা করার সীমা শেষ হয়ে গেছে। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
@@ -1909,7 +1919,9 @@ class UserController {
                 ? '<span style="color:#dc2626;"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>'
                 : isNotFoundPackage
                   ? '<span style="color:#dc2626;"><strong>Cancelled — Package not found</strong> reported by the upstream bot. Order will not be retried.</span>'
-                  : '<span style="color:#dc2626;"><strong>Cancelled</strong> by the upstream bot.</span>'
+                  : isInvalidLiteral
+                    ? '<span style="color:#dc2626;"><strong>Cancelled — Input parse error</strong> (bot failed to parse numeric input). Order will not be retried.</span>'
+                    : '<span style="color:#dc2626;"><strong>Cancelled</strong> by the upstream bot.</span>'
             : buildOrderDetailsHtml(agg);
         order.uc = "";
 

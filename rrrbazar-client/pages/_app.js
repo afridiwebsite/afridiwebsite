@@ -9,7 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import api, { getSiteSettings } from '../api/api';
+import api, { getSiteSettings, getUserProfile } from '../api/api';
 import { googleLogout } from '@react-oauth/google';
 import AuthGuard from '../components/AuthGuard';
 import Layout from '../components/layout/Layout';
@@ -51,6 +51,21 @@ function MyApp({ Component, pageProps }) {
   const [accessToken, setAccessToken] = useState(access_token);
   const [isAuth, setIsAuth] = useState(authUser && accessToken ? true : false);
   const [siteSettings, setSiteSettings] = useState(null);
+
+  // Sync user profile on mount to ensure wallet balance and other data is
+  // fresh, even after a refresh.
+  useEffect(() => {
+    if (isAuth && accessToken) {
+      getUserProfile()
+        .then((res) => {
+          const userObj = res?.data?.data;
+          if (userObj) {
+            updateAuthUserInfo(userObj);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
