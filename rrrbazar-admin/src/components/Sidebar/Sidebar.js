@@ -4,7 +4,6 @@ import NotificationDropdown from "../../components/Dropdowns/NotificationDropdow
 import UserDropdown from "../../components/Dropdowns/UserDropdown";
 import SidebarLi from "./SidebarLi";
 
-
 export default function Sidebar({ isOpenSidebar }) {
   const navLinks = [
     {
@@ -40,7 +39,7 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-table",
 
       submenu: [
-              {
+        {
           text: "Categories",
           path: "/categories",
           icon: "fas fa-tags",
@@ -56,13 +55,7 @@ export default function Sidebar({ isOpenSidebar }) {
           path: "/topup-packages",
           icon: "fas fa-cubes",
         },
-        {
-          text: "Physical Product",
-          path: "/physical-product",
-          icon: "fab fa-product-hunt",
-        },
-       
-      ]
+      ],
     },
     {
       text: "Voucher Statistics",
@@ -138,18 +131,21 @@ export default function Sidebar({ isOpenSidebar }) {
 
   useEffect(() => {
     if (collapseShow) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'auto'
+      document.body.style.overflow = "auto";
     }
-  }, [collapseShow])
+  }, [collapseShow]);
 
   return (
     <>
       <div className="relative">
-        <header className="flex items-center justify-between container md:hidden" >
-          <div >
-            <i className={`fas fa-${collapseShow ? 'times' : 'bars'} p-2 text-xl`} onClick={() => setCollapseShow(prev => !prev)}></i>
+        <header className="flex items-center justify-between container md:hidden">
+          <div>
+            <i
+              className={`fas fa-${collapseShow ? "times" : "bars"} p-2 text-xl`}
+              onClick={() => setCollapseShow((prev) => !prev)}
+            ></i>
           </div>
           <div>
             {/* <img
@@ -160,17 +156,15 @@ export default function Sidebar({ isOpenSidebar }) {
             /> */}
             <h3 className="text-2xl text-center font-bold">Admin panel</h3>
           </div>
-          <div className="flex items-center space-x-2 relative z-[999999999]" >
+          <div className="flex items-center space-x-2 relative z-[999999999]">
             <NotificationDropdown />
             <UserDropdown />
           </div>
         </header>
-        <nav className={`${isOpenSidebar ? 'md:left-0' : 'md:-left-full'} ${collapseShow ? 'block' : 'hidden'} md:block fixed w-full h-[calc(100vh-75px)] top-[75px] md:top-0 left-1/2 -translate-x-1/2 z-[999] duration-150 md:w-56 md:h-screen md:translate-x-0 md:translate-y-0 overflow-hidden overflow-y-auto bg-white`}>
-
-          <Link
-            to="/"
-            className="hidden md:block"
-          >
+        <nav
+          className={`${isOpenSidebar ? "md:left-0" : "md:-left-full"} ${collapseShow ? "block" : "hidden"} md:block fixed w-full h-[calc(100vh-75px)] top-[75px] md:top-0 left-1/2 -translate-x-1/2 z-[999] duration-150 md:w-56 md:h-screen md:translate-x-0 md:translate-y-0 overflow-hidden overflow-y-auto bg-white`}
+        >
+          <Link to="/" className="hidden md:block">
             {/* <img
               style={{ width: "120px" }}
               src={require("../../assets/img/selften.png").default}
@@ -179,7 +173,6 @@ export default function Sidebar({ isOpenSidebar }) {
             /> */}
             <h3 className="text-2xl text-center font-bold">Admin panel</h3>
           </Link>
-
 
           <ul className="md:flex-col md:min-w-full flex flex-col list-none">
             {navLinks.map((e, index) => (

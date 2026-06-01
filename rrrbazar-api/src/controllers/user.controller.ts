@@ -1797,9 +1797,8 @@ class UserController {
       const isSuccess = status == "success";
       const isInvalidPlayer = /^invalid\s*player\s*id$/i.test(safeContent);
       const isInvalidRegion =
-        /^invalid\s*region$/i.test(safeContent) ||
-        /^invalid\s*player\s*region$/i.test(safeContent);
-      const isNotFoundPackage = /^package\s*not\s*found$/i.test(safeContent);
+        /^invalid\s*(player\s*)?region/i.test(safeContent);
+      const isNotFoundPackage = /^package\s*not\s*found/i.test(safeContent);
       const isKnownUserError =
         isInvalidPlayer || isInvalidRegion || isNotFoundPackage;
 
