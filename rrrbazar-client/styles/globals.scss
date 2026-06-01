@@ -131,7 +131,6 @@ body {
   position: relative;
 }
 .home-banner.swiper {
-  height: 520px;
   border-radius: 10px;
   overflow: hidden;
   box-shadow:
@@ -200,11 +199,8 @@ body {
   }
 }
 
-@media (max-width: 768px) {
-  .home-banner.swiper {
-    height: 240px;
-  }
-}
+
+
 
 // Category filter chips strip
 .cat-chip-row {

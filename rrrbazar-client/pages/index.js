@@ -261,7 +261,7 @@ function Home({
                   bulletActiveClass: "is-active",
                 }}
                 slidesPerView={1}
-                className="home-banner shadow-md"
+                className="home-banner shadow-md aspect-[520/240] md:aspect-auto"
               >
                 {banners.map((banner, index) => (
                   <SwiperSlide key={index}>
