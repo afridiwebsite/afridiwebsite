@@ -984,8 +984,8 @@ class UserController {
           if (previous > 0) {
             response.message =
               orderOnceMode === 2
-                ? "This player ID has already claimed this package today — try again after midnight."
-                : "This player ID has already claimed this package — it's limited to one per player ID.";
+                ? "এই প্লেয়ার আইডি থেকে আজ ইতোমধ্যে প্যাকেজটি নেওয়া হয়েছে — মধ্যরাতের পরে আবার চেষ্টা করুন।"
+                : "এই প্লেয়ার আইডি থেকে ইতোমধ্যে প্যাকেজটি নেওয়া হয়েছে — প্রতি প্লেয়ার আইডিতে শুধুমাত্র একবার নেওয়া যাবে।";
             return res.status(400).send(response.response);
           }
         }
@@ -1796,10 +1796,12 @@ class UserController {
       const safeContent = String(content || "").trim();
       const isSuccess = status == "success";
       const isInvalidPlayer = /^invalid\s*player\s*id$/i.test(safeContent);
-      const isInvalidRegion = /^invalid\s*region$/i.test(safeContent);
-      const isKnownUserError = isInvalidPlayer || isInvalidRegion;
-
+      const isInvalidRegion =
+        /^invalid\s*region$/i.test(safeContent) ||
+        /^invalid\s*player\s*region$/i.test(safeContent);
       const isNotFoundPackage = /^package\s*not\s*found$/i.test(safeContent);
+      const isKnownUserError =
+        isInvalidPlayer || isInvalidRegion || isNotFoundPackage;
 
       const dispatchStatus: "success" | "failed" | "cancelled" = isSuccess
         ? "success"
@@ -1812,7 +1814,9 @@ class UserController {
           ? "Invalid player ID"
           : isInvalidRegion
             ? "Invalid region"
-            : safeContent || "bot reported failure";
+            : isNotFoundPackage
+              ? "Package not found"
+              : safeContent || "bot reported failure";
 
       // Update the dispatch row(s) the callback is for.
       //   dispatch_id present → just that one
@@ -1891,6 +1895,9 @@ class UserController {
         } else if (isInvalidRegion) {
           order.brief_note =
             "আপনার আইডির রিজিয়ন এই প্যাকেজের জন্য সাপোর্টেড নয়। অনুগ্রহ করে সঠিক রিজিয়নের আইডি দিয়ে আবার অর্ডার করুন।";
+        } else if (isNotFoundPackage) {
+          order.brief_note =
+            "⚠️আপনার আইডিতে এই প্যাকেজটি একবার নেওয়া হয়েছে। অনুগ্রহ করে আপনার আইডি অথবা সার্ভার চেক করুন।🔰";
         } else if (agg.cappedFailedCount > 0) {
           order.brief_note =
             "অর্ডারটি ডেলিভারি করা যায়নি এবং পুনরায় চেষ্টা করার সীমা শেষ হয়ে গেছে। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";
@@ -1901,7 +1908,9 @@ class UserController {
               ? '<span style="color:#dc2626;"><strong>Cancelled — Invalid player ID</strong> reported by the upstream bot. Order will not be retried.</span>'
               : isInvalidRegion
                 ? '<span style="color:#dc2626;"><strong>Cancelled — Invalid region</strong> reported by the upstream bot. Order will not be retried.</span>'
-                : '<span style="color:#dc2626;"><strong>Cancelled</strong> by the upstream bot.</span>'
+                : isNotFoundPackage
+                  ? '<span style="color:#dc2626;"><strong>Cancelled — Package not found</strong> reported by the upstream bot. Order will not be retried.</span>'
+                  : '<span style="color:#dc2626;"><strong>Cancelled</strong> by the upstream bot.</span>'
             : buildOrderDetailsHtml(agg);
         order.uc = "";
 
