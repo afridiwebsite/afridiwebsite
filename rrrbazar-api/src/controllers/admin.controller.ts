@@ -360,6 +360,7 @@ class AdminController {
           const CONSUMED_PATTERNS = [
             /Failed to create order in unipin-orders table/i,
             /Consumed Voucher/i,
+            /Already Used/i,
           ];
           const isConsumedVoucherError =
             !!dispatch.voucher_id &&

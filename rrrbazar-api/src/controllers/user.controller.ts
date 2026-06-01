@@ -1712,7 +1712,9 @@ class UserController {
             package_name_sent: topupPackage.name,
           });
           if (!ok) {
-            botError = error_reason || `bot returned no acceptance (no response from ${pkgBotUrl})`;
+            botError =
+              error_reason ||
+              `bot returned no acceptance (no response from ${pkgBotUrl})`;
             botStatus = null;
           } else {
             botStatus = ok;
@@ -1797,6 +1799,8 @@ class UserController {
       const isInvalidRegion = /^invalid\s*region$/i.test(safeContent);
       const isKnownUserError = isInvalidPlayer || isInvalidRegion;
 
+      const isNotFoundPackage = /^package\s*not\s*found$/i.test(safeContent);
+
       const dispatchStatus: "success" | "failed" | "cancelled" = isSuccess
         ? "success"
         : isKnownUserError
@@ -1821,6 +1825,7 @@ class UserController {
         if (d && Number(d.order_id) === Number(orderid)) {
           d.status = dispatchStatus;
           d.error_reason = dispatchError;
+          (d as any).response_content = safeContent;
           await d.save();
           targetedDispatchIds = [d.id];
         } else {
@@ -1837,6 +1842,7 @@ class UserController {
         for (const d of sentRows) {
           d.status = dispatchStatus;
           d.error_reason = dispatchError;
+          (d as any).response_content = safeContent;
           await d.save();
           targetedDispatchIds.push(d.id);
         }
@@ -1915,8 +1921,7 @@ class UserController {
             }
             if (refundProduct && (order as any).bprice) {
               refundProduct.price =
-                Number(refundProduct.price) +
-                parseFloat((order as any).bprice);
+                Number(refundProduct.price) + parseFloat((order as any).bprice);
               await refundProduct.save();
             }
           } catch (e) {
@@ -1954,21 +1959,44 @@ class UserController {
       // double-credits or double-reverses.
       await syncOrderCoinsForStatus(order, mystatus);
 
-      // Voucher state mirrors order outcome.
-      //   completed → mark used (is_used = 1)
-      //   anything else → return to pool (is_used = 0) so they can be
-      //                   re-sold; retry will re-send the same code from
-      //                   the BotDispatch row.
+      // Voucher state mirrors order outcome. For modern orders we use the
+      // per-dispatch tracking to ensure we only release vouchers that
+      // actually failed (and weren't consumed). Legacy orders stay on the
+      // all-or-nothing aggregate logic.
+      const CONSUMED_PATTERNS = [
+        /Failed to create order in unipin-orders table/i,
+        /Consumed Voucher/i,
+        /Already Used/i,
+      ];
+
       const vouchers = await Voucher.findAll({
         where: { order_id: orderid },
-        order: Sequelize.literal("RAND()"),
       });
+
       if (vouchers.length > 0) {
         const promises: any[] = [];
-        vouchers.forEach((voucher) => {
-          voucher.is_used = mystatus == "completed" ? 1 : 0;
+        for (const voucher of vouchers) {
+          let shouldBeUsed = 1;
+
+          if (mystatus === "cancel") {
+            // Only release if NOT consumed.
+            const d = await BotDispatch.findOne({
+              where: { order_id: orderid, voucher_id: voucher.id },
+            });
+            const reason =
+              (d
+                ? (d as any).error_reason || (d as any).response_content
+                : safeContent) || "";
+            const vIsConsumed = CONSUMED_PATTERNS.some((p) => p.test(reason));
+            shouldBeUsed = vIsConsumed ? 1 : 0;
+          } else {
+            // completed, pending, In Progress all keep the voucher reserved/used
+            shouldBeUsed = 1;
+          }
+
+          voucher.is_used = shouldBeUsed;
           promises.push(voucher.save());
-        });
+        }
         await Promise.all(promises);
       }
 

@@ -37,6 +37,7 @@ export default (sequelize: Sequelize) => {
         // cancelled = callback reported a known user-facing error
         //             (Invalid player ID / Invalid region) — NOT retryable
         public status!: 'pending' | 'sent' | 'success' | 'failed' | 'cancelled';
+        public response_content!: string | null;
         public error_reason!: string | null;
         public attempt_count!: number;
         public last_attempted_at!: Date | null;
@@ -89,6 +90,10 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.ENUM('pending', 'sent', 'success', 'failed', 'cancelled'),
             allowNull: false,
             defaultValue: 'pending',
+        },
+        response_content: {
+            type: DataTypes.TEXT,
+            allowNull: true,
         },
         error_reason: {
             type: DataTypes.TEXT,

@@ -26,7 +26,7 @@ export interface OrderAggregate {
   total: number;
   retryableFailedCount: number;
   cappedFailedCount: number;
-  failedDispatches: any[];
+  allDispatches: any[];
 }
 
 /**
@@ -50,7 +50,7 @@ export async function aggregateOrderFromDispatches(
       total: 0,
       retryableFailedCount: 0,
       cappedFailedCount: 0,
-      failedDispatches: [],
+      allDispatches: [],
     };
   }
   const counts: Record<string, number> = {
@@ -60,13 +60,11 @@ export async function aggregateOrderFromDispatches(
     sent: 0,
     cancelled: 0,
   };
-  const failedDispatches: any[] = [];
   let retryable = 0;
   let capped = 0;
   for (const d of all) {
     counts[d.status] = (counts[d.status] || 0) + 1;
     if (d.status === "failed") {
-      failedDispatches.push(d);
       if (Number(d.attempt_count || 0) < MAX_DISPATCH_ATTEMPTS) retryable += 1;
       else capped += 1;
     }
@@ -107,7 +105,7 @@ export async function aggregateOrderFromDispatches(
     total: all.length,
     retryableFailedCount: retryable,
     cappedFailedCount: capped,
-    failedDispatches,
+    allDispatches: all,
   };
 }
 
@@ -137,10 +135,21 @@ export function buildOrderDetailsHtml(agg: OrderAggregate): string {
     (c.pending ? `, ${c.pending} pending` : "") +
     `</div>`;
 
-  if (agg.failedDispatches.length === 0) return summary;
+  // Filter to dispatches that have something interesting to say:
+  //   - failed or cancelled (show the error)
+  //   - successful with delivered content (show the voucher)
+  const detailRows = agg.allDispatches.filter(
+    (d) =>
+      d.status === "failed" ||
+      d.status === "cancelled" ||
+      (d.status === "success" && d.response_content),
+  );
 
-  const items = agg.failedDispatches
+  if (detailRows.length === 0) return summary;
+
+  const items = detailRows
     .map((d) => {
+      const isOk = d.status === "success";
       const label =
         d.tag != null && String(d.tag).length > 0
           ? `tag #${d.tag}`
@@ -149,17 +158,26 @@ export function buildOrderDetailsHtml(agg: OrderAggregate): string {
             : d.voucher_package_id
               ? `pool #${d.voucher_package_id}`
               : `dispatch #${d.id}`;
-      const cap =
-        Number(d.attempt_count || 0) >= MAX_DISPATCH_ATTEMPTS
-          ? " <strong style='color:#dc2626;'>(capped — not retryable)</strong>"
-          : "";
-      const reason = String(d.error_reason || "no reason provided");
-      return `<li><strong>${label}</strong> · attempt ${d.attempt_count || 0}/${MAX_DISPATCH_ATTEMPTS}${cap}<br/><span style="color:#dc2626;">${reason}</span></li>`;
+
+      let detailText: string;
+      if (isOk) {
+        detailText = `<span style="color:#059669;">${d.response_content}</span>`;
+      } else {
+        const cap =
+          Number(d.attempt_count || 0) >= MAX_DISPATCH_ATTEMPTS
+            ? " <strong style='color:#dc2626;'>(capped — not retryable)</strong>"
+            : "";
+        const reason = String(d.error_reason || "no reason provided");
+        detailText = `attempt ${d.attempt_count || 0}/${MAX_DISPATCH_ATTEMPTS}${cap}<br/><span style="color:#dc2626;">${reason}</span>`;
+      }
+
+      return `<li><strong>${label}</strong> · ${detailText}</li>`;
     })
     .join("");
+
   return (
     summary +
-    `<div style="margin-top:8px;"><strong>Failures:</strong>` +
+    `<div style="margin-top:8px;"><strong>Delivery Details:</strong>` +
     `<ul style="text-align:left; margin-top:4px; list-style-type:disc; padding-left:20px;">${items}</ul></div>`
   );
 }
@@ -188,6 +206,7 @@ export async function executeDispatch(
   dispatch.last_attempted_at = new Date();
   dispatch.status = "pending";
   dispatch.error_reason = null;
+  (dispatch as any).response_content = null;
   await dispatch.save();
 
   const codeToSend = String(dispatch.code || "");
