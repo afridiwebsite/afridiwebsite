@@ -8,7 +8,7 @@ import ReactHtmlParser from "react-html-parser";
 import { HiOutlineExternalLink } from "react-icons/hi";
 import { FaCoins, FaInfo, FaPlay } from "react-icons/fa";
 import { GiTwoCoins } from "react-icons/gi";
-import { useQuery } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 //import ShowMoreText from 'react-show-more-text';
 import Swal from "sweetalert2";
 import * as Yup from "yup";
@@ -49,6 +49,7 @@ function TopupOrderPage() {
   const { isAuth, updateAuthUserInfo, authUser, siteSettings } =
     useContext(globalContext);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const product_id = router.query.id;
 
   // Wallet Pay tile image: admin-configured via SiteSettings. Falls back to
@@ -373,7 +374,7 @@ function TopupOrderPage() {
                                   ? Math.max(1, Number(values.quantity) || 1)
                                   : 1,
                             })
-                            .then((order_res) => {
+                            .then(async (order_res) => {
                               if (
                                 order_res.data?.message ==
                                   "Payment Initiated" ||
@@ -402,6 +403,24 @@ function TopupOrderPage() {
                                   setFlashMessage(
                                     "Your order has been placed successfully.",
                                   );
+                                }
+                                // Wallet was debited server-side for "pay"
+                                // orders. Invalidate + refetch the cached
+                                // user-profile so the navbar balance updates
+                                // before we navigate away. The useEffect
+                                // already wired up to userProfileData pushes
+                                // the fresh value into globalContext.
+                                try {
+                                  await queryClient.invalidateQueries(
+                                    "user-profile",
+                                  );
+                                  const fresh = await queryClient.fetchQuery(
+                                    "user-profile",
+                                    getUserProfile,
+                                  );
+                                  if (fresh) updateAuthUserInfo(fresh);
+                                } catch (e) {
+                                  /* navbar will refresh on next page load */
                                 }
                                 router.push(routes.myOrder.name);
                               }

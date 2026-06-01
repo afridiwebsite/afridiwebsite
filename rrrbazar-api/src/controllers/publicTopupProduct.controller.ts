@@ -11,10 +11,13 @@ class PublicTopupProductController {
         const reqPath = req.protocol + '://' + req.get('host');
 
         // Start by fetching the flat product list — this is guaranteed to work
-        // even if the categories table/association is missing.
+        // even if the categories table/association is missing. Inactive
+        // products (`is_active = 0`) are excluded so the home grid only
+        // shows what admins have marked as live.
         let products: any[] = [];
         try {
             products = await TopupProduct.findAll({
+                where: { is_active: 1 },
                 attributes: {
                     include: [
                         'logo',
@@ -39,6 +42,7 @@ class PublicTopupProductController {
             // to the products-only query so the home page still renders.
             console.error('listWithCategories: include failed, falling back', err);
             products = await TopupProduct.findAll({
+                where: { is_active: 1 },
                 attributes: {
                     include: [
                         'logo',

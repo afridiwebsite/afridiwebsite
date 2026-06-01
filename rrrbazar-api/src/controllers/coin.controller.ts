@@ -202,7 +202,9 @@ class CoinController {
         const data = await CoinTransaction.findAll({
             where: { user_id: (req as any).user.id },
             order: [['id', 'DESC']],
-            limit: 100,
+            // 20 latest only — older transactions stay in the DB for audit
+            // but don't need to ship to the client by default.
+            limit: 20,
         });
         response.data = data;
         res.send(response.response);

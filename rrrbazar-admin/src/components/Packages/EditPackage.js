@@ -90,7 +90,9 @@ function EditPackage(props) {
       parsed = [];
     }
     setTags(
-      Array.isArray(parsed) ? parsed.map((v) => String(v == null ? "" : v)) : [],
+      Array.isArray(parsed)
+        ? parsed.map((v) => String(v == null ? "" : v))
+        : [],
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
@@ -199,10 +201,11 @@ function EditPackage(props) {
         description: descriptionHtml,
         auto_delivery: autoDeliveryOn ? 1 : 0,
         stock_tracking: stockTracking ? 1 : 0,
-        stock_quantity: stockTracking ? Math.max(0, Number(stockQuantity) || 0) : 0,
+        stock_quantity: stockTracking
+          ? Math.max(0, Number(stockQuantity) || 0)
+          : 0,
         is_shell: autoDeliveryOn && isShell ? 1 : 0,
-        shell:
-          autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
+        shell: autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
         tags:
           autoDeliveryOn && isShell
             ? tags
@@ -406,8 +409,8 @@ function EditPackage(props) {
                       <div className="flex flex-wrap gap-2">
                         {[
                           { value: 0, label: "None" },
-                          { value: 1, label: "Order once per user" },
-                          { value: 2, label: "Order once a day per user" },
+                          { value: 1, label: "Order once per player" },
+                          { value: 2, label: "Order once a day per player" },
                         ].map((opt) => (
                           <label
                             key={opt.value}
@@ -495,9 +498,7 @@ function EditPackage(props) {
                                 type="checkbox"
                                 className="form-checkbox"
                                 checked={isShell}
-                                onChange={(e) =>
-                                  setIsShell(e.target.checked)
-                                }
+                                onChange={(e) => setIsShell(e.target.checked)}
                               />
                               <span className="ml-2">Is shell</span>
                             </label>
@@ -516,9 +517,7 @@ function EditPackage(props) {
                                 type="text"
                                 className="form_input"
                                 value={shellValue}
-                                onChange={(e) =>
-                                  setShellValue(e.target.value)
-                                }
+                                onChange={(e) => setShellValue(e.target.value)}
                                 placeholder="e.g. SHELL-CODE-001"
                               />
                             </div>

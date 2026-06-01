@@ -163,7 +163,12 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
             const row = e.row.original;
             const val = row['details'];
             const dispatches = row?.BotDispatches || row?.bot_dispatches || [];
-            const retryable = Array.isArray(dispatches)
+            // Cancelled orders are terminal — wallet has already been
+            // refunded, so silently re-firing dispatches would risk
+            // double-delivery. Admin must reopen via the status modal
+            // before retry becomes available again.
+            const isCancelled = row?.status === 'cancel';
+            const retryable = !isCancelled && Array.isArray(dispatches)
                 ? dispatches.filter(
                       (d) =>
                           d.status === 'failed' &&

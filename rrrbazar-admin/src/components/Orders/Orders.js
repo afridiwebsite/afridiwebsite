@@ -31,6 +31,10 @@ function Orders() {
   const reloadRefFunc = useRef(null);
 
   const hasRetryableDispatch = (order) => {
+    // Cancelled orders are terminal — admin must reopen them via the
+    // status modal before retrying. Refunds also went out on cancel, so
+    // silently re-dispatching would risk double-delivery.
+    if (order?.status === "cancel") return false;
     const list = order?.BotDispatches || order?.bot_dispatches || [];
     if (!Array.isArray(list)) return false;
     return list.some(

@@ -1,7 +1,7 @@
-import { useContext } from 'react';
-import { BiChevronDown } from 'react-icons/bi';
-import { globalContext } from '../../pages/_app';
-import Avatar from '../Avatar';
+import { useContext } from "react";
+import { BiChevronDown } from "react-icons/bi";
+import { globalContext } from "../../pages/_app";
+import Avatar from "../Avatar";
 
 function UserPopoverHead({ onClick, isOpen }) {
   const {
@@ -16,14 +16,14 @@ function UserPopoverHead({ onClick, isOpen }) {
       <div className="">
         <Avatar
           src={avatar || undefined}
-          text={username[0]}
+          text={username ? username[0] : ""}
           className="bg-gray-100 cursor-pointer"
           size={35}
         />
       </div>
- 
+
       <BiChevronDown
-        className={`text-gray-500 duration-150 ${isOpen ? 'rotate-180' : ''}`}
+        className={`text-gray-500 duration-150 ${isOpen ? "rotate-180" : ""}`}
       />
     </div>
   );

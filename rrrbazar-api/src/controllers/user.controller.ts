@@ -686,12 +686,16 @@ class UserController {
       }
 
       if (dailyIds.length > 0) {
-        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Calendar-day reset — anchor to today's local midnight so the
+        // storefront gray-out lifts at the same instant as the order
+        // endpoint's block does.
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
         const orders = await Order.findAll({
           where: {
             user_id,
             topuppackage_id: { [Op.in]: dailyIds },
-            created_at: { [Op.gte]: cutoff },
+            created_at: { [Op.gte]: startOfToday },
           },
           attributes: ["topuppackage_id"],
           raw: true,
@@ -967,15 +971,20 @@ class UserController {
             topuppackage_id,
           };
           if (orderOnceMode === 2) {
+            // Calendar-day reset: anchor to today's local midnight, not a
+            // rolling 24-hour window. An order placed at 11:00 PM unblocks
+            // at midnight the same way an order placed at 1:00 AM does.
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
             where.created_at = {
-              [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              [Op.gte]: startOfToday,
             };
           }
           const previous = await Order.count({ where });
           if (previous > 0) {
             response.message =
               orderOnceMode === 2
-                ? "This player ID has already claimed this package in the last 24 hours — try again later."
+                ? "This player ID has already claimed this package today — try again after midnight."
                 : "This player ID has already claimed this package — it's limited to one per player ID.";
             return res.status(400).send(response.response);
           }
