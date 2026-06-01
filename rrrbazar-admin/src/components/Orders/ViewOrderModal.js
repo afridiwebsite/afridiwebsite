@@ -82,7 +82,10 @@ function ViewOrderModal({ order }) {
 
   return (
     <>
-      <li className="cstm_btn_small" onClick={() => setOpen(true)}>
+      <li
+        className="cstm_btn_small bg-green-700 hover:bg-green-600"
+        onClick={() => setOpen(true)}
+      >
         View
       </li>
       <Modal

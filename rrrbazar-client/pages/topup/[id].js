@@ -249,7 +249,9 @@ function TopupOrderPage() {
                           href={routes.login.name + addRedirectQuery(router)}
                         >
                           <a>
-                            <Button className="small topup-cta-gradient-btn " >Login</Button>
+                            <Button className="small topup-cta-gradient-btn ">
+                              Login
+                            </Button>
                           </a>
                         </Link>
                       }
@@ -271,7 +273,9 @@ function TopupOrderPage() {
                             }
                           >
                             <a>
-                              <Button className="small topup-cta-gradient-btn">Add Money</Button>
+                              <Button className="small topup-cta-gradient-btn">
+                                Add Money
+                              </Button>
                             </a>
                           </Link>
                         }
@@ -666,7 +670,7 @@ function TopupOrderPage() {
                                           </div>
                                         );
                                       })}
-                                        {/* Single Recharge --End-- */}
+                                      {/* Single Recharge --End-- */}
                                     </div>
 
                                     {/* Description button — only when the selected package has a description */}
@@ -778,7 +782,9 @@ function TopupOrderPage() {
                                                 addRedirectQuery(router)
                                               }
                                             >
-                                              <a className="_link topup-cta-gradient-btn">Add Money</a>
+                                              <a className="_link topup-cta-gradient-btn">
+                                                Add Money
+                                              </a>
                                             </Link>
                                           }{" "}
                                           or choose another package.
@@ -845,8 +851,8 @@ function TopupOrderPage() {
                                                 className="topup-verify-btn"
                                               >
                                                 {vState.loading
-                                                  ? "Verifying…"
-                                                  : `Verify ${inp.title}`}
+                                                  ? "Checking..."
+                                                  : `Check ${inp.title}`}
                                               </button>
                                               {vState.error && (
                                                 <span className="text-xs text-red-600">
@@ -1058,7 +1064,10 @@ function TopupOrderPage() {
                                   }
                                 >
                                   <a>
-                                    <Button type="button" className="outlined topup-cta-gradient-btn">
+                                    <Button
+                                      type="button"
+                                      className="outlined topup-cta-gradient-btn"
+                                    >
                                       Login
                                     </Button>
                                   </a>

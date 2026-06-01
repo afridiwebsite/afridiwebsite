@@ -53,7 +53,8 @@ function Orders() {
   };
 
   const handleHeaderCheckbox = () => {
-    const retryableOnPage = currentPageOrdersRef.current.filter(hasRetryableDispatch);
+    const retryableOnPage =
+      currentPageOrdersRef.current.filter(hasRetryableDispatch);
     const allChecked =
       retryableOnPage.length > 0 &&
       retryableOnPage.every((o) => selectedIds.has(o.id));
@@ -144,10 +145,7 @@ function Orders() {
       const hasPlayerId = !!(
         order.playerid && order.playerid !== "UNIPIN_VOUCHER"
       );
-      // Make View available whenever there are dispatches to inspect
-      // (or no playerid — legacy behaviour), so the per-order Retry
-      // button inside the modal is always reachable.
-      const dispatches = order?.BotDispatches || order?.bot_dispatches || [];
+
       const showView = !hasPlayerId;
       return (
         <ul className="flex space-x-2">
@@ -171,7 +169,8 @@ function Orders() {
   const selectionColumn = {
     id: "select",
     Header: () => {
-      const retryableOnPage = currentPageOrdersRef.current.filter(hasRetryableDispatch);
+      const retryableOnPage =
+        currentPageOrdersRef.current.filter(hasRetryableDispatch);
       const allChecked =
         retryableOnPage.length > 0 &&
         retryableOnPage.every((o) => selectedIds.has(o.id));

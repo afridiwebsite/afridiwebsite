@@ -71,6 +71,15 @@ function AddBanner() {
                                 <div>
                                     <label htmlFor="image">Banner</label>
                                     <input ref={image} id="image" className="form_input" type="file" required onChange={e => setBannerImage(e.target.files[0])} />
+                                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                        <strong>Recommended size:</strong> 1280 × 520 px for desktop banners,
+                                        600 × 240 px for mobile (set Note = <code>mobile</code> below).
+                                        The image is stretched to fit the slot — upload at the right aspect
+                                        ratio (~2.4 : 1 desktop / ~2.5 : 1 mobile) to avoid distortion.
+                                        <br />
+                                        <strong>GIF supported</strong> — animated GIFs are uploaded as-is
+                                        (no resize); keep file size reasonable.
+                                    </p>
                                 </div>
 
 

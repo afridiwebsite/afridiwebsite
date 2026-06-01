@@ -1,30 +1,32 @@
-const express = require('express');
-import multer from 'multer'
+const express = require("express");
+import multer from "multer";
 const router = express.Router();
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './uploads/images/')
+    cb(null, "./uploads/images/");
   },
   filename: function (req, file, cb) {
-    cb(null, 'images-' + Date.now() + `.${file.originalname.split(".")[1]}`)
-  }
-})
+    cb(null, "images-" + Date.now() + `.${file.originalname.split(".")[1]}`);
+  },
+});
 
 // Default 15 MB; override with UPLOAD_MAX_MB in .env
 const UPLOAD_MAX_BYTES =
-  (Number(process.env.UPLOAD_MAX_MB) || 15) * 1024 * 1024;
+  (Number(process.env.UPLOAD_MAX_MB) || 30) * 1024 * 1024;
 
-const imageUpload = multer({ storage: storage, limits: { fileSize: UPLOAD_MAX_BYTES } })
+const imageUpload = multer({
+  storage: storage,
+  limits: { fileSize: UPLOAD_MAX_BYTES },
+});
 
-
-import uploadController from '../controllers/upload.controller';
+import uploadController from "../controllers/upload.controller";
 
 const handleMulterError = (err: any, req: any, res: any, next: any) => {
-  if (err && err.name === 'MulterError') {
+  if (err && err.name === "MulterError") {
     const message =
-      err.code === 'LIMIT_FILE_SIZE'
+      err.code === "LIMIT_FILE_SIZE"
         ? `File too large. Max allowed is ${UPLOAD_MAX_BYTES / 1024 / 1024} MB.`
-        : err.message || 'Upload failed';
+        : err.message || "Upload failed";
     return res
       .status(413)
       .send({ success: false, status: 413, message, data: {} });
@@ -33,16 +35,16 @@ const handleMulterError = (err: any, req: any, res: any, next: any) => {
 };
 
 router.post(
-  '/upload/image',
-  imageUpload.single('image'),
+  "/upload/image",
+  imageUpload.single("image"),
   handleMulterError,
-  uploadController.uploadImage
-)
+  uploadController.uploadImage,
+);
 router.post(
-  '/upload/icon',
-  imageUpload.single('icon'),
+  "/upload/icon",
+  imageUpload.single("icon"),
   handleMulterError,
-  uploadController.uploadIcon
-)
+  uploadController.uploadIcon,
+);
 
 export default router;

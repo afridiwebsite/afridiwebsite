@@ -156,7 +156,12 @@ body {
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    // `fill` instead of `cover` so the banner is never side-cropped on
+    // narrow viewports. Admin-uploaded images may be stretched to match
+    // the slide box (520px desktop / 240px mobile) but the entire image
+    // is always visible. Pick `contain` if you'd rather letterbox than
+    // stretch.
+    object-fit: fill;
     object-position: center;
   }
 }
@@ -1466,7 +1471,7 @@ body {
   gap: 12px;
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   margin: 4px 0 14px;
 }
 .home-section-title-bar {
@@ -3068,7 +3073,9 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 
   &:hover {
     background: rgba(var(--theme-primary-rgb, 56 86 181) / 0.12);
@@ -3081,7 +3088,7 @@ body {
 }
 
 .topup-cta-gradient-btn {
- background: linear-gradient(
+  background: linear-gradient(
     135deg,
     var(--theme-primary) 0%,
     var(--theme-secondary) 100%

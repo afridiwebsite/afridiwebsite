@@ -45,6 +45,29 @@ class UploadController {
         // closes the handle before we write back.
         const inputBuf = await fs.promises.readFile(file.path);
 
+        const thumbDir = path.join(file.destination, 'thumb');
+        await fs.promises.mkdir(thumbDir, { recursive: true });
+
+        // Animated GIFs lose every frame after the first when sent through
+        // sharp's default pipeline — it doesn't enable animation unless
+        // explicitly asked. Detect GIF input (by extension and the GIF89a
+        // / GIF87a magic bytes) and skip resizing so the original animated
+        // bytes land on disk intact. Thumb is just a copy of the source —
+        // server-side resizing of animated GIFs is expensive and noisy.
+        const origName = String(file.originalname || '').toLowerCase();
+        const isGifExt = origName.endsWith('.gif');
+        const isGifMagic =
+            inputBuf.length >= 6 &&
+            inputBuf[0] === 0x47 && // 'G'
+            inputBuf[1] === 0x49 && // 'I'
+            inputBuf[2] === 0x46 && // 'F'
+            inputBuf[3] === 0x38; // '8' (87a / 89a)
+        if (isGifExt || isGifMagic) {
+            await fs.promises.writeFile(path.join(file.destination, image), inputBuf);
+            await fs.promises.writeFile(path.join(thumbDir, image), inputBuf);
+            return image;
+        }
+
         const buff = await sharp(inputBuf)
             .resize(900)
             .withMetadata()
@@ -54,9 +77,6 @@ class UploadController {
             .resize(100)
             .withMetadata()
             .toBuffer()
-
-        const thumbDir = path.join(file.destination, 'thumb');
-        await fs.promises.mkdir(thumbDir, { recursive: true });
 
         await fs.promises.writeFile(path.join(file.destination, image), buff);
         await fs.promises.writeFile(path.join(thumbDir, image), thumbBuff);
