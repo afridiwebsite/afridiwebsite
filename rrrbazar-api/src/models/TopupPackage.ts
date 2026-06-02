@@ -46,6 +46,25 @@ export default (sequelize: Sequelize) => {
         public shell!: string;
         public shell_quantity!: number;
         public tags!: string;
+        // Auto-bot routing. Supersedes the legacy `auto_delivery`/`is_shell`
+        // flags by naming the bot kind explicitly. Known values:
+        //   none       — no auto bot (admin fulfils manually)
+        //   uc-bot     — current Auto-delivery path: emit vouchers from the
+        //                mapped voucher pools and POST each to bot_url
+        //   shell-bot  — current Auto-delivery + Is-shell path: send the
+        //                shell string once per tag to bot_url
+        //   like-bot   — Free Fire "like" bot. URL is built per-order from
+        //                bot_config: key, server_name (default 'bd'), and
+        //                the order's playerid as `uid`. GET request.
+        //   pubg-bot   — placeholder for future PUBG-style auto-delivery.
+        // Empty/`none` collapses to "no bot" — order goes pending for the
+        // admin to fulfil manually.
+        public bot_type!: string;
+        // JSON-encoded type-specific config. Examples:
+        //   like-bot → { "key": "AMS-XXXX", "server_name": "bd" }
+        // Other types ignore this field today (`bot_url` is the per-package
+        // endpoint for uc/shell bots).
+        public bot_config!: string;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -179,6 +198,16 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.TEXT,
             allowNull: true,
             defaultValue: '[]',
+        },
+        bot_type: {
+            type: DataTypes.STRING(32),
+            allowNull: true,
+            defaultValue: 'none',
+        },
+        bot_config: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            defaultValue: '{}',
         },
         created_at: {
             type: DataTypes.DATE,

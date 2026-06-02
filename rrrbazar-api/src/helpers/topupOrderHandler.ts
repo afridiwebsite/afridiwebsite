@@ -15,7 +15,13 @@ import { Sequelize } from "sequelize";
 import Schema from "../models";
 import { createAndSendDispatch } from "./dispatchBot";
 
-const { BotDispatch, PackageVoucherMap, StoreUnipin, Voucher } = Schema;
+const {
+  BotDispatch,
+  CoinTransaction,
+  PackageVoucherMap,
+  StoreUnipin,
+  Voucher,
+} = Schema;
 
 export type BotType = "none" | "uc-bot" | "shell-bot" | "like-bot" | "pubg-bot";
 
@@ -137,6 +143,117 @@ function appendBotErrorsHtml(html: string, errors: string[]): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Voucher-product handler                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Voucher-product orders: pull `quantity` codes from the package's own
+ * voucher pool and complete the order inline. Independent of bot_type
+ * (the voucher IS the deliverable). If the pool can't fulfil the full
+ * quantity we park the order pending and persist placeholders so the
+ * admin retry endpoint can finish later.
+ *
+ * Awards coin reward inline (qty × coin_value) because these orders never
+ * reach checkOrder.
+ */
+export async function handleVoucherProduct(opts: {
+  order: any;
+  topupPackage: any;
+  user: any;
+  quantity: number;
+}): Promise<DispatchResult> {
+  const { order, topupPackage, user, quantity } = opts;
+
+  const emitted: any[] = [];
+  let pool_exhausted = false;
+  for (let i = 0; i < quantity; i++) {
+    const v = await emitVoucher(topupPackage.id, order.id);
+    if (!v) {
+      pool_exhausted = true;
+      break;
+    }
+    emitted.push(v);
+  }
+
+  if (pool_exhausted) {
+    // Release partial allocation so codes aren't held idle against a
+    // stuck order.
+    for (const v of emitted) await releaseVoucher(v);
+    order.status = "pending";
+    order.brief_note = "Awaiting voucher restock";
+    (order as any).details =
+      `<span style="color:orange;"><strong>Voucher pool ran dry</strong> — only ${emitted.length} of ${quantity} unit(s) were available at order time. Order kept pending for manual fulfilment.</span>`;
+    await order.save();
+
+    // One placeholder BotDispatch per requested unit so admin retry can
+    // re-allocate when stock returns. For voucher products bot_url is
+    // typically empty — retryBotDispatches handles that by completing
+    // the order directly without firing a bot.
+    for (let i = 0; i < quantity; i++) {
+      try {
+        await BotDispatch.create({
+          order_id: order.id,
+          voucher_id: null,
+          voucher_package_id: topupPackage.id,
+          tag: null,
+          code: "",
+          package_name_sent: topupPackage.name || "",
+          bot_url: String(topupPackage.bot_url || ""),
+          bot_type: "",
+          status: "failed",
+          error_reason: "No voucher available in pool — awaiting restock",
+          attempt_count: 0,
+        });
+      } catch (e) {
+        console.error(
+          "[handleVoucherProduct] failed to persist placeholder dispatch",
+          { order_id: order.id, unit: i, err: (e as any)?.message || e },
+        );
+      }
+    }
+
+    return {
+      responseMessage:
+        "Order placed — your vouchers will be delivered once stock is restocked.",
+    };
+  }
+
+  order.status = "completed";
+  order.brief_note =
+    emitted.length === 1
+      ? `Voucher: ${emitted[0].data}`
+      : `Vouchers (${emitted.length}) delivered`;
+  (order as any).details =
+    `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${emitted.map((v) => `<li>${v.data}</li>`).join("")}</ul>`;
+  await order.save();
+
+  // Award coin reward inline — voucher orders never reach checkOrder,
+  // so the deferred path in syncOrderCoinsForStatus won't credit them.
+  try {
+    const coinReward = Number(topupPackage.coin_value || 0) * quantity;
+    if (coinReward > 0) {
+      user.coins = (user.coins || 0) + coinReward;
+      await user.save();
+      await CoinTransaction.create({
+        user_id: user.id,
+        amount: coinReward,
+        type: "purchase",
+        note: `Order #${order.id} (${topupPackage.name} × ${quantity})`,
+        reference_id: order.id,
+      });
+    }
+  } catch (e) {
+    // Never block an order on coin rewarding failure.
+    console.error("[handleVoucherProduct] coin reward failed", {
+      order_id: order.id,
+      err: (e as any)?.message || e,
+    });
+  }
+
+  return { responseMessage: "Order placed successfully" };
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Per-bot handlers                                                          */
 /* -------------------------------------------------------------------------- */
 
@@ -185,7 +302,7 @@ async function handleShellBot(opts: {
         code: shellValue,
         package_name_sent: tagValue,
         tag: tagValue,
-        // bot_type: "shell-bot",
+        bot_type: "shell-bot",
       });
       if (!ok) {
         bot_failures += 1;
@@ -298,7 +415,7 @@ async function handleUcBot(opts: {
         code: (v as any).data,
         package_name_sent: topupPackage.name,
         voucher_id: (v as any).id,
-        // bot_type: "uc-bot",
+        bot_type: "uc-bot",
       });
       if (!ok) {
         bot_failures += 1;
@@ -350,7 +467,7 @@ async function handleLikeBot(opts: {
     bot_url: url,
     code: "",
     package_name_sent: topupPackage.name,
-    // bot_type: "like-bot",
+    bot_type: "like-bot",
   });
 
   // Like-bot terminates synchronously: ok = success, !ok = failed.
@@ -428,7 +545,7 @@ async function handleLegacyUnipinBot(opts: {
       bot_url: pkgBotUrl,
       code: send_unipin,
       package_name_sent: topupPackage.name,
-      // bot_type: "uc-bot",
+      bot_type: "uc-bot",
     });
     if (!ok) {
       botError =

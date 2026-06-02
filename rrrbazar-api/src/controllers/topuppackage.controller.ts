@@ -32,6 +32,59 @@ function normalizeTagList(raw: any): string[] {
     .filter((s: string) => s.length > 0);
 }
 
+// Whitelist of supported bot types — anything else is collapsed to 'none'
+// so an admin form can't accidentally save a typo into the column.
+const ALLOWED_BOT_TYPES = new Set([
+  "none",
+  "uc-bot",
+  "shell-bot",
+  "like-bot",
+  "pubg-bot",
+]);
+
+function normalizeBotType(raw: any): string {
+  const v = String(raw || "").toLowerCase().trim();
+  return ALLOWED_BOT_TYPES.has(v) ? v : "none";
+}
+
+function normalizeBotConfig(raw: any): Record<string, any> {
+  if (raw == null) return {};
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+// Pull the relevant config slice for a given bot type, dropping unrelated
+// keys so the stored JSON stays tidy. Returns the cleaned config object
+// alongside a validation error message (null = ok).
+function pickBotConfigFor(
+  botType: string,
+  raw: Record<string, any>,
+): { config: Record<string, any>; error: string | null } {
+  if (botType === "like-bot") {
+    const key = String(raw?.key || "").trim();
+    const server = String(raw?.server_name || "").trim() || "bd";
+    if (!key) {
+      return {
+        config: {},
+        error: 'Like-bot requires a "key" in bot_config',
+      };
+    }
+    return { config: { key, server_name: server }, error: null };
+  }
+  // Other types currently take no config.
+  return { config: {}, error: null };
+}
+
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -68,10 +121,10 @@ class TopupPackageController {
       return res.status(400).send(response.response);
     }
   }
+
   async createTopupPackage(req: express.Request, res: express.Response) {
     const response = new responseUtils();
 
-    const id = req.params.id as any;
     const {
       product_id,
       name,
@@ -91,20 +144,43 @@ class TopupPackageController {
       is_shell,
       shell,
       tags,
+      bot_type,
+      bot_config,
     } = req.body;
 
     try {
-      const shellOn = auto_delivery == 1 && is_shell == 1;
+      // The new admin form sends `bot_type` directly; for backward
+      // compat we also accept legacy auto_delivery + is_shell and
+      // derive bot_type from them.
+      let resolvedBotType = normalizeBotType(bot_type);
+      if (resolvedBotType === "none") {
+        if (auto_delivery == 1 && is_shell == 1) resolvedBotType = "shell-bot";
+        else if (auto_delivery == 1) resolvedBotType = "uc-bot";
+      }
+
+      const shellOn = resolvedBotType === "shell-bot";
+      const ucOn = resolvedBotType === "uc-bot";
+      const isAutoOn = shellOn || ucOn;
       const cleanShell = shellOn ? String(shell || "").trim() : "";
       const cleanTags = shellOn ? normalizeTagList(tags) : [];
 
       // Shell packages must have a shell code AND at least one tag.
-      // The admin form enforces this client-side, but reject here
-      // too in case someone POSTs around the form.
       if (shellOn && (!cleanShell || cleanTags.length === 0)) {
         response.message = !cleanShell
-          ? 'Shell value is required when "Is shell" is on'
-          : 'At least one tag is required when "Is shell" is on';
+          ? "Shell value is required for Shell-bot"
+          : "At least one tag is required for Shell-bot";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      // Pick the type-specific config slice (e.g. like-bot key + server).
+      const { config: pickedConfig, error: configError } = pickBotConfigFor(
+        resolvedBotType,
+        normalizeBotConfig(bot_config),
+      );
+      if (configError) {
+        response.message = configError;
         response.status = 400;
         response.success = false;
         return res.status(400).send(response.response);
@@ -123,17 +199,18 @@ class TopupPackageController {
         order_once:
           Number(order_once) === 2 ? 2 : Number(order_once) === 1 ? 1 : 0,
         bot_url: String(bot_url || "").trim(),
-        auto_delivery: auto_delivery == 1 ? 1 : 0,
+        // Legacy flags stay in sync with bot_type so any downstream
+        // consumer that still reads them keeps working.
+        auto_delivery: isAutoOn ? 1 : 0,
         allow_quantity: allow_quantity == 1 ? 1 : 0,
         stock_tracking: stock_tracking == 1 ? 1 : 0,
         stock_quantity:
           stock_tracking == 1 ? Math.max(0, Number(stock_quantity) || 0) : 0,
-        // Shell only makes sense when auto-delivery is on — the bot
-        // is the thing that uses it. Off auto-delivery rows clear
-        // shell+tags back to defaults regardless of what was sent.
         is_shell: shellOn ? 1 : 0,
         shell: cleanShell,
         tags: JSON.stringify(cleanTags),
+        bot_type: resolvedBotType,
+        bot_config: JSON.stringify(pickedConfig),
       });
 
       response.message = "Created successfully";
@@ -147,6 +224,7 @@ class TopupPackageController {
       return res.status(400).send(response.response);
     }
   }
+
   async updateTopupPackage(req: express.Request, res: express.Response) {
     const response = new responseUtils();
 
@@ -170,6 +248,8 @@ class TopupPackageController {
       is_shell,
       shell,
       tags,
+      bot_type,
+      bot_config,
     } = req.body;
 
     try {
@@ -201,9 +281,6 @@ class TopupPackageController {
       if (bot_url !== undefined) {
         topupPackage.bot_url = String(bot_url || "").trim();
       }
-      if (auto_delivery !== undefined) {
-        topupPackage.auto_delivery = auto_delivery == 1 ? 1 : 0;
-      }
       if (allow_quantity !== undefined) {
         topupPackage.allow_quantity = allow_quantity == 1 ? 1 : 0;
       }
@@ -226,14 +303,29 @@ class TopupPackageController {
       ) {
         topupPackage.stock_quantity = Math.max(0, Number(stock_quantity) || 0);
       }
-      // Shell: scoped to auto-delivery. If auto-delivery is off, force
-      // shell + tags back to defaults so a stale value doesn't haunt
-      // the bot dispatch later.
-      const isAutoOn = (topupPackage.auto_delivery as any) == 1;
-      const shellWillBeOn =
-        is_shell !== undefined
-          ? isAutoOn && is_shell == 1
-          : isAutoOn && topupPackage.is_shell === 1;
+
+      // Bot type resolution. Priority:
+      //   1. Explicit `bot_type` in the request (new admin form).
+      //   2. Legacy auto_delivery/is_shell flags (older clients).
+      //   3. Existing saved bot_type if neither was provided.
+      let resolvedBotType: string;
+      if (bot_type !== undefined) {
+        resolvedBotType = normalizeBotType(bot_type);
+      } else if (auto_delivery !== undefined || is_shell !== undefined) {
+        const ad =
+          auto_delivery !== undefined
+            ? auto_delivery == 1
+            : topupPackage.auto_delivery == 1;
+        const sh =
+          is_shell !== undefined ? is_shell == 1 : topupPackage.is_shell == 1;
+        resolvedBotType = ad ? (sh ? "shell-bot" : "uc-bot") : "none";
+      } else {
+        resolvedBotType = normalizeBotType(topupPackage.bot_type);
+      }
+
+      const shellWillBeOn = resolvedBotType === "shell-bot";
+      const ucWillBeOn = resolvedBotType === "uc-bot";
+      const isAutoOn = shellWillBeOn || ucWillBeOn;
 
       if (shellWillBeOn) {
         // Resolve the new shell/tags values from the request, falling
@@ -248,8 +340,8 @@ class TopupPackageController {
             : normalizeTagList(topupPackage.tags);
         if (!nextShell || nextTags.length === 0) {
           response.message = !nextShell
-            ? 'Shell value is required when "Is shell" is on'
-            : 'At least one tag is required when "Is shell" is on';
+            ? "Shell value is required for Shell-bot"
+            : "At least one tag is required for Shell-bot";
           response.status = 400;
           response.success = false;
           return res.status(400).send(response.response);
@@ -257,11 +349,32 @@ class TopupPackageController {
         topupPackage.is_shell = 1;
         topupPackage.shell = nextShell;
         topupPackage.tags = JSON.stringify(nextTags);
-      } else if (is_shell !== undefined || !isAutoOn) {
+      } else {
         topupPackage.is_shell = 0;
         topupPackage.shell = "";
         topupPackage.tags = "[]";
       }
+
+      topupPackage.auto_delivery = isAutoOn ? 1 : 0;
+      topupPackage.bot_type = resolvedBotType;
+
+      // Bot config — only persisted for types that actually use it.
+      const rawConfig =
+        bot_config !== undefined
+          ? normalizeBotConfig(bot_config)
+          : normalizeBotConfig(topupPackage.bot_config);
+      const { config: pickedConfig, error: configError } = pickBotConfigFor(
+        resolvedBotType,
+        rawConfig,
+      );
+      if (configError) {
+        response.message = configError;
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      topupPackage.bot_config = JSON.stringify(pickedConfig);
+
       await topupPackage.save();
 
       response.message = "Updated successfully";
@@ -274,6 +387,7 @@ class TopupPackageController {
       return res.status(400).send(response.response);
     }
   }
+
   async deleteTopupPackage(req: express.Request, res: express.Response) {
     const response = new responseUtils();
 

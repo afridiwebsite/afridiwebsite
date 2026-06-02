@@ -29,6 +29,12 @@ export default (sequelize: Sequelize) => {
         public code!: string;
         public package_name_sent!: string;
         public bot_url!: string;
+        // Mirrors TopupPackage.bot_type — captured at create time so the
+        // retry endpoint can route to the right re-dispatch handler even
+        // if the package's bot config has drifted since the original try.
+        // Empty/`auto-order` falls back to the legacy POST behaviour
+        // (autoOrder).
+        public bot_type!: string;
         // pending = row created, not yet POSTed to the bot
         // sent    = POST returned OK, awaiting checkOrder callback
         // success = checkOrder callback reported success
@@ -83,6 +89,11 @@ export default (sequelize: Sequelize) => {
         },
         bot_url: {
             type: DataTypes.STRING(512),
+            allowNull: true,
+            defaultValue: '',
+        },
+        bot_type: {
+            type: DataTypes.STRING(32),
             allowNull: true,
             defaultValue: '',
         },

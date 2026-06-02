@@ -1,7 +1,90 @@
+import fetch from "node-fetch";
 import Schema from "../models";
 import autoOrder from "./autoorder";
 
 const { BotDispatch } = Schema;
+
+// Per-request hard timeout for the like-bot GET. Keeps a hung upstream
+// from blocking the whole dispatch path.
+const LIKE_BOT_TIMEOUT_MS = 15000;
+
+/**
+ * Fire a GET request to a like-bot URL and decide success/failure from the
+ * response body. Like-bot returns JSON like:
+ *   { "status": "success", "added": 100, ... }
+ *   { "status": "error", "message": "..." }
+ * Anything non-2xx is also treated as failure.
+ */
+async function fireLikeBot(
+  url: string,
+): Promise<{ ok: boolean; error_reason: string | null; body: any }> {
+  if (!url) {
+    return {
+      ok: false,
+      error_reason: "no like-bot URL configured for this package",
+      body: null,
+    };
+  }
+  let timeoutHandle: any;
+  try {
+    // node-fetch in this project doesn't have AbortController in older
+    // versions; race a manual timer instead.
+    const requestPromise = fetch(url, { method: "GET" });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(
+        () => reject(new Error(`timed out after ${LIKE_BOT_TIMEOUT_MS}ms`)),
+        LIKE_BOT_TIMEOUT_MS,
+      );
+    });
+    const response = (await Promise.race([
+      requestPromise,
+      timeoutPromise,
+    ])) as any;
+    clearTimeout(timeoutHandle);
+
+    let body: any;
+    const contentType = response.headers?.get?.("content-type") || "";
+    try {
+      if (contentType.includes("application/json")) {
+        body = await response.json();
+      } else {
+        body = await response.text();
+      }
+    } catch {
+      body = "(unparseable)";
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error_reason: `like-bot HTTP ${response.status} ${response.statusText || ""}`.trim(),
+        body,
+      };
+    }
+    // Treat `{ status: "error", message }` (or `success: false`) as failure.
+    if (body && typeof body === "object") {
+      const status = String(body.status || "").toLowerCase();
+      if (status === "error" || body.success === false) {
+        return {
+          ok: false,
+          error_reason: String(
+            body.message || body.error || "like-bot reported status=error",
+          ).slice(0, 300),
+          body,
+        };
+      }
+    }
+    return { ok: true, error_reason: null, body };
+  } catch (e: any) {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    const msg = (e && (e.message || e.code || e.toString())) || "unknown error";
+    return {
+      ok: false,
+      error_reason: `like-bot threw: ${String(msg).slice(0, 250)}`,
+      body: null,
+    };
+  }
+}
 
 // Soft cap on retries — the retry endpoint refuses to fire any dispatch
 // whose attempt_count is already >= MAX_DISPATCH_ATTEMPTS so a runaway
@@ -212,22 +295,43 @@ export async function executeDispatch(
   const codeToSend = String(dispatch.code || "");
   const packageToSend = String(dispatch.package_name_sent || "");
   const botUrl = String(dispatch.bot_url || "");
+  const botType = String(dispatch.bot_type || "").toLowerCase().trim();
 
   console.log("[executeDispatch] firing", {
     dispatch_id: dispatch.id,
     order_id: dispatch.order_id,
     attempt: dispatch.attempt_count,
+    bot_type: botType || "(legacy)",
     tag: dispatch.tag,
     voucher_id: dispatch.voucher_id,
     bot_url: botUrl,
   });
 
-  // We use `shellOverride` to carry the code regardless of dispatch
-  // type — autoOrder resolves `codeForBot = shellOverride || unipin`,
-  // and we want exactly what's saved on the row. `package_name` carries
-  // the saved label (tag for shell, package name for voucher).
-  // autoOrder always returns `{ ok: true, url } | { ok: false, error_reason }`
-  // — including for HTTP 2xx responses whose body says status=error.
+  // Like-bot: synchronous GET to the per-order URL captured on the row.
+  // Success/failure is resolved inline from the response body (no
+  // separate /check_order callback) so the dispatch terminates on the
+  // first attempt — no `sent` intermediate state.
+  if (botType === "like-bot") {
+    const result = await fireLikeBot(botUrl);
+    if (!result.ok) {
+      dispatch.status = "failed";
+      dispatch.error_reason =
+        result.error_reason || "like-bot rejected the request";
+      await dispatch.save();
+      return { ok: false, error_reason: dispatch.error_reason };
+    }
+    dispatch.status = "success";
+    (dispatch as any).response_content =
+      typeof result.body === "string"
+        ? result.body.slice(0, 500)
+        : JSON.stringify(result.body || {}).slice(0, 500);
+    await dispatch.save();
+    return { ok: botUrl, error_reason: null };
+  }
+
+  // uc-bot / shell-bot / legacy: POST to the configured bot endpoint
+  // via the shared autoOrder helper. autoOrder always returns
+  // `{ ok: true, url } | { ok: false, error_reason }`.
   const result: any = await autoOrder(
     dispatch.order_id,
     opts.player_id,
@@ -276,6 +380,11 @@ export async function createAndSendDispatch(opts: {
   package_name_sent: string;
   voucher_id?: number | null;
   tag?: string | null;
+  // Captured at create time so retry routes to the right transport
+  // (POST autoOrder vs Like-bot GET) even if the package's bot_type
+  // has drifted by the time the admin clicks Retry. Empty = legacy
+  // POST behaviour.
+  bot_type?: string;
 }): Promise<{ dispatch: any; ok: any; error_reason: string | null }> {
   const dispatch = await BotDispatch.create({
     order_id: opts.order_id,
@@ -284,6 +393,7 @@ export async function createAndSendDispatch(opts: {
     code: opts.code,
     package_name_sent: opts.package_name_sent || "",
     bot_url: opts.bot_url,
+    bot_type: String(opts.bot_type || "").toLowerCase().trim(),
     status: "pending",
     attempt_count: 0,
   });

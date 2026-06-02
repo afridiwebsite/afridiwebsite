@@ -13,6 +13,11 @@ import {
   buildOrderDetailsHtml,
   createAndSendDispatch,
 } from "../helpers/dispatchBot";
+import {
+  dispatchOrder,
+  handleVoucherProduct,
+  parseTags,
+} from "../helpers/topupOrderHandler";
 const {
   User,
   Banner,
@@ -41,49 +46,9 @@ const {
   BotDispatch,
 } = Schema;
 
-// Allocate one unused voucher to an order. Wraps the find+assign so the
-// race window between the two is small. Returns the voucher row or null
-// if the pool is empty.
-async function emitProductVoucher(packageId: number, orderId: number) {
-  const voucher = await Voucher.findOne({
-    where: { is_used: 0, package_id: packageId },
-    order: [["id", "ASC"]],
-  });
-  if (!voucher) return null;
-  voucher.is_used = 1;
-  voucher.order_id = orderId;
-  await voucher.save();
-  return voucher;
-}
-
-// Release a previously emitted voucher back to the pool. Used when an
-// auto-delivery order partially allocates and we need to roll back.
-async function releaseVoucher(voucher: any) {
-  if (!voucher) return;
-  voucher.is_used = 0;
-  voucher.order_id = null;
-  await voucher.save();
-}
-
-// Parse the package's stored tags into an array of trimmed, non-empty
-// strings. Stored as JSON in the `tags` TEXT column; accepts an
-// already-parsed array too (defensive).
-function parseTags(raw: any): string[] {
-  let arr: any = raw;
-  if (typeof arr === "string") {
-    const s = arr.trim();
-    if (s.length === 0) return [];
-    try {
-      arr = JSON.parse(s);
-    } catch {
-      return [];
-    }
-  }
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((v: any) => String(v == null ? "" : v).trim())
-    .filter((v: string) => v.length > 0);
-}
+// Voucher pool emission, tag parsing, and per-bot dispatch live in
+// ../helpers/topupOrderHandler — see that file for the per-bot-type
+// logic (uc-bot, shell-bot, like-bot, pubg-bot, legacy UniPin).
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -1238,107 +1203,24 @@ class UserController {
         await syncOrderCoinsForStatus(order, "completed");
       }
 
-      // Voucher-pool products: pull `quantity` codes from the pool and
-      // complete the order. If the pool can't fulfil the full requested
-      // quantity we keep the order open in "pending" so an admin (or a
-      // restock) can finish delivery later — release any partial codes so
-      // they're not wasted on a stuck order. Wallet stays charged.
+      // Voucher-pool products: pull `quantity` codes from the package's
+      // own pool and complete the order inline. Handler manages pool-
+      // exhaustion fallback (parks order pending + persists placeholder
+      // dispatches) and inline coin reward.
       if (isVoucherProduct) {
-        const emitted: any[] = [];
-        let pool_exhausted = false;
-        for (let i = 0; i < quantity; i++) {
-          const v = await emitProductVoucher(topupPackage.id, order.id);
-          if (!v) {
-            pool_exhausted = true;
-            break;
-          }
-          emitted.push(v);
-        }
-        if (pool_exhausted) {
-          // Return the partial allocation back to the pool — the order will
-          // be re-allocated later when stock returns. Without this we'd
-          // hold N-1 vouchers idle against a stuck order.
-          for (const v of emitted) await releaseVoucher(v);
-          order.status = "pending";
-          order.brief_note = "Awaiting voucher restock";
-          (order as any).details =
-            `<span style="color:orange;"><strong>Voucher pool ran dry</strong> — only ${emitted.length} of ${quantity} unit(s) were available at order time. Order kept pending for manual fulfilment.</span>`;
-          await order.save();
-
-          // Create one placeholder BotDispatch per requested unit so the
-          // admin retry endpoint can find this order and re-try the
-          // allocation when stock returns. For pure voucher-pool products
-          // bot_url is empty; retryBotDispatches handles that case by
-          // completing the order directly (no bot dispatch needed).
-          for (let i = 0; i < quantity; i++) {
-            try {
-              await BotDispatch.create({
-                order_id: order.id,
-                voucher_id: null,
-                voucher_package_id: topupPackage.id,
-                tag: null,
-                code: "",
-                package_name_sent: topupPackage.name || "",
-                bot_url: String((topupPackage as any).bot_url || ""),
-                status: "failed",
-                error_reason: "No voucher available in pool — awaiting restock",
-                attempt_count: 0,
-              });
-            } catch (e) {
-              console.error(
-                "[topupPackageOrder] failed to persist voucher placeholder dispatch",
-                { order_id: order.id, unit: i, err: (e as any)?.message || e },
-              );
-            }
-          }
-
-          const {
-            uc: ucAliasPv,
-            ingamepassword: ingamepasswordAliasPv,
-            bprice: bpriceAliasPv,
-            ...filteredOrderPv
-          } = order.get({ plain: true });
-          response.message =
-            "Order placed — your vouchers will be delivered once stock is restocked.";
-          response.data = filteredOrderPv;
-          return res.send(response.response);
-        }
-
-        order.status = "completed";
-        order.brief_note =
-          emitted.length === 1
-            ? `Voucher: ${emitted[0].data}`
-            : `Vouchers (${emitted.length}) delivered`;
-        (order as any).details =
-          `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${emitted.map((v) => `<li>${v.data}</li>`).join("")}</ul>`;
-        await order.save();
-
-        // Coin reward still applies to voucher purchases (multiplied by
-        // quantity, since each unit earns the coins).
-        try {
-          const coinReward = Number(topupPackage.coin_value || 0) * quantity;
-          if (coinReward > 0) {
-            user.coins = (user.coins || 0) + coinReward;
-            await user.save();
-            await CoinTransaction.create({
-              user_id: user.id,
-              amount: coinReward,
-              type: "purchase",
-              note: `Order #${order.id} (${topupPackage.name} × ${quantity})`,
-              reference_id: order.id,
-            });
-          }
-        } catch (e) {
-          // never block order on coin rewarding failure
-        }
-
+        const { responseMessage } = await handleVoucherProduct({
+          order,
+          topupPackage,
+          user,
+          quantity,
+        });
         const {
-          uc: ucAliasV,
-          ingamepassword: ingamepasswordAliasV,
-          bprice: bpriceAliasV,
+          uc: _ucAliasV,
+          ingamepassword: _ingamepasswordAliasV,
+          bprice: _bpriceAliasV,
           ...filteredOrderV
         } = order.get({ plain: true });
-        response.message = "Order placed successfully";
+        response.message = responseMessage;
         response.data = filteredOrderV;
         return res.send(response.response);
       }
@@ -1350,31 +1232,14 @@ class UserController {
       // The voucher branch above awards directly because its orders
       // complete inline.
 
-      // AUTO-DELIVERY START — when the ordered package has auto_delivery on,
-      // its `PackageVoucherMap` rows determine how many vouchers to allocate
-      // (one per mapping) and how many times the auto-bot runs. All-or-
-      // nothing: if any pool is empty we release the ones we already
-      // grabbed, refund the wallet and abort.
-
+      // Shell packages must have a shell value AND at least one tag.
+      // The admin-side controller enforces this on save, but double-check
+      // here so a stale row can't slip through and produce a half-broken
+      // dispatch. Order is already created (matches pre-refactor
+      // behaviour — wallet stays charged for admin to manually resolve).
       const tagsParsed = parseTags((topupPackage as any).tags);
       const shellValueRaw = String((topupPackage as any).shell || "").trim();
       const isShellPackage = Number((topupPackage as any).is_shell) === 1;
-
-      console.log("[topupPackageOrder] branch decision", {
-        order_id: order.id,
-        package_id: topupPackage.id,
-        auto_delivery: (topupPackage as any).auto_delivery,
-        is_shell: (topupPackage as any).is_shell,
-        shell_value_present: shellValueRaw.length > 0,
-        tag_count: tagsParsed.length,
-        bot_url: (topupPackage as any).bot_url,
-        uc: topupPackage.uc,
-        current_status: order.status,
-      });
-
-      // Shell packages must have a shell value AND at least one tag.
-      // Reject the order before any side effects (no voucher allocation,
-      // no bot dispatch) so the package can be fixed.
       if (isShellPackage && (!shellValueRaw || tagsParsed.length === 0)) {
         console.warn(
           "[topupPackageOrder] shell package missing config — rejecting",
@@ -1393,377 +1258,22 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      if ((topupPackage as any).auto_delivery == 1) {
-        // Shell mode short-circuit: when the package is configured as a
-        // shell delivery, the bot is fired once per saved tag and NO
-        // voucher is consumed from the pool. We resolve this before
-        // loading PackageVoucherMap rows so a leftover mapping (from when
-        // the package wasn't yet shell) can't accidentally emit and burn
-        // pool vouchers.
-        if (isShellPackage) {
-          const botUrl = String((topupPackage as any).bot_url || "").trim();
-          const total = tagsParsed.length;
-          console.log(
-            "[topupPackageOrder][auto-delivery][shell-only] entering (no voucher consumed)",
-            {
-              order_id: order.id,
-              package_id: topupPackage.id,
-              bot_url: botUrl,
-              tag_count: total,
-            },
-          );
-
-          const botErrors: string[] = [];
-          let bot_failures = 0;
-
-          if (!botUrl) {
-            console.warn(
-              "[topupPackageOrder][auto-delivery][shell-only] bot_url missing",
-              { order_id: order.id, package_id: topupPackage.id },
-            );
-            botErrors.push("auto-bot URL is not configured for this package");
-          } else {
-            for (let i = 0; i < total; i++) {
-              const tagValue = tagsParsed[i];
-              // Shell mode: bot payload's `code` carries the shell value,
-              // `pacakge`/`package` carries the current tag. No voucher
-              // consumed. The BotDispatch row makes the dispatch retryable
-              // if the bot fails or never calls back.
-              const { ok } = await createAndSendDispatch({
-                order_id: order.id,
-                player_id: playerid,
-                uc: topupPackage.uc,
-                bot_url: botUrl,
-                code: shellValueRaw,
-                package_name_sent: tagValue,
-                tag: tagValue,
-              });
-              if (!ok) {
-                bot_failures += 1;
-                botErrors.push(
-                  `shell dispatch #${i + 1}/${total} (tag "${tagValue}") rejected — see dispatches list`,
-                );
-              }
-            }
-          }
-
-          order.status = "In Progress";
-          let detailHtml = `<strong>Shell dispatches: ${total - bot_failures}/${total} ok, ${bot_failures} failed</strong>`;
-          if (!botUrl)
-            detailHtml += "<br/><span style='color:red;'>URL missing</span>";
-          if (botErrors.length > 0) {
-            detailHtml +=
-              "<ul style='text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;'>";
-            for (const err of botErrors) {
-              detailHtml += `<li>${err}</li>`;
-            }
-            detailHtml += "</ul>";
-          }
-          (order as any).details = detailHtml;
-          await order.save();
-
-          const {
-            uc: ucAliasShellTop,
-            ingamepassword: ingamepasswordAliasShellTop,
-            bprice: bpriceAliasShellTop,
-            ...filteredOrderShellTop
-          } = order.get({ plain: true });
-          response.message = "Order placed successfully";
-          response.data = filteredOrderShellTop;
-          return res.send(response.response);
-        }
-
-        const maps = await PackageVoucherMap.findAll({
-          where: { topup_package_id: topupPackage.id },
-          raw: true,
-        });
-
-        console.log(
-          "[topupPackageOrder][auto-delivery] entering branch, maps:",
-          {
-            order_id: order.id,
-            map_count: maps.length,
-            maps,
-          },
-        );
-        if (maps.length === 0) {
-          // No voucher mappings is normal for shell-only auto-delivery —
-          // the dedicated shell-only branch above picks it up. Otherwise
-          // we fall through to the legacy bot path.
-          console.warn(
-            "[topupPackageOrder][auto-delivery] no PackageVoucherMap rows — falling through to legacy bot path",
-            {
-              order_id: order.id,
-              package_id: topupPackage.id,
-              is_shell: (topupPackage as any).is_shell,
-            },
-          );
-        }
-        if (maps.length > 0) {
-          const emitted: any[] = [];
-          let pool_exhausted = false;
-          for (const m of maps as any[]) {
-            const v = await emitProductVoucher(m.voucher_package_id, order.id);
-            if (!v) {
-              pool_exhausted = true;
-              break;
-            }
-            emitted.push(v);
-          }
-
-          if (pool_exhausted) {
-            // Same policy as the voucher-product branch: keep the order
-            // open in "pending" so it can be fulfilled when stock returns.
-            // Release any partially-emitted vouchers so they're free for
-            // other orders in the meantime.
-            for (const v of emitted) await releaseVoucher(v);
-
-            // Persist one placeholder BotDispatch row per *expected*
-            // dispatch (one per map) so the admin retry path can pick
-            // each one up later — when the pool refills, retry calls
-            // emitProductVoucher first and only then fires the bot. The
-            // placeholders carry `voucher_package_id` (the pool to draw
-            // from) and an empty `code` until a voucher is allocated.
-            const botUrlForPlaceholders = String(
-              (topupPackage as any).bot_url || "",
-            ).trim();
-            for (const m of maps as any[]) {
-              try {
-                await BotDispatch.create({
-                  order_id: order.id,
-                  voucher_id: null,
-                  voucher_package_id: m.voucher_package_id,
-                  tag: null,
-                  code: "",
-                  package_name_sent: topupPackage.name || "",
-                  bot_url: botUrlForPlaceholders,
-                  status: "failed",
-                  error_reason:
-                    "No voucher available in pool — awaiting restock",
-                  attempt_count: 0,
-                });
-              } catch (e) {
-                console.error(
-                  "[topupPackageOrder] failed to persist placeholder dispatch",
-                  { order_id: order.id, err: (e as any)?.message || e },
-                );
-              }
-            }
-            order.status = "pending";
-            order.brief_note =
-              "ভাউচার স্টক শেষ। নতুন স্টক আসার অপেক্ষায় রয়েছে। সহায়তার জন্য সাপোর্ট টিমের সাথে যোগাযোগ করুন।";
-            (order as any).details =
-              "<span style='color:orange;'><strong>Auto-delivery skipped:</strong> one of the linked voucher pools was empty at order time. Order kept pending — admin can retry once stock returns.</span>";
-            await order.save();
-
-            const {
-              uc: ucAliasAdP,
-              ingamepassword: ingamepasswordAliasAdP,
-              bprice: bpriceAliasAdP,
-              ...filteredOrderAdP
-            } = order.get({ plain: true });
-            response.message =
-              "Order placed — your vouchers will be delivered once stock is restocked.";
-            response.data = filteredOrderAdP;
-            return res.send(response.response);
-          }
-
-          // Fire the bot once per emitted voucher. Failures are captured in
-          // a structured array so we can surface specific messages on the
-          // order — admin can read why a delivery is stuck without digging
-          // into the server logs.
-          const botUrl = String((topupPackage as any).bot_url || "").trim();
-          const botErrors: string[] = [];
-          let bot_failures = 0;
-
-          if (!botUrl) {
-            console.warn(
-              "[topupPackageOrder][auto-delivery] bot_url missing on package",
-              {
-                order_id: order.id,
-                package_id: topupPackage.id,
-                package_name: topupPackage.name,
-              },
-            );
-            botErrors.push("auto-bot URL is not configured for this package");
-          } else {
-            console.log("found emitted", emitted, topupPackage);
-            // This branch only runs for non-shell auto-delivery: shell
-            // packages short-circuited above. Fire the bot once per
-            // emitted voucher; each gets its own BotDispatch row so a
-            // partial failure is granularly retryable.
-            for (const v of emitted) {
-              const { ok } = await createAndSendDispatch({
-                order_id: order.id,
-                player_id: playerid,
-                uc: topupPackage.uc,
-                bot_url: botUrl,
-                code: v.data,
-                package_name_sent: topupPackage.name,
-                voucher_id: v.id,
-              });
-              if (!ok) {
-                bot_failures += 1;
-                botErrors.push(
-                  `bot rejected voucher #${v.id} — see dispatches list`,
-                );
-              }
-            }
-          }
-
-          // Auto-delivered orders always start "In Progress": the vouchers
-          // are emitted and the bot has been dispatched, but the upstream
-          // confirmation comes back later via the checkOrder webhook, which
-          // flips the order to "completed" once the bot reports success.
-          order.status = "In Progress";
-          // User-facing note only reports the successful allocation.
-
-          // Internal context for the admin: reports why the delivery might
-          // be stuck or skipped.
-          let detailHtml = `<strong>Bot failures: ${bot_failures}</strong>`;
-          if (!botUrl)
-            detailHtml += "<br/><span style='color:red;'>URL missing</span>";
-          if (botErrors.length > 0) {
-            detailHtml +=
-              "<ul style='text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;'>";
-            for (const err of botErrors) {
-              detailHtml += `<li>${err}</li>`;
-            }
-            detailHtml += "</ul>";
-          }
-          (order as any).details = detailHtml;
-
-          await order.save();
-
-          const {
-            uc: ucAliasAd,
-            ingamepassword: ingamepasswordAliasAd,
-            bprice: bpriceAliasAd,
-            ...filteredOrderAd
-          } = order.get({ plain: true });
-          response.message = "Order placed successfully";
-          response.data = filteredOrderAd;
-          return res.send(response.response);
-        }
-        // Note: shell-only mode is handled by the early short-circuit at
-        // the top of the auto-delivery block (no voucher consumed). If we
-        // reach here with no maps and not in shell mode, we fall through
-        // to the legacy bot path below.
-      }
-      // AUTO-DELIVERY END
-
-      // AUTO BOT SET IN CODE START
-      console.log("[topupPackageOrder][regular-bot] guard check", {
-        order_id: order.id,
-        status: order.status,
-        uc: topupPackage.uc,
-        will_enter: order.status == "pending" && topupPackage.uc > 0,
-        // Common reason shell never hits the bot: the package has no UC
-        // tier set, so this branch is skipped entirely and the function
-        // returns with the order still pending and no autoOrder call.
+      // Per-bot-type dispatch (uc-bot, shell-bot, like-bot, pubg-bot, or
+      // legacy UniPin). The handler mutates and saves the order; we just
+      // surface its response message back to the storefront.
+      const { responseMessage } = await dispatchOrder({
+        order,
+        topupPackage,
+        playerid,
       });
-      if (order.status == "pending" && topupPackage.uc > 0) {
-        const store_unipin_auto = await StoreUnipin.findOne({
-          where: {
-            status: 1,
-            uc: topupPackage.uc,
-          },
-          order: Sequelize.literal("RAND()"),
-        });
-        if (!store_unipin_auto) {
-          // No voucher in stock for this UC tier — record the reason on the
-          // order so the admin sees it without trawling logs.
-          (order as any).details =
-            `<span style="color:orange;"><strong>Auto-bot skipped:</strong> No UniPin voucher in stock for UC tier ${topupPackage.uc}.</span>`;
-          await order.save();
-          const {
-            uc: ucAlias,
-            ingamepassword: ingamepasswordAlias,
-            bprice: bpriceAlias,
-            ...filteredOrder1
-          } = order.get({ plain: true });
-          response.message = "Order placed successfully";
-          response.data = filteredOrder1;
-          return res.send(response.response);
-        }
 
-        const send_unipin = store_unipin_auto.code;
-
-        store_unipin_auto.status = order.id;
-        await store_unipin_auto.save();
-
-        const pkgBotUrl = String((topupPackage as any).bot_url || "").trim();
-        let botStatus: any = null;
-        let botError: string | null = null;
-
-        if (!pkgBotUrl) {
-          // Auto-bot URL not configured. Don't even attempt — note the
-          // reason on the order and leave it pending for a human to retry.
-          console.warn(
-            "[topupPackageOrder][regular-bot] bot_url missing on package",
-            {
-              order_id: order.id,
-              package_id: topupPackage.id,
-              package_name: topupPackage.name,
-            },
-          );
-          botError = "auto-bot URL is not configured for this package";
-        } else {
-          // Shell packages short-circuited above, so this is a single
-          // dispatch with the emitted voucher in `code`. Persisted as a
-          // BotDispatch row so the admin retry path can resend it.
-          const { ok, error_reason } = await createAndSendDispatch({
-            order_id: order.id,
-            player_id: playerid,
-            uc: topupPackage.uc,
-            bot_url: pkgBotUrl,
-            code: send_unipin,
-            package_name_sent: topupPackage.name,
-          });
-          if (!ok) {
-            botError =
-              error_reason ||
-              `bot returned no acceptance (no response from ${pkgBotUrl})`;
-            botStatus = null;
-          } else {
-            botStatus = ok;
-          }
-        }
-
-        if (botStatus) {
-          order.status = "In Progress";
-          order.uc = send_unipin;
-          order.ingamepassword = botStatus;
-        } else {
-          // Bot didn't accept the job — return the reserved voucher to the
-          // pool so it can be re-sold, and leave the order pending for the
-          // admin to either retry or refund. Capture the specific failure
-          // reason in details.
-          store_unipin_auto.status = 1;
-          await store_unipin_auto.save();
-          order.status = "pending";
-          order.uc = "";
-          if (botError) {
-            (order as any).details =
-              `<span style="color:red;"><strong>Auto-bot failed:</strong> ${botError}</span>`;
-          }
-        }
-        await order.save();
-      }
-      // AUTO BOT SET IN CODE END
-
-      // if (product.is_offer == 1) {
-      //   product.offer_items = (product.offer_items - 1);
-      //   await product.save();
-      // }
       const {
-        uc: ucAlias,
-        ingamepassword: ingamepasswordAlias,
-        bprice: bpriceAlias,
+        uc: _ucAlias,
+        ingamepassword: _ingamepasswordAlias,
+        bprice: _bpriceAlias,
         ...filteredOrder
       } = order.get({ plain: true });
-
-      response.message = "Order placed successfully";
+      response.message = responseMessage;
       response.data = filteredOrder;
       return res.send(response.response);
     } catch (error) {
@@ -2859,11 +2369,18 @@ class UserController {
                 order.product_id,
               );
               if (orderProduct && (orderProduct as any).is_voucher == 1) {
-                const voucher = await emitProductVoucher(
-                  order.topuppackage_id,
-                  order.id,
-                );
+                // Single-unit emit (webhook metadata has no quantity).
+                const voucher = await Voucher.findOne({
+                  where: {
+                    is_used: 0,
+                    package_id: order.topuppackage_id,
+                  },
+                  order: [["id", "ASC"]],
+                });
                 if (voucher) {
+                  voucher.is_used = 1;
+                  voucher.order_id = order.id;
+                  await voucher.save();
                   order.status = "completed";
                   order.brief_note = `Voucher: ${voucher.data}`;
                   await order.save();

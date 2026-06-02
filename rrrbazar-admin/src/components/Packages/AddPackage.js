@@ -47,13 +47,17 @@ function AddPackage(props) {
     null;
   const isVoucherProduct = selectedProduct?.is_voucher == 1;
 
-  const [autoDeliveryOn, setAutoDeliveryOn] = useState(false);
-  // Shell mode — only relevant while auto-delivery is on. The shell value
-  // is a single admin-configured string sent in the bot's `code` field.
-  // Tags is a dynamic list — the bot fires once per tag, with the tag in
-  // the payload's `pacakge`/`package` fields. At least one tag is
-  // required when isShell is on (validated on submit and server-side).
-  const [isShell, setIsShell] = useState(false);
+  // Bot type — replaces the legacy Auto-delivery + Is-shell checkboxes
+  // with a single dropdown. Each value enables a different config slice
+  // below:
+  //   none      — no auto bot, admin fulfils manually
+  //   uc-bot    — voucher-pool auto-delivery (was Auto-delivery)
+  //   shell-bot — single shell value sent per tag (was Auto + Is-shell)
+  //   like-bot  — Free Fire likes; URL built from key + server + uid
+  //   pubg-bot  — placeholder, disabled until implemented
+  const [botType, setBotType] = useState("none");
+  const autoDeliveryOn = botType === "uc-bot" || botType === "shell-bot";
+  const isShell = botType === "shell-bot";
   const [shellValue, setShellValue] = useState("");
   const [tags, setTags] = useState([]);
   const addTag = () => setTags((prev) => [...prev, ""]);
@@ -61,6 +65,10 @@ function AddPackage(props) {
     setTags((prev) => prev.map((v, i) => (i === idx ? value : v)));
   const removeTag = (idx) =>
     setTags((prev) => prev.filter((_, i) => i !== idx));
+  // Like-bot config — key + server_name (default "bd"). uid comes from the
+  // customer's Player ID at order time.
+  const [likeBotKey, setLikeBotKey] = useState("");
+  const [likeBotServer, setLikeBotServer] = useState("bd");
   const [mappings, setMappings] = useState([]); // [{ voucher_package_id, voucher_package_name, voucher_product_name }]
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
@@ -107,25 +115,29 @@ function AddPackage(props) {
 
   const addPackageHandler = (e) => {
     e.preventDefault();
-    if (autoDeliveryOn && isShell) {
+    if (botType === "shell-bot") {
       const cleanShell = String(shellValue || "").trim();
       const cleanTags = tags
         .map((t) => String(t || "").trim())
         .filter((t) => t.length > 0);
       if (!cleanShell) {
-        toast.error(
-          'Shell value is required when "Is shell" is on',
-          toastDefault,
-        );
+        toast.error("Shell value is required for Shell-bot", toastDefault);
         return;
       }
       if (cleanTags.length === 0) {
-        toast.error(
-          'At least one tag is required when "Is shell" is on',
-          toastDefault,
-        );
+        toast.error("At least one tag is required for Shell-bot", toastDefault);
         return;
       }
+    }
+    if (botType === "like-bot") {
+      if (!String(likeBotKey || "").trim()) {
+        toast.error("Like-bot requires an API key", toastDefault);
+        return;
+      }
+    }
+    if (botType === "pubg-bot") {
+      toast.error("PUBG-bot is not yet supported", toastDefault);
+      return;
     }
     setLoading(true);
     axiosInstance
@@ -143,30 +155,44 @@ function AddPackage(props) {
           isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
+        // Legacy flags — server derives these from bot_type too, but
+        // keep sending them for backward compat.
         auto_delivery: autoDeliveryOn ? 1 : 0,
         stock_tracking: stockTracking ? 1 : 0,
         stock_quantity: stockTracking
           ? Math.max(0, Number(stockQuantity) || 0)
           : 0,
-        is_shell: autoDeliveryOn && isShell ? 1 : 0,
-        shell: autoDeliveryOn && isShell ? String(shellValue || "").trim() : "",
-        tags:
-          autoDeliveryOn && isShell
-            ? tags
-                .map((v) => String(v || "").trim())
-                .filter((v) => v.length > 0)
-            : [],
+        is_shell: isShell ? 1 : 0,
+        shell: isShell ? String(shellValue || "").trim() : "",
+        tags: isShell
+          ? tags
+              .map((v) => String(v || "").trim())
+              .filter((v) => v.length > 0)
+          : [],
+        bot_type: botType,
+        bot_config:
+          botType === "like-bot"
+            ? {
+                key: String(likeBotKey || "").trim(),
+                server_name: String(likeBotServer || "bd").trim() || "bd",
+              }
+            : {},
       })
       .then(async (res) => {
-        // Persist voucher-map rows once we know the new package id.
-        // The endpoint replaces the full set on every call.
+        // Persist voucher-map rows once we know the new package id. Maps
+        // only matter for uc-bot (the voucher-pool dispatcher) — other
+        // bot types ignore them, so we always push an empty list when
+        // bot_type != uc-bot to clear stale entries.
         const newId = res?.data?.data?.id;
-        if (newId && autoDeliveryOn) {
+        if (newId) {
           try {
             await axiosInstance.post(
               `/admin/topup-package/${newId}/voucher-maps`,
               {
-                voucher_package_ids: mappings.map((m) => m.voucher_package_id),
+                voucher_package_ids:
+                  botType === "uc-bot"
+                    ? mappings.map((m) => m.voucher_package_id)
+                    : [],
               },
             );
           } catch (e) {
@@ -393,22 +419,32 @@ function AddPackage(props) {
                     </div>
                   )}
 
-                  {/* Auto-delivery — maps voucher packages to this package. */}
+                  {/* Bot type — single dropdown replaces the legacy
+                      Auto-delivery + Is-shell checkboxes. Per-type config
+                      sections render below based on the selected value. */}
                   <div className="form_grid mt-5">
                     <div>
-                      <label className="inline-flex items-center cursor-pointer select-none">
-                        <input
-                          ref={auto_delivery}
-                          id="auto_delivery"
-                          type="checkbox"
-                          className="form-checkbox"
-                          checked={autoDeliveryOn}
-                          onChange={(e) => setAutoDeliveryOn(e.target.checked)}
-                        />
-                        <span className="ml-2">Auto-delivery</span>
+                      <label htmlFor="bot_type" className="block font-semibold mb-1">
+                        Bot type
                       </label>
+                      <select
+                        id="bot_type"
+                        className="form_input"
+                        value={botType}
+                        onChange={(e) => setBotType(e.target.value)}
+                      >
+                        <option value="none">None — manual fulfilment</option>
+                        <option value="uc-bot">UC-bot (voucher pool auto-delivery)</option>
+                        <option value="shell-bot">Shell-bot (per-tag shell dispatch)</option>
+                        <option value="like-bot">Like-bot (Free Fire likes)</option>
+                        <option value="pubg-bot" disabled>PUBG-bot — coming soon</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Pick how the order should be dispatched on placement.
+                        More types will be added over time.
+                      </p>
 
-                      {autoDeliveryOn && (
+                      {(botType === "uc-bot" || botType === "shell-bot") && (
                         <div className="form_grid">
                           <div>
                             <label htmlFor="bot_url">Auto-bot URL</label>
@@ -423,38 +459,61 @@ function AddPackage(props) {
                         </div>
                       )}
 
-                      {autoDeliveryOn && (
+                      {botType === "shell-bot" && (
                         <div className="form_grid">
                           <div>
-                            <label className="inline-flex items-center cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                className="form-checkbox"
-                                checked={isShell}
-                                onChange={(e) => setIsShell(e.target.checked)}
-                              />
-                              <span className="ml-2">Is shell</span>
-                            </label>
                             <p className="text-xs text-gray-500 mt-1">
-                              When on, the shell value below is sent to the
-                              bot's <code>code</code> field. The bot is fired
-                              once per tag, with the tag value in{" "}
+                              Shell value is sent in the bot's{" "}
+                              <code>code</code> field. The bot is fired once
+                              per tag, with the tag value in{" "}
                               <code>pacakge</code>/<code>package</code>.
                             </p>
                           </div>
-                          {isShell && (
-                            <div>
-                              <label htmlFor="shell_value">Shell value</label>
-                              <input
-                                id="shell_value"
-                                type="text"
-                                className="form_input"
-                                value={shellValue}
-                                onChange={(e) => setShellValue(e.target.value)}
-                                placeholder="e.g. SHELL-CODE-001"
-                              />
-                            </div>
-                          )}
+                          <div>
+                            <label htmlFor="shell_value">Shell value</label>
+                            <input
+                              id="shell_value"
+                              type="text"
+                              className="form_input"
+                              value={shellValue}
+                              onChange={(e) => setShellValue(e.target.value)}
+                              placeholder="e.g. SHELL-CODE-001"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {botType === "like-bot" && (
+                        <div className="form_grid">
+                          <div>
+                            <label htmlFor="like_bot_key">Like-bot API key</label>
+                            <input
+                              id="like_bot_key"
+                              type="text"
+                              className="form_input"
+                              value={likeBotKey}
+                              onChange={(e) => setLikeBotKey(e.target.value)}
+                              placeholder="e.g. AMS-3A9BA3250A6A3"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              The <code>uid</code> is taken from the
+                              customer's Player ID at order time. URL pattern:{" "}
+                              <code>
+                                https://api.fflike.shop/api/like?key=KEY&amp;server_name=SERVER&amp;uid=UID
+                              </code>
+                            </p>
+                          </div>
+                          <div>
+                            <label htmlFor="like_bot_server">Server name</label>
+                            <input
+                              id="like_bot_server"
+                              type="text"
+                              className="form_input"
+                              value={likeBotServer}
+                              onChange={(e) => setLikeBotServer(e.target.value)}
+                              placeholder="bd"
+                            />
+                          </div>
                         </div>
                       )}
 
