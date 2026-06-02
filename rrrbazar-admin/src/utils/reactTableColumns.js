@@ -124,11 +124,13 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
       // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
       // the legacy hasOne shape (`Voucher: {…}`) so older payloads still
       // render correctly.
-      const list = Array.isArray(row?.Vouchers)
-        ? row.Vouchers
-        : row?.Voucher
-          ? [row.Voucher]
-          : [];
+      const list = (
+        Array.isArray(row?.Vouchers)
+          ? row.Vouchers
+          : row?.Voucher
+            ? [row.Voucher]
+            : []
+      ).filter((v) => Number(v.is_used) !== 2); // Do not show consumed vouchers
       if (list.length > 0) {
         return (
           <div className="flex flex-wrap gap-1 min-w-[300px]">

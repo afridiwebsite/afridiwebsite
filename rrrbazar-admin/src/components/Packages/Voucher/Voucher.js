@@ -398,9 +398,13 @@ function Voucher(props) {
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          {v.is_used ? (
+                          {Number(v.is_used) === 1 ? (
                             <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 font-semibold">
                               Used
+                            </span>
+                          ) : Number(v.is_used) === 2 ? (
+                            <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-semibold">
+                              Consumed
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 font-semibold">

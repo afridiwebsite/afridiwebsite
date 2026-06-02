@@ -2008,7 +2008,7 @@ class UserController {
                 ? (d as any).error_reason || (d as any).response_content
                 : safeContent) || "";
             const vIsConsumed = CONSUMED_PATTERNS.some((p) => p.test(reason));
-            shouldBeUsed = vIsConsumed ? 1 : 0;
+            shouldBeUsed = vIsConsumed ? 2 : 0; // 2 for Consumed
           } else {
             // completed, pending, In Progress all keep the voucher reserved/used
             shouldBeUsed = 1;

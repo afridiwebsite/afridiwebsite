@@ -43,6 +43,7 @@ class VoucherController {
       if (search) where.data = { [Op.like]: `%${search}%` };
       if (status === 'used') where.is_used = 1;
       else if (status === 'unused') where.is_used = 0;
+      else if (status === 'consumed') where.is_used = 2;
 
       // Date range — created_at is the only timestamp that makes sense for
       // filtering "when was the code seeded". Inclusive on both ends.
@@ -79,11 +80,12 @@ class VoucherController {
         group: ['is_used'],
         raw: true,
       });
-      const stats = { total: 0, used: 0, unused: 0 };
+      const stats = { total: 0, used: 0, unused: 0, consumed: 0 };
       for (const row of counts as any[]) {
         const c = Number(row.count) || 0;
         stats.total += c;
         if (Number(row.is_used) === 1) stats.used += c;
+        else if (Number(row.is_used) === 2) stats.consumed += c;
         else stats.unused += c;
       }
 
