@@ -440,16 +440,49 @@ async function handleUcBot(opts: {
  * Like-bot: synchronous GET to api.fflike.shop with the package's key +
  * server_name + the order's playerid. Outcome is decided inline from the
  * response body — no /check_order callback expected.
+ *
+ * Debug logging: the constructed URL is logged with its `key` query param
+ * masked so the API key doesn't end up in plaintext logs, and the raw
+ * upstream body (captured on the BotDispatch row by fireLikeBot via
+ * executeDispatch) is logged + surfaced into order.details so an admin
+ * can see exactly what the like-bot returned without trawling logs.
  */
+function maskUrlKey(url: string): string {
+  // Replace `key=<value>` with `key=****<last 4>` for safer logging.
+  return url.replace(/(key=)([^&]+)/i, (_m, p1, p2) => {
+    const v = String(p2 || "");
+    const tail = v.length > 4 ? v.slice(-4) : v;
+    return `${p1}****${tail}`;
+  });
+}
+
 async function handleLikeBot(opts: {
   order: any;
   topupPackage: any;
   playerid: string;
 }): Promise<DispatchResult> {
   const { order, topupPackage, playerid } = opts;
+  const cfg = parseBotConfig(topupPackage?.bot_config);
   const url = buildLikeBotUrl(topupPackage, playerid);
+  const maskedUrl = maskUrlKey(url);
+
+  console.log("[handleLikeBot] entering", {
+    order_id: order.id,
+    package_id: topupPackage.id,
+    package_name: topupPackage.name,
+    playerid,
+    server_name: String(cfg.server_name || "bd"),
+    key_present: !!String(cfg.key || "").trim(),
+    url: maskedUrl,
+  });
 
   if (!url) {
+    console.warn("[handleLikeBot] misconfigured — refusing to fire", {
+      order_id: order.id,
+      package_id: topupPackage.id,
+      key_present: !!String(cfg.key || "").trim(),
+      playerid_present: !!String(playerid || "").trim(),
+    });
     order.status = "pending";
     (order as any).details =
       "<span style='color:#dc2626;'><strong>Like-bot misconfigured:</strong> missing API key or playerid.</span>";
@@ -460,7 +493,7 @@ async function handleLikeBot(opts: {
     };
   }
 
-  const { ok } = await createAndSendDispatch({
+  const { dispatch, ok, error_reason } = await createAndSendDispatch({
     order_id: order.id,
     player_id: playerid,
     uc: topupPackage.uc || 0,
@@ -470,19 +503,65 @@ async function handleLikeBot(opts: {
     bot_type: "like-bot",
   });
 
+  // fireLikeBot stashes the upstream body on `response_content` on
+  // success and the parsed reason on `error_reason` on failure. Reload
+  // the dispatch row so we surface the freshest values in details/logs
+  // (createAndSendDispatch returns the pre-save instance).
+  const refreshed = await BotDispatch.findByPk(dispatch.id);
+  const respContent = String(
+    (refreshed as any)?.response_content ?? "",
+  );
+  const errReason = String(
+    (refreshed as any)?.error_reason ?? error_reason ?? "",
+  );
+
+  console.log("[handleLikeBot] dispatch result", {
+    order_id: order.id,
+    dispatch_id: dispatch.id,
+    ok: !!ok,
+    status: (refreshed as any)?.status,
+    error_reason: errReason || null,
+    response_preview: respContent ? respContent.slice(0, 500) : null,
+  });
+
   // Like-bot terminates synchronously: ok = success, !ok = failed.
   if (ok) {
     order.status = "completed";
     order.brief_note = "Likes delivered";
     (order as any).details =
-      "<span style='color:#059669;'><strong>Like-bot delivered successfully.</strong></span>";
+      `<span style='color:#059669;'><strong>Like-bot delivered successfully.</strong></span>` +
+      (respContent
+        ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
+          `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
+          escapeHtml(respContent) +
+          `</pre></div>`
+        : "");
   } else {
     order.status = "pending";
     (order as any).details =
-      "<span style='color:#dc2626;'><strong>Like-bot failed:</strong> see dispatches list for the upstream reason.</span>";
+      `<span style='color:#dc2626;'><strong>Like-bot failed:</strong> ` +
+      escapeHtml(errReason || "see dispatches list for the upstream reason.") +
+      `</span>` +
+      (respContent
+        ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
+          `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
+          escapeHtml(respContent) +
+          `</pre></div>`
+        : "");
   }
   await order.save();
   return { responseMessage: "Order placed successfully" };
+}
+
+// Minimal HTML escape for inlining bot response bodies into order.details.
+// We don't want a malicious upstream payload to break the admin order modal.
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /** PUBG-bot placeholder. Currently rejects with a clear "coming soon". */
