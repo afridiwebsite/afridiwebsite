@@ -83,7 +83,7 @@ function Voucher(props) {
     refreshTick,
   );
 
-  const stats = data?.stats || { total: 0, used: 0, unused: 0 };
+  const stats = data?.stats || { total: 0, used: 0, unused: 0, consumed: 0 };
   const vouchers = data?.vouchers || [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / limit));
@@ -261,6 +261,12 @@ function Voucher(props) {
             <span className="px-2 py-1 rounded bg-red-100 text-red-700">
               Used: <strong>{stats.used}</strong>
             </span>
+            <span
+              className="px-2 py-1 rounded bg-orange-100 text-orange-700"
+              title="Reported as already consumed at the source — kept out of the pool so it can't be re-emitted"
+            >
+              Consumed: <strong>{stats.consumed || 0}</strong>
+            </span>
           </div>
 
           <div className="w-full lg:w-auto flex flex-col lg:items-end gap-3">
@@ -290,6 +296,7 @@ function Voucher(props) {
                   <option value="">All status</option>
                   <option value="unused">Ready</option>
                   <option value="used">Used</option>
+                  <option value="consumed">Consumed</option>
                 </select>
               </div>
 

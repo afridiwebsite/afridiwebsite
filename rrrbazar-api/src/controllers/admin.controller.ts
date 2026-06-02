@@ -138,9 +138,13 @@ class AdminController {
           {
             // Voucher (when allocated for is_voucher products) — surfaced
             // in the admin orders table so it can be shown in the UC column.
+            // `is_used` is included so the client can filter out vouchers
+            // the upstream bot reported as consumed (is_used = 2) — those
+            // never delivered to the customer and shouldn't be rendered as
+            // a delivered code.
             model: Voucher,
             required: false,
-            attributes: ['id', 'data'],
+            attributes: ['id', 'data', 'is_used'],
           },
           {
             // Package info — the admin orders table needs `is_shell` /
@@ -393,17 +397,26 @@ class AdminController {
             await dispatch.save();
           }
 
-          // Force re-allocation if the linked voucher is already marked as 
-          // consumed (status 2) by any other means.
+          // Force re-allocation if the linked voucher is already marked as
+          // consumed (status 2) by any other means. Carry the voucher's
+          // pool over to `voucher_package_id` so the placeholder branch
+          // below knows which pool to draw a fresh code from — without
+          // this, a dispatch that only ever had voucher_id (no pool
+          // tracking) would fall through to executeDispatch with empty
+          // code and get rejected.
           if (dispatch.voucher_id) {
             const vRow = await Voucher.findByPk(dispatch.voucher_id);
-            if (vRow && (vRow as any).is_used === 2) {
+            if (vRow && Number((vRow as any).is_used) === 2) {
               console.log('[retryBotDispatches] linked voucher is consumed — resetting for re-allocation', {
                 dispatch_id: dispatch.id,
                 voucher_id: dispatch.voucher_id,
+                pool_package_id: (vRow as any).package_id,
               });
               dispatch.voucher_id = null;
               dispatch.code = '';
+              if (!dispatch.voucher_package_id) {
+                dispatch.voucher_package_id = (vRow as any).package_id;
+              }
               await dispatch.save();
             }
           }

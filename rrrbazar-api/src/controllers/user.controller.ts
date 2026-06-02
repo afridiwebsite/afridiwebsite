@@ -1517,6 +1517,16 @@ class UserController {
       if (vouchers.length > 0) {
         const promises: any[] = [];
         for (const voucher of vouchers) {
+          // Consumed is terminal: once a voucher has been flagged as
+          // consumed by the upstream bot, never demote it back to
+          // "used"/"unused" — a later callback for the same order can
+          // arrive with a generic success/cancel message that doesn't
+          // re-trip the consumed-pattern match, and silently downgrading
+          // would let the code be re-emitted from the pool.
+          if (Number(voucher.is_used) === 2) {
+            continue;
+          }
+
           let shouldBeUsed = 1;
 
           const d = await BotDispatch.findOne({
