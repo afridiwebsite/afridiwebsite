@@ -65,10 +65,12 @@ function AddPackage(props) {
     setTags((prev) => prev.map((v, i) => (i === idx ? value : v)));
   const removeTag = (idx) =>
     setTags((prev) => prev.filter((_, i) => i !== idx));
-  // Like-bot config — key + server_name (default "bd"). uid comes from the
-  // customer's Player ID at order time.
+  // Like-bot config — admin supplies the endpoint URL (in `bot_url`) and
+  // the API key (in `bot_config.key`). `uid` is appended from the
+  // customer's Player ID at order time. `server_name` is no longer sent
+  // from us — if the upstream needs it, the admin puts it directly in
+  // the URL.
   const [likeBotKey, setLikeBotKey] = useState("");
-  const [likeBotServer, setLikeBotServer] = useState("bd");
   const [mappings, setMappings] = useState([]); // [{ voucher_package_id, voucher_package_name, voucher_product_name }]
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
@@ -130,6 +132,10 @@ function AddPackage(props) {
       }
     }
     if (botType === "like-bot") {
+      if (!String(bot_url.current?.value || "").trim()) {
+        toast.error("Like-bot requires a base URL", toastDefault);
+        return;
+      }
       if (!String(likeBotKey || "").trim()) {
         toast.error("Like-bot requires an API key", toastDefault);
         return;
@@ -165,17 +171,12 @@ function AddPackage(props) {
         is_shell: isShell ? 1 : 0,
         shell: isShell ? String(shellValue || "").trim() : "",
         tags: isShell
-          ? tags
-              .map((v) => String(v || "").trim())
-              .filter((v) => v.length > 0)
+          ? tags.map((v) => String(v || "").trim()).filter((v) => v.length > 0)
           : [],
         bot_type: botType,
         bot_config:
           botType === "like-bot"
-            ? {
-                key: String(likeBotKey || "").trim(),
-                server_name: String(likeBotServer || "bd").trim() || "bd",
-              }
+            ? { key: String(likeBotKey || "").trim() }
             : {},
       })
       .then(async (res) => {
@@ -424,7 +425,10 @@ function AddPackage(props) {
                       sections render below based on the selected value. */}
                   <div className="form_grid mt-5">
                     <div>
-                      <label htmlFor="bot_type" className="block font-semibold mb-1">
+                      <label
+                        htmlFor="bot_type"
+                        className="block font-semibold mb-1"
+                      >
                         Bot type
                       </label>
                       <select
@@ -434,26 +438,44 @@ function AddPackage(props) {
                         onChange={(e) => setBotType(e.target.value)}
                       >
                         <option value="none">None — manual fulfilment</option>
-                        <option value="uc-bot">UC-bot (voucher pool auto-delivery)</option>
-                        <option value="shell-bot">Shell-bot (per-tag shell dispatch)</option>
-                        <option value="like-bot">Like-bot (Free Fire likes)</option>
-                        <option value="pubg-bot" disabled>PUBG-bot — coming soon</option>
+                        <option value="uc-bot">
+                          UC-bot (voucher pool auto-delivery)
+                        </option>
+                        <option value="shell-bot">
+                          Shell-bot (per-tag shell dispatch)
+                        </option>
+                        <option value="like-bot">
+                          Like-bot (Free Fire likes)
+                        </option>
+                        <option value="pubg-bot" disabled>
+                          PUBG-bot — coming soon
+                        </option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
                         Pick how the order should be dispatched on placement.
                         More types will be added over time.
                       </p>
 
-                      {(botType === "uc-bot" || botType === "shell-bot") && (
+                      {(botType === "uc-bot" ||
+                        botType === "shell-bot" ||
+                        botType === "like-bot") && (
                         <div className="form_grid">
                           <div>
-                            <label htmlFor="bot_url">Auto-bot URL</label>
+                            <label htmlFor="bot_url">
+                              {botType === "like-bot"
+                                ? "Like-bot URL"
+                                : "Auto-bot URL"}
+                            </label>
                             <input
                               ref={bot_url}
                               id="bot_url"
                               type="url"
                               className="form_input"
-                              placeholder="https://bot.example.com/dispatch"
+                              placeholder={
+                                botType === "like-bot"
+                                  ? "https://api.fflike.shop/api/like"
+                                  : "https://bot.example.com/dispatch"
+                              }
                             />
                           </div>
                         </div>
@@ -463,10 +485,10 @@ function AddPackage(props) {
                         <div className="form_grid">
                           <div>
                             <p className="text-xs text-gray-500 mt-1">
-                              Shell value is sent in the bot's{" "}
-                              <code>code</code> field. The bot is fired once
-                              per tag, with the tag value in{" "}
-                              <code>pacakge</code>/<code>package</code>.
+                              Shell value is sent in the bot's <code>code</code>{" "}
+                              field. The bot is fired once per tag, with the tag
+                              value in <code>pacakge</code>/<code>package</code>
+                              .
                             </p>
                           </div>
                           <div>
@@ -486,7 +508,9 @@ function AddPackage(props) {
                       {botType === "like-bot" && (
                         <div className="form_grid">
                           <div>
-                            <label htmlFor="like_bot_key">Like-bot API key</label>
+                            <label htmlFor="like_bot_key">
+                              Like-bot API key
+                            </label>
                             <input
                               id="like_bot_key"
                               type="text"
@@ -494,24 +518,6 @@ function AddPackage(props) {
                               value={likeBotKey}
                               onChange={(e) => setLikeBotKey(e.target.value)}
                               placeholder="e.g. AMS-3A9BA3250A6A3"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              The <code>uid</code> is taken from the
-                              customer's Player ID at order time. URL pattern:{" "}
-                              <code>
-                                https://api.fflike.shop/api/like?key=KEY&amp;server_name=SERVER&amp;uid=UID
-                              </code>
-                            </p>
-                          </div>
-                          <div>
-                            <label htmlFor="like_bot_server">Server name</label>
-                            <input
-                              id="like_bot_server"
-                              type="text"
-                              className="form_input"
-                              value={likeBotServer}
-                              onChange={(e) => setLikeBotServer(e.target.value)}
-                              placeholder="bd"
                             />
                           </div>
                         </div>

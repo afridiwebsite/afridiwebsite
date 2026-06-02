@@ -14,12 +14,15 @@
 import { Sequelize } from "sequelize";
 import Schema from "../models";
 import { createAndSendDispatch } from "./dispatchBot";
+import syncOrderCoinsForStatus from "./orderCoinSync";
 
 const {
   BotDispatch,
   CoinTransaction,
   PackageVoucherMap,
   StoreUnipin,
+  TopupProduct,
+  User,
   Voucher,
 } = Schema;
 
@@ -98,19 +101,25 @@ export function parseTags(raw: any): string[] {
     .filter((v: string) => v.length > 0);
 }
 
-/** Build the Like-bot GET URL from the package config + the order's playerid. */
+/**
+ * Build the Like-bot GET URL.
+ *
+ * The admin supplies the base URL on `TopupPackage.bot_url` (so we can
+ * point at any compatible upstream, not just api.fflike.shop) and the
+ * API key on `bot_config.key`. We append `?key=<key>&uid=<playerid>`,
+ * switching to `&` when the configured URL already has query params.
+ * Anything else the upstream needs (e.g. `server_name`) is the admin's
+ * job to bake into the URL itself.
+ */
 export function buildLikeBotUrl(pkg: any, playerid: string): string {
   const cfg = parseBotConfig(pkg?.bot_config);
   const key = String(cfg.key || "").trim();
-  const server = String(cfg.server_name || "bd").trim() || "bd";
   const uid = String(playerid || "").trim();
-  if (!key || !uid) return "";
-  const q = new URLSearchParams({
-    key,
-    server_name: server,
-    uid,
-  }).toString();
-  return `https://api.fflike.shop/api/like?${q}`;
+  const baseUrl = String(pkg?.bot_url || "").trim();
+  if (!baseUrl || !key || !uid) return "";
+  const sep = baseUrl.includes("?") ? "&" : "?";
+  const q = new URLSearchParams({ key, uid }).toString();
+  return `${baseUrl}${sep}${q}`;
 }
 
 async function emitVoucher(packageId: number, orderId: number): Promise<any> {
@@ -524,33 +533,153 @@ async function handleLikeBot(opts: {
     response_preview: respContent ? respContent.slice(0, 500) : null,
   });
 
-  // Like-bot terminates synchronously: ok = success, !ok = failed.
-  if (ok) {
+  // The transport-layer `ok` from fireLikeBot doesn't say whether the
+  // upstream actually delivered any likes — it just means the GET
+  // returned 2xx. The real outcome is in the JSON body: a success
+  // response carries `LikesGivenByAPI > 0` with a real PlayerNickname,
+  // while a "couldn't process this player" reply has
+  // `LikesGivenByAPI = 0`, `PlayerNickname = "Unknown"` and
+  // `status = "Unknown"`. We parse the body and route on those fields.
+  const parsed = parseLikeBotBody(respContent);
+  const likesGiven = Number(parsed?.LikesGivenByAPI ?? 0);
+  const likesBefore = Number(parsed?.LikesbeforeCommand ?? 0);
+  const likesAfter = Number(parsed?.LikesafterCommand ?? 0);
+  const nickname = String(parsed?.PlayerNickname ?? "");
+  const upstreamStatus = parsed?.status;
+  const isDelivered =
+    ok &&
+    likesGiven > 0 &&
+    nickname.length > 0 &&
+    nickname.toLowerCase() !== "unknown" &&
+    upstreamStatus !== "Unknown";
+
+  console.log("[handleLikeBot] outcome classified", {
+    order_id: order.id,
+    dispatch_id: dispatch.id,
+    transport_ok: !!ok,
+    likes_given: likesGiven,
+    likes_before: likesBefore,
+    likes_after: likesAfter,
+    nickname,
+    upstream_status: upstreamStatus,
+    delivered: isDelivered,
+  });
+
+  if (isDelivered) {
+    // Flip the BotDispatch row to a real "success" if fireLikeBot left
+    // it as a generic "ok" — keeps the dispatches list honest.
+    if (refreshed && (refreshed as any).status !== "success") {
+      (refreshed as any).status = "success";
+      await refreshed.save();
+    }
     order.status = "completed";
-    order.brief_note = "Likes delivered";
+    order.brief_note =
+      `Likes delivered: ${likesGiven} added (${likesBefore} → ${likesAfter})` +
+      (nickname ? ` for ${nickname}` : "");
     (order as any).details =
       `<span style='color:#059669;'><strong>Like-bot delivered successfully.</strong></span>` +
+      `<ul style='text-align:left; margin-top:6px; list-style-type:disc; padding-left:20px;'>` +
+      `<li><strong>Likes given:</strong> ${likesGiven}</li>` +
+      `<li><strong>Before:</strong> ${likesBefore}</li>` +
+      `<li><strong>After:</strong> ${likesAfter}</li>` +
+      (nickname
+        ? `<li><strong>Player:</strong> ${escapeHtml(nickname)}</li>`
+        : "") +
+      `</ul>` +
       (respContent
         ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
           `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
           escapeHtml(respContent) +
           `</pre></div>`
         : "");
-  } else {
-    order.status = "pending";
-    (order as any).details =
-      `<span style='color:#dc2626;'><strong>Like-bot failed:</strong> ` +
-      escapeHtml(errReason || "see dispatches list for the upstream reason.") +
-      `</span>` +
-      (respContent
-        ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
-          `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
-          escapeHtml(respContent) +
-          `</pre></div>`
-        : "");
+    await order.save();
+    // Like-bot orders never hit the checkOrder webhook, so coin reward
+    // would otherwise be missed — award it here. syncOrderCoinsForStatus
+    // is idempotent (reads existing CoinTransaction rows) so safe to
+    // call even if a retry path triggered it before.
+    await syncOrderCoinsForStatus(order, "completed");
+    return { responseMessage: "Order placed successfully" };
   }
+
+  // Failure — upstream couldn't deliver likes. Mark the dispatch as
+  // cancelled (parallels how checkOrder treats known user errors like
+  // Invalid player ID) so it won't be picked up by retry, cancel the
+  // order, and refund the wallet so the customer isn't out of pocket
+  // for a delivery that never happened.
+  if (refreshed) {
+    (refreshed as any).status = "cancelled";
+    (refreshed as any).error_reason =
+      `Like-bot reported no delivery (status=${String(upstreamStatus)}, likes=${likesGiven})`;
+    await refreshed.save();
+  }
+
+  const failureReason = errReason || "Like-bot reported no delivery";
+  order.status = "cancel";
+  order.brief_note =
+    "প্লেয়ার আইডিতে লাইক পাঠানো যায়নি — আপনার দেওয়া আইডি যাচাই করুন। অর্ডারটি বাতিল করা হয়েছে এবং অর্থ আপনার ওয়ালেটে ফেরত দেওয়া হয়েছে।";
+  (order as any).details =
+    `<span style='color:#dc2626;'><strong>Like-bot failed:</strong> ` +
+    escapeHtml(failureReason) +
+    `</span>` +
+    `<ul style='text-align:left; margin-top:6px; list-style-type:disc; padding-left:20px;'>` +
+    `<li><strong>Likes given:</strong> ${likesGiven}</li>` +
+    `<li><strong>Player nickname:</strong> ${escapeHtml(nickname || "Unknown")}</li>` +
+    `<li><strong>Upstream status:</strong> ${escapeHtml(String(upstreamStatus ?? "Unknown"))}</li>` +
+    `</ul>` +
+    (respContent
+      ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
+        `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
+        escapeHtml(respContent) +
+        `</pre></div>`
+      : "");
+  (order as any).uc = "";
   await order.save();
+
+  // Refund wallet + restore product bprice, mirroring the cancel branch
+  // in checkOrder and the admin manual-cancel path.
+  try {
+    const [refundUser, refundProduct] = await Promise.all([
+      User.findByPk((order as any).user_id),
+      TopupProduct.findByPk((order as any).product_id),
+    ]);
+    if (refundUser) {
+      (refundUser as any).wallet =
+        Number((refundUser as any).wallet) + Number((order as any).amount);
+      await refundUser.save();
+    }
+    if (refundProduct && (order as any).bprice) {
+      (refundProduct as any).price =
+        Number((refundProduct as any).price) +
+        parseFloat((order as any).bprice);
+      await refundProduct.save();
+    }
+  } catch (e) {
+    console.error("[handleLikeBot] wallet refund failed", {
+      order_id: order.id,
+      err: (e as any)?.message || e,
+    });
+  }
+
+  // Reverse any coin reward that might have been credited (no-op if
+  // none — the helper is idempotent).
+  await syncOrderCoinsForStatus(order, "cancel");
+
   return { responseMessage: "Order placed successfully" };
+}
+
+// Parse the like-bot's JSON response into an object. Returns {} when
+// the body wasn't valid JSON or isn't an object — callers treat that
+// as "no useful info" and fall through to the failure branch.
+function parseLikeBotBody(raw: string): Record<string, any> {
+  const s = String(raw || "").trim();
+  if (!s) return {};
+  try {
+    const v = JSON.parse(s);
+    if (v && typeof v === "object" && !Array.isArray(v)) return v;
+  } catch {
+    /* fall through */
+  }
+  return {};
 }
 
 // Minimal HTML escape for inlining bot response bodies into order.details.
