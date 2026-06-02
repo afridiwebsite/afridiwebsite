@@ -11,6 +11,7 @@ export default (sequelize: Sequelize) => {
         public for_home_modal!: number;
         public template!: string;
         public type!: string;
+        public product_id!: number | null;
         public is_active!: number;
         // Optional CTA button label shown on the popup (type=normal only).
         // Falls back to "Go to link" on the client when empty.
@@ -47,6 +48,10 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING,
             allowNull: true,
             defaultValue: 'normal'
+        },
+        product_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
         },
         is_active: {
             type: DataTypes.INTEGER,

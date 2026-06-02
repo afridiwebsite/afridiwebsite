@@ -37,7 +37,8 @@ export const getUserTransactions = async () => api.get('/usertransaction');
 export const getUserWithdrawRequest = async () =>
   api.get('/user-withdraw-request');
 export const getUserOrders = async () => api.get('/myorder');
-export const getPopupNotice = async () => api.get('/notice-modal');
+export const getPopupNotice = async (product_id) =>
+  api.get(`/notice-modal${product_id ? `?product_id=${product_id}` : ''}`);
 export const getHeaderNotice = async () => api.get('/notice-header');
 export const getTutorials = async () => api.get('/tutorials');
 export const getMyShopLists = async ({ pageParam = 1 }) =>

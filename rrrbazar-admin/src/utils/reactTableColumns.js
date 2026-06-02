@@ -124,13 +124,14 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
       // hasMany on Order → Voucher returns `Vouchers: []`. Fall back to
       // the legacy hasOne shape (`Voucher: {…}`) so older payloads still
       // render correctly.
-      const list = (
-        Array.isArray(row?.Vouchers)
-          ? row.Vouchers
-          : row?.Voucher
-            ? [row.Voucher]
-            : []
-      ).filter((v) => Number(v.is_used) !== 2); // Do not show consumed vouchers
+      const allVouchers = Array.isArray(row?.Vouchers)
+        ? row.Vouchers
+        : row?.Voucher
+          ? [row.Voucher]
+          : [];
+
+      const list = allVouchers.filter((v) => Number(v.is_used) !== 2); // Do not show consumed vouchers
+
       if (list.length > 0) {
         return (
           <div className="flex flex-wrap gap-1 min-w-[300px]">
@@ -150,9 +151,21 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
           </div>
         );
       }
+
       const uc = row?.uc;
-      if (uc === null || uc === undefined || uc === "")
+      if (uc === null || uc === undefined || uc === "") {
+        if (allVouchers.length > 0 && list.length === 0) {
+          return (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold text-xs uppercase italic"
+              title="Voucher was reported as already consumed at the source"
+            >
+              Consumed
+            </span>
+          );
+        }
         return <span className="text-gray-400">---</span>;
+      }
       return uc;
     },
   },

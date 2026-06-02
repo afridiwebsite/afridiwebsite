@@ -26,6 +26,7 @@ import FormikErrorMessage from "../../components/formik/FormikErrorMessage";
 import FormikInput from "../../components/formik/FormikInput";
 import SelectedRadio from "../../components/SelectedRadio";
 import ShowErrorAfterSubmit from "../../components/ShowErrorAfterSubmit";
+import NoticePopup from "../../components/notice-popup/NoticePopup";
 // Note: SelectedRadio is still used for payment methods below.
 import { __site_name_1, __site_name_2 } from "../../config/globalConfig";
 import reactQueryConfig from "../../config/reactQueryConfig";
@@ -239,6 +240,7 @@ function TopupOrderPage() {
           />
           {hasData(productData) && (
             <>
+              <NoticePopup productId={product_id} />
               <div className="flex flex-col items-center gap-6 mb-8">
                 <div className="relative w-full">
                   {!isAuth && (

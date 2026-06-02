@@ -11,22 +11,26 @@ import ReactHtmlParser from "react-html-parser";
 import { IoCloseSharp } from "react-icons/io5";
 import { useQuery } from "react-query";
 import { getPopupNotice } from "../../api/api";
-import { __last_seen_modal_key, __access_token_key } from "../../config/globalConfig";
+import {
+  __last_seen_modal_key,
+  __access_token_key,
+} from "../../config/globalConfig";
 import reactQueryConfig from "../../config/reactQueryConfig";
 import { hasData, imgPath } from "../../helpers/helpers";
-import {
-  setLocal,
-  getLocal,
-} from "../../lib/localStorage";
+import { setLocal, getLocal } from "../../lib/localStorage";
 
-function NoticePopup() {
+function NoticePopup({ productId = null }) {
   const [showModal, setShowModal] = useState(false);
-  const { data } = useQuery("notice-popup", getPopupNotice, reactQueryConfig);
+  const { data } = useQuery(
+    ["notice-popup", productId],
+    () => getPopupNotice(productId),
+    reactQueryConfig,
+  );
 
   useEffect(() => {
     if (hasData(data)) {
       const accessToken = getLocal(__access_token_key);
-      const persistenceKey = `${__last_seen_modal_key}_${data.id}_${accessToken || 'guest'}`;
+      const persistenceKey = `${__last_seen_modal_key}_${data.id}_${accessToken || "guest"}`;
       const isAlreadySeen = getLocal(persistenceKey);
 
       if (!isAlreadySeen) {
@@ -42,7 +46,7 @@ function NoticePopup() {
 
   if (!showModal) return null;
   return (
-    <div className="_absolute_full fixed bg-black/70 z-[99999999999] _flex_center">
+    <div className="_absolute_full fixed bg-black/70 z-[999999999999] _flex_center">
       <div className="relative _animate_slide_in">
         {/* Close Popup --Start-- */}
         <div
@@ -52,14 +56,18 @@ function NoticePopup() {
           <IoCloseSharp className="w-full h-full" />
         </div>
         {/* Close Popup --End-- */}
-        <div className="bg-white rounded-md overflow-hidden w-[95%] mx-auto sm:w-[600px] grid grid-cols-1 sm:grid-cols-[45%,55%]">
+        <div
+          className={`bg-white rounded-md overflow-hidden w-[95%] mx-auto sm:w-[600px] grid grid-cols-1 ${
+            data?.link ? "sm:grid-cols-[45%,55%]" : ""
+          }`}
+        >
           <img
             src={imgPath(data?.image)}
             alt="Notice Image"
             className="w-full h-full object-cover"
           />
 
-          <div className="p-4">
+          <div className="p-4 flex flex-col justify-center">
             {data?.title && <h3 className="_h3 mb-1.5">{data?.title}</h3>}
             {data?.notice && (
               <div className="_subtitle1 notice-popup-body">

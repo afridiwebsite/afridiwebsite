@@ -22,6 +22,7 @@ function EditNotice(props) {
     const [data, loadingData, error] = useGet(`admin/notice/${noticeId}`)
     const [noticeImage, setNoticeLogo] = useState(data?.image)
     const { path, uploading } = useUpload(noticeImage)
+    const [product_id, setProductId] = useState('')
 
     const link = useRef(null);
     const button_text = useRef(null);
@@ -29,8 +30,11 @@ function EditNotice(props) {
 
     const [noticeHtml, setNoticeHtml] = useState('')
 
+    const [products] = useGet('admin/topup-products')
+
     useEffect(() => {
         if (data?.notice != null) setNoticeHtml(data.notice || '')
+        if (data?.product_id != null) setProductId(data.product_id)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data?.id])
 
@@ -50,6 +54,7 @@ function EditNotice(props) {
             template: '',
             is_active: is_active.current.checked ? 1 : 0,
             button_text: isStripType ? '' : (button_text.current?.value || ''),
+            product_id: product_id || null,
         }).then(res => {
             toast.success('Notice updated successfully', toastDefault)
 
@@ -109,6 +114,24 @@ function EditNotice(props) {
                                                     />
                                                     <p className="text-xs text-gray-500 mt-1">
                                                         Shown on the modal CTA when a Link is set. Falls back to "Go to link" when empty.
+                                                    </p>
+                                                </div>
+
+                                                <div className="mt-3">
+                                                    <label htmlFor="product_id">Target Product (Optional)</label>
+                                                    <select
+                                                        id="product_id"
+                                                        className="form_input"
+                                                        value={product_id}
+                                                        onChange={e => setProductId(e.target.value)}
+                                                    >
+                                                        <option value="">Global (All Products / Home)</option>
+                                                        {products?.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                        ))}
+                                                    </select>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        If selected, this notice will only show on that product's topup page.
                                                     </p>
                                                 </div>
                                             </>

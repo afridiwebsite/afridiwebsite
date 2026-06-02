@@ -380,16 +380,25 @@ class UserController {
   getNoticModal = async (req: express.Request, res: express.Response) => {
     const response = new responseUtils();
     try {
+      const product_id = req.query.product_id;
+      const where: any = {
+        for_home_modal: 1,
+        type: "normal",
+        is_active: 1,
+      };
+
+      if (product_id) {
+        where.product_id = product_id;
+      } else {
+        where.product_id = null;
+      }
+
       const notices = await Notice.findOne({
-        where: {
-          for_home_modal: 1,
-          type: "normal",
-          is_active: 1,
-        },
-        order: [["id", "ASC"]],
+        where,
+        order: [["id", "DESC"]],
       });
       response.data = notices || {};
-      console.log(notices);
+
       res.send(response.response);
     } catch (error) {
       console.log(error);
@@ -2012,7 +2021,6 @@ class UserController {
 
           if (mystatus === "cancel") {
             // Only release if NOT consumed.
-
             shouldBeUsed = vIsConsumed ? 2 : 0; // 2 for Consumed
           } else {
             // completed, pending, In Progress all keep the voucher reserved/used

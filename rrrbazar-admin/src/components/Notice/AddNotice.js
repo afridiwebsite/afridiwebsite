@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../common/axios';
@@ -6,6 +6,7 @@ import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
 import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
+import useGet from '../../hooks/useGet';
 
 const TYPE_LABELS = {
     normal: 'Normal',
@@ -17,6 +18,7 @@ function AddNotice() {
     const link = useRef(null);
     const button_text = useRef(null);
     const is_active = useRef(null);
+    const [product_id, setProductId] = useState('')
 
     const [noticeLogo, setNoticeLogo] = useState(null)
     const { path, uploading } = useUpload(noticeLogo)
@@ -25,6 +27,8 @@ function AddNotice() {
     const [loading, setLoading] = useState(null)
     const history = useHistory()
     const location = useLocation()
+
+    const [products] = useGet('admin/topup-products')
 
     const noticeType = useMemo(() => {
         const params = new URLSearchParams(location.search || '')
@@ -50,6 +54,7 @@ function AddNotice() {
             template: '',
             is_active: is_active.current.checked ? 1 : 0,
             button_text: isStripType ? '' : (button_text.current?.value || ''),
+            product_id: product_id || null,
         }).then(res => {
             toast.success('Notice created successfully', toastDefault)
 
@@ -101,6 +106,24 @@ function AddNotice() {
                                             />
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Shown on the modal CTA when a Link is set. Falls back to "Go to link" when empty.
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-3">
+                                            <label htmlFor="product_id">Target Product (Optional)</label>
+                                            <select
+                                                id="product_id"
+                                                className="form_input"
+                                                value={product_id}
+                                                onChange={e => setProductId(e.target.value)}
+                                            >
+                                                <option value="">Global (All Products / Home)</option>
+                                                {products?.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                If selected, this notice will only show on that product's topup page.
                                             </p>
                                         </div>
                                     </>

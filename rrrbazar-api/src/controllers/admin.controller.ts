@@ -376,7 +376,7 @@ class AdminController {
             // be re-emitted from the pool, regardless of how it was saved
             // when originally allocated.
             if (oldVoucher) {
-              (oldVoucher as any).is_used = 1;
+              (oldVoucher as any).is_used = 2; // 2 for Consumed
               await oldVoucher.save();
             }
 
@@ -391,6 +391,21 @@ class AdminController {
             dispatch.code = '';
             if (poolPackageId) dispatch.voucher_package_id = poolPackageId;
             await dispatch.save();
+          }
+
+          // Force re-allocation if the linked voucher is already marked as 
+          // consumed (status 2) by any other means.
+          if (dispatch.voucher_id) {
+            const vRow = await Voucher.findByPk(dispatch.voucher_id);
+            if (vRow && (vRow as any).is_used === 2) {
+              console.log('[retryBotDispatches] linked voucher is consumed — resetting for re-allocation', {
+                dispatch_id: dispatch.id,
+                voucher_id: dispatch.voucher_id,
+              });
+              dispatch.voucher_id = null;
+              dispatch.code = '';
+              await dispatch.save();
+            }
           }
 
           // Placeholder for a voucher-pool-exhausted dispatch: try to
