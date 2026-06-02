@@ -1,16 +1,16 @@
-import Head from 'next/head';
-import { useQuery } from 'react-query';
-import ReactHtmlParser from 'react-html-parser';
-import { BiErrorCircle } from 'react-icons/bi';
-import { FiCopy } from 'react-icons/fi';
-import { toast } from 'react-toastify';
-import { getUserOrders } from '../../api/api';
-import ActivityIndicator from '../../components/ActivityIndicator';
-import Badge from '../../components/Badge';
-import FlashMessage from '../../components/FlashMessage';
-import { __page_title_end } from '../../config/globalConfig';
-import reactQueryConfig from '../../config/reactQueryConfig';
-import { hasData } from '../../helpers/helpers';
+import Head from "next/head";
+import { useQuery } from "react-query";
+import ReactHtmlParser from "react-html-parser";
+import { BiErrorCircle } from "react-icons/bi";
+import { FiCopy } from "react-icons/fi";
+import { toast } from "react-toastify";
+import { getUserOrders } from "../../api/api";
+import ActivityIndicator from "../../components/ActivityIndicator";
+import Badge from "../../components/Badge";
+import FlashMessage from "../../components/FlashMessage";
+import { __page_title_end } from "../../config/globalConfig";
+import reactQueryConfig from "../../config/reactQueryConfig";
+import { hasData } from "../../helpers/helpers";
 
 // Pull vouchers off the order regardless of whether the API returned the
 // hasMany shape (Vouchers: []) or the older hasOne shape (Voucher: {…}).
@@ -26,10 +26,45 @@ function copy(value) {
   if (!value) return;
   try {
     navigator.clipboard.writeText(String(value));
-    toast.info('Copied to clipboard');
+    toast.info("Copied to clipboard");
   } catch (e) {
     /* clipboard may be unavailable on insecure origin */
   }
+}
+
+// Map an order's status to a `.order-note--*` modifier class so the
+// freeform note matches the Badge color (Badge.js owns the palette):
+//   completed/success/delivered     → success (green)
+//   in_progress/running/processing  → inprogress (yellow)
+//   cancel/failed/rejected          → "" (falls back to the default
+//                                          red look from .order-note)
+//   pending / anything else         → pending (gray)
+function noteModifierClass(status) {
+  const slug = String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (
+    slug === "completed" ||
+    slug === "open" ||
+    slug === "success" ||
+    slug === "delivered"
+  ) {
+    return "order-note--success";
+  }
+  if (slug === "in_progress" || slug === "running" || slug === "processing") {
+    return "order-note--inprogress";
+  }
+  if (
+    slug === "cancel" ||
+    slug === "cancelled" ||
+    slug === "ended" ||
+    slug === "failed" ||
+    slug === "rejected"
+  ) {
+    return "";
+  }
+  return "order-note--pending";
 }
 
 function OrderPage() {
@@ -38,7 +73,7 @@ function OrderPage() {
     isLoading,
     isError,
     error,
-  } = useQuery('get-user-orders', getUserOrders, reactQueryConfig);
+  } = useQuery("get-user-orders", getUserOrders, reactQueryConfig);
 
   return (
     <>
@@ -61,44 +96,47 @@ function OrderPage() {
                 const isVoucherProduct = product?.is_voucher == 1;
                 const vouchers = isVoucherProduct ? vouchersOf(order) : [];
                 const hasVouchers = vouchers.length > 0;
-                const isCompleted = String(order?.status || '')
-                  .toLowerCase()
-                  .trim() === 'completed';
-                const redeemLink = product?.redeem_link || '';
+                const isCompleted =
+                  String(order?.status || "")
+                    .toLowerCase()
+                    .trim() === "completed";
+                const redeemLink = product?.redeem_link || "";
                 const showRedeemBtn = isCompleted && !!redeemLink;
                 const isUniPin =
                   order?.brief_note &&
-                  order.brief_note.substring(0, 6) === 'UniPin';
+                  order.brief_note.substring(0, 6) === "UniPin";
                 const hasFreeformNote =
                   order?.brief_note && !isUniPin && !hasVouchers;
 
                 return (
                   <div
-                    style={{ background: '#ffffff' }}
+                    style={{ background: "#ffffff" }}
                     key={order?.id || index}
                     className="relative border border-gray-200 p-3 md:p-4 rounded-md overflow-hidden flex justify-between gap-3"
                   >
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <p className="_subtitle1">
-                        <span className="font-semibold mr-1.5">Order Id:</span>{' '}
+                        <span className="font-semibold mr-1.5">Order Id:</span>{" "}
                         {order?.id}
                       </p>
                       <p className="_subtitle1">
-                        <span className="font-semibold mr-1.5">Date:</span>{' '}
+                        <span className="font-semibold mr-1.5">Date:</span>{" "}
                         {order?.created_at}
                       </p>
                       <p className="_subtitle1">
-                        <span className="font-semibold mr-1.5">Total Price:</span>{' '}
+                        <span className="font-semibold mr-1.5">
+                          Total Price:
+                        </span>{" "}
                         {order?.amount}
                       </p>
                       <p className="_subtitle1">
-                        <span className="font-semibold mr-1.5">Player Id:</span>{' '}
+                        <span className="font-semibold mr-1.5">Player Id:</span>{" "}
                         {order?.playerid}
                       </p>
                       <p className="_subtitle1">
                         <span className="font-semibold mr-1.5">
                           Package Name:
-                        </span>{' '}
+                        </span>{" "}
                         {order?.name}
                       </p>
 
@@ -109,13 +147,13 @@ function OrderPage() {
                               {vouchers.length}
                             </span>
                             <span className="font-semibold text-gray-700">
-                              Voucher{vouchers.length > 1 ? 's' : ''}
+                              Voucher{vouchers.length > 1 ? "s" : ""}
                             </span>
                             {vouchers.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() =>
-                                  copy(vouchers.map((v) => v.data).join('\n'))
+                                  copy(vouchers.map((v) => v.data).join("\n"))
                                 }
                                 className="ml-auto text-xs text-gray-500 hover:text-gray-800 underline"
                               >
@@ -149,13 +187,17 @@ function OrderPage() {
 
                       {isUniPin && (
                         <p className="_subtitle1">
-                          <span className="font-semibold mr-1.5">Voucher:</span>{' '}
+                          <span className="font-semibold mr-1.5">Voucher:</span>{" "}
                           {order.brief_note.substring(8)}
                         </p>
                       )}
 
                       {hasFreeformNote && (
-                        <div className="order-note">
+                        <div
+                          className={`order-note ${noteModifierClass(
+                            order?.status,
+                          )}`.trim()}
+                        >
                           <span className="order-note-icon" aria-hidden="true">
                             <BiErrorCircle />
                           </span>
@@ -195,9 +237,9 @@ function OrderPage() {
                         rel="noreferrer"
                         style={{
                           background:
-                            'linear-gradient(135deg, var(--theme-primary, #2563eb) 0%, var(--theme-accent, #4D67D8) 100%)',
+                            "linear-gradient(135deg, var(--theme-primary, #2563eb) 0%, var(--theme-accent, #4D67D8) 100%)",
                           boxShadow:
-                            '0 2px 8px rgba(var(--theme-primary-rgb, 37 99 235) / 0.35)',
+                            "0 2px 8px rgba(var(--theme-primary-rgb, 37 99 235) / 0.35)",
                         }}
                         className="absolute bottom-3 right-3 hover:brightness-110 active:brightness-95 text-white font-bold py-1.5 px-4 rounded-full text-sm transition"
                       >

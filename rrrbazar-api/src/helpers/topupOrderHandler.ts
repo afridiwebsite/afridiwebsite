@@ -573,9 +573,16 @@ async function handleLikeBot(opts: {
       await refreshed.save();
     }
     order.status = "completed";
+    // brief_note is rendered with ReactHtmlParser on the storefront's
+    // /profile/order page, so a few <br/>-separated key/value lines is
+    // the cleanest way to show the per-order summary the customer
+    // cares about (who got the likes, before/after counts). The
+    // nickname comes straight from the upstream so it's HTML-escaped.
     order.brief_note =
-      `Likes delivered: ${likesGiven} added (${likesBefore} → ${likesAfter})` +
-      (nickname ? ` for ${nickname}` : "");
+      `Name : ${escapeHtml(nickname || "Unknown")}<br/>` +
+      `Before Like : ${likesBefore}<br/>` +
+      `Added Like : ${likesGiven}<br/>` +
+      `Total Like : ${likesAfter}`;
     (order as any).details =
       `<span style='color:#059669;'><strong>Like-bot delivered successfully.</strong></span>` +
       `<ul style='text-align:left; margin-top:6px; list-style-type:disc; padding-left:20px;'>` +

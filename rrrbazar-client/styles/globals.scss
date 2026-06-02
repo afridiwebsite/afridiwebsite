@@ -6099,6 +6099,59 @@ body {
   text-decoration: underline;
 }
 
+// Status-aware note modifiers. Default `.order-note` styling above is
+// the red/error look; these classes flip bg / border / icon / label /
+// text colors so the note matches the order's status badge (see
+// components/Badge.js for the source-of-truth palette).
+.order-note--success {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.3);
+  .order-note-icon {
+    background: #22c55e;
+  }
+  .order-note-body {
+    color: #14532d;
+  }
+  .order-note-label {
+    color: #15803d;
+  }
+  .order-note-html a {
+    color: #15803d;
+  }
+}
+.order-note--inprogress {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.3);
+  .order-note-icon {
+    background: #eab308;
+  }
+  .order-note-body {
+    color: #713f12;
+  }
+  .order-note-label {
+    color: #ca8a04;
+  }
+  .order-note-html a {
+    color: #ca8a04;
+  }
+}
+.order-note--pending {
+  background: rgba(107, 114, 128, 0.08);
+  border-color: rgba(107, 114, 128, 0.3);
+  .order-note-icon {
+    background: #6b7280;
+  }
+  .order-note-body {
+    color: #374151;
+  }
+  .order-note-label {
+    color: #4b5563;
+  }
+  .order-note-html a {
+    color: #4b5563;
+  }
+}
+
 .navbar-notice {
   position: relative;
   display: flex;
