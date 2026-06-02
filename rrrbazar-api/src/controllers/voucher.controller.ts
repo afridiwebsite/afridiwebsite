@@ -1,7 +1,7 @@
-import express from 'express';
-import { Op, Sequelize } from 'sequelize';
-import Schema from '../models';
-import responseUtils from '../utils/response.utils';
+import express from "express";
+import { Op, Sequelize } from "sequelize";
+import Schema from "../models";
+import responseUtils from "../utils/response.utils";
 
 const { Voucher, TopupPackage, TopupProduct, PackageVoucherMap } = Schema;
 
@@ -20,46 +20,53 @@ class VoucherController {
     const response = new responseUtils();
     try {
       const package_id = req.params.id as any;
-      const search = (req.query.q as string) || '';
-      const status = (req.query.status as string) || ''; // 'used' | 'unused' | ''
-      const startDate = (req.query.start_date as string) || '';
-      const endDate = (req.query.end_date as string) || '';
-      const orderBy = ((req.query.order_by as string) || 'id').toLowerCase();
-      const orderDir = ((req.query.order_dir as string) || 'DESC').toUpperCase();
-      const page = Math.max(parseInt((req.query.page as string) || '1', 10), 1);
+      const search = (req.query.q as string) || "";
+      const status = (req.query.status as string) || ""; // 'used' | 'unused' | ''
+      const startDate = (req.query.start_date as string) || "";
+      const endDate = (req.query.end_date as string) || "";
+      const orderBy = (
+        (req.query.order_by as string) || "status"
+      ).toLowerCase();
+      const orderDir = (
+        (req.query.order_dir as string) || "DESC"
+      ).toUpperCase();
+      const page = Math.max(parseInt((req.query.page as string) || "1", 10), 1);
       const limit = Math.min(
-        Math.max(parseInt((req.query.limit as string) || '25', 10), 1),
+        Math.max(parseInt((req.query.limit as string) || "25", 10), 1),
         200,
       );
 
       const pack = await TopupPackage.findByPk(package_id);
       if (!pack) {
-        response.message = 'Package not found';
+        response.message = "Package not found";
         return res.status(400).send(response.internalError);
       }
       const product = await TopupProduct.findByPk(pack.product_id);
 
       const where: any = { package_id };
       if (search) where.data = { [Op.like]: `%${search}%` };
-      if (status === 'used') where.is_used = 1;
-      else if (status === 'unused') where.is_used = 0;
-      else if (status === 'consumed') where.is_used = 2;
+      if (status === "used") where.is_used = 1;
+      else if (status === "unused") where.is_used = 0;
+      else if (status === "consumed") where.is_used = 2;
 
       // Date range — created_at is the only timestamp that makes sense for
       // filtering "when was the code seeded". Inclusive on both ends.
       const createdAtRange: any = {};
-      if (startDate) createdAtRange[Op.gte] = new Date(startDate + 'T00:00:00');
-      if (endDate) createdAtRange[Op.lte] = new Date(endDate + 'T23:59:59');
+      if (startDate) createdAtRange[Op.gte] = new Date(startDate + "T00:00:00");
+      if (endDate) createdAtRange[Op.lte] = new Date(endDate + "T23:59:59");
       if (Object.getOwnPropertySymbols(createdAtRange).length) {
         where.created_at = createdAtRange;
       }
 
       // Sort: by `is_used` (status) or by `id` (insertion order proxy).
-      const dir = orderDir === 'ASC' ? 'ASC' : 'DESC';
+      const dir = orderDir === "ASC" ? "ASC" : "DESC";
       const order: any[] =
-        orderBy === 'status'
-          ? [['is_used', dir], ['id', 'DESC']]
-          : [['id', dir]];
+        orderBy === "status"
+          ? [
+              ["is_used", dir],
+              ["id", "DESC"],
+            ]
+          : [["id", dir]];
 
       const { rows: vouchers, count: total } = await Voucher.findAndCountAll({
         where,
@@ -74,10 +81,10 @@ class VoucherController {
       const counts = await Voucher.findAll({
         where: { package_id },
         attributes: [
-          'is_used',
-          [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
+          "is_used",
+          [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
         ],
-        group: ['is_used'],
+        group: ["is_used"],
         raw: true,
       });
       const stats = { total: 0, used: 0, unused: 0, consumed: 0 };
@@ -100,7 +107,7 @@ class VoucherController {
       };
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.listByPackage error', error);
+      console.log("voucher.listByPackage error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -111,27 +118,27 @@ class VoucherController {
     try {
       const { data, package_id } = req.body;
       if (!package_id) {
-        response.message = 'package_id is required';
+        response.message = "package_id is required";
         return res.status(400).send(response.internalError);
       }
       if (!Array.isArray(data) || data.length === 0) {
-        response.message = 'No voucher codes provided';
+        response.message = "No voucher codes provided";
         return res.status(400).send(response.internalError);
       }
 
       const pack = await TopupPackage.findByPk(package_id);
       if (!pack) {
-        response.message = 'Package not found';
+        response.message = "Package not found";
         return res.status(400).send(response.internalError);
       }
 
       const rows = data
-        .map((v: any) => String(v || '').trim())
+        .map((v: any) => String(v || "").trim())
         .filter((v: string) => v.length > 0)
         .map((v: string) => ({ package_id, data: v, is_used: 0 }));
 
       if (rows.length === 0) {
-        response.message = 'All submitted lines were empty';
+        response.message = "All submitted lines were empty";
         return res.status(400).send(response.internalError);
       }
 
@@ -139,7 +146,7 @@ class VoucherController {
       response.message = `${rows.length} voucher(s) added`;
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.bulkAdd error', error);
+      console.log("voucher.bulkAdd error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -155,14 +162,14 @@ class VoucherController {
       const id = req.params.id as any;
       const voucher = await Voucher.findByPk(id);
       if (!voucher) {
-        response.message = 'Voucher not found';
+        response.message = "Voucher not found";
         return res.status(400).send(response.internalError);
       }
       await voucher.destroy();
-      response.message = 'Voucher deleted';
+      response.message = "Voucher deleted";
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.remove error', error);
+      console.log("voucher.remove error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -173,18 +180,22 @@ class VoucherController {
     try {
       const raw = req.body?.ids;
       const ids = Array.isArray(raw)
-        ? raw.map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n) && n > 0)
+        ? raw
+            .map((x: any) => Number(x))
+            .filter((n: number) => Number.isFinite(n) && n > 0)
         : [];
       if (ids.length === 0) {
-        response.message = 'No voucher ids provided';
+        response.message = "No voucher ids provided";
         return res.status(400).send(response.internalError);
       }
-      const removed = await Voucher.destroy({ where: { id: { [Op.in]: ids } } });
+      const removed = await Voucher.destroy({
+        where: { id: { [Op.in]: ids } },
+      });
       response.message = `${removed} voucher(s) deleted`;
       response.data = { deleted: removed };
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.bulkRemove error', error);
+      console.log("voucher.bulkRemove error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -200,8 +211,8 @@ class VoucherController {
     try {
       const products = await TopupProduct.findAll({
         where: { is_voucher: 1 },
-        attributes: ['id', 'name', 'logo'],
-        order: [['serial', 'ASC']],
+        attributes: ["id", "name", "logo"],
+        order: [["serial", "ASC"]],
         raw: true,
       });
       if (products.length === 0) {
@@ -210,8 +221,8 @@ class VoucherController {
       }
       const packs = await TopupPackage.findAll({
         where: { product_id: { [Op.in]: products.map((p: any) => p.id) } },
-        attributes: ['id', 'name', 'product_id'],
-        order: [['serial', 'ASC']],
+        attributes: ["id", "name", "product_id"],
+        order: [["serial", "ASC"]],
         raw: true,
       });
       const byProduct = new Map<number, any[]>();
@@ -228,7 +239,7 @@ class VoucherController {
       }));
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.voucherProductsWithPackages error', error);
+      console.log("voucher.voucherProductsWithPackages error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -242,7 +253,7 @@ class VoucherController {
       const package_id = req.params.id as any;
       const maps = await PackageVoucherMap.findAll({
         where: { topup_package_id: package_id },
-        order: [['id', 'ASC']],
+        order: [["id", "ASC"]],
         raw: true,
       });
       if (maps.length === 0) {
@@ -252,7 +263,7 @@ class VoucherController {
       const voucherPackIds = (maps as any[]).map((m) => m.voucher_package_id);
       const packs = await TopupPackage.findAll({
         where: { id: { [Op.in]: voucherPackIds } },
-        attributes: ['id', 'name', 'product_id'],
+        attributes: ["id", "name", "product_id"],
         raw: true,
       });
       const productIds = Array.from(
@@ -261,28 +272,27 @@ class VoucherController {
       const products = productIds.length
         ? await TopupProduct.findAll({
             where: { id: { [Op.in]: productIds } },
-            attributes: ['id', 'name'],
+            attributes: ["id", "name"],
             raw: true,
           })
         : [];
       const packById = new Map((packs as any[]).map((p) => [p.id, p]));
-      const productById = new Map(
-        (products as any[]).map((p) => [p.id, p]),
-      );
+      const productById = new Map((products as any[]).map((p) => [p.id, p]));
       response.data = (maps as any[]).map((m) => {
         const pack = packById.get(m.voucher_package_id);
         const product = pack ? productById.get(pack.product_id) : null;
         return {
           id: m.id,
           voucher_package_id: m.voucher_package_id,
-          voucher_package_name: pack?.name || `Package #${m.voucher_package_id}`,
+          voucher_package_name:
+            pack?.name || `Package #${m.voucher_package_id}`,
           voucher_product_id: pack?.product_id || null,
-          voucher_product_name: product?.name || '—',
+          voucher_product_name: product?.name || "—",
         };
       });
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.listMaps error', error);
+      console.log("voucher.listMaps error", error);
       res.status(400).send(response.internalError);
     }
   };
@@ -294,7 +304,7 @@ class VoucherController {
     try {
       const package_id = Number(req.params.id);
       if (!package_id) {
-        response.message = 'package_id is required';
+        response.message = "package_id is required";
         return res.status(400).send(response.internalError);
       }
       const raw = req.body?.voucher_package_ids;
@@ -321,7 +331,7 @@ class VoucherController {
       response.data = { count: voucherIds.length };
       res.send(response.response);
     } catch (error) {
-      console.log('voucher.saveMaps error', error);
+      console.log("voucher.saveMaps error", error);
       res.status(400).send(response.internalError);
     }
   };

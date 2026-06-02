@@ -1796,11 +1796,13 @@ class UserController {
       const safeContent = String(content || "").trim();
       const isSuccess = status == "success";
       const isInvalidPlayer = /^invalid\s*player\s*id$/i.test(safeContent);
-      const isInvalidRegion =
-        /^invalid\s*(player\s*)?region/i.test(safeContent);
+      const isInvalidRegion = /^invalid\s*(player\s*)?region/i.test(
+        safeContent,
+      );
       const isNotFoundPackage = /^package\s*not\s*found/i.test(safeContent);
-      const isInvalidLiteral =
-        /invalid\s*literal\s*for\s*int/i.test(safeContent);
+      const isInvalidLiteral = /invalid\s*literal\s*for\s*int/i.test(
+        safeContent,
+      );
       const isKnownUserError =
         isInvalidPlayer ||
         isInvalidRegion ||
@@ -2007,6 +2009,8 @@ class UserController {
               (d
                 ? (d as any).error_reason || (d as any).response_content
                 : safeContent) || "";
+
+            console.log(reason, "consumed reason");
             const vIsConsumed = CONSUMED_PATTERNS.some((p) => p.test(reason));
             shouldBeUsed = vIsConsumed ? 2 : 0; // 2 for Consumed
           } else {

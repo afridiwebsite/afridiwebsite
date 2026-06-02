@@ -1,19 +1,19 @@
-import moment from 'moment';
-import { useEffect, useMemo, useState } from 'react';
-import { withRouter } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import axiosInstance from '../../../common/axios';
-import useGet from '../../../hooks/useGet';
-import { getErrors, hasData, toastDefault } from '../../../utils/handler.utils';
-import Loader from '../../Loader/Loader';
+import moment from "moment";
+import { useEffect, useMemo, useState } from "react";
+import { withRouter } from "react-router-dom";
+import { toast } from "react-toastify";
+import axiosInstance from "../../../common/axios";
+import useGet from "../../../hooks/useGet";
+import { getErrors, hasData, toastDefault } from "../../../utils/handler.utils";
+import Loader from "../../Loader/Loader";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 1000];
 
 // Split a textarea blob into clean, non-empty voucher codes. Newlines act
 // as the row separator (the textarea is the single source of truth).
 const parseVoucherCodes = (raw) =>
-  String(raw || '')
-    .split('\n')
+  String(raw || "")
+    .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
 
@@ -28,11 +28,11 @@ function Voucher(props) {
 
   // Filters. Default sort is "Used first" — the list always orders by
   // is_used DESC, id DESC; no user-facing sort control.
-  const [search, setSearch] = useState('');
-  const [filterDate, setFilterDate] = useState('');
-  const [status, setStatus] = useState('');
-  const orderBy = 'status';
-  const orderDir = 'DESC';
+  const [search, setSearch] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+  const [status, setStatus] = useState("");
+  const orderBy = "status";
+  const orderDir = "ASC";
 
   // Pagination.
   const [page, setPage] = useState(1);
@@ -44,11 +44,11 @@ function Voucher(props) {
 
   // Add-voucher modal state. Single textarea — one voucher per line.
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [pasteText, setPasteText] = useState('');
+  const [pasteText, setPasteText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Debounce the search input so we don't refetch on every keystroke.
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState("");
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput), 350);
     return () => clearTimeout(id);
@@ -62,18 +62,18 @@ function Voucher(props) {
 
   const qs = useMemo(() => {
     const params = new URLSearchParams();
-    if (search.trim()) params.set('q', search.trim());
-    if (status) params.set('status', status);
+    if (search.trim()) params.set("q", search.trim());
+    if (status) params.set("status", status);
     if (filterDate) {
       // Single-date filter — bracket the chosen day on both ends so the
       // server returns everything created on that calendar date.
-      params.set('start_date', filterDate);
-      params.set('end_date', filterDate);
+      params.set("start_date", filterDate);
+      params.set("end_date", filterDate);
     }
-    params.set('order_by', orderBy);
-    params.set('order_dir', orderDir);
-    params.set('page', String(page));
-    params.set('limit', String(limit));
+    params.set("order_by", orderBy);
+    params.set("order_dir", orderDir);
+    params.set("page", String(page));
+    params.set("limit", String(limit));
     return `?${params.toString()}`;
   }, [search, filterDate, status, page, limit]);
 
@@ -119,16 +119,22 @@ function Voucher(props) {
   const bulkDelete = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
-      toast.error('Select at least one voucher to delete', toastDefault);
+      toast.error("Select at least one voucher to delete", toastDefault);
       return;
     }
-    if (!window.confirm(`Delete ${ids.length} voucher(s)? This cannot be undone.`))
+    if (
+      !window.confirm(`Delete ${ids.length} voucher(s)? This cannot be undone.`)
+    )
       return;
     toast.promise(
-      axiosInstance.post('/admin/packages/bulk-delete-voucher', { ids }),
+      axiosInstance.post("/admin/packages/bulk-delete-voucher", { ids }),
       {
-        pending: 'Deleting…',
-        error: { render(err) { return getErrors(err.data, false, true); } },
+        pending: "Deleting…",
+        error: {
+          render(err) {
+            return getErrors(err.data, false, true);
+          },
+        },
         success: {
           render() {
             setSelectedIds(new Set());
@@ -143,7 +149,7 @@ function Voucher(props) {
 
   // ---- Add modal helpers -------------------------------------------------
   const openAddModal = () => {
-    setPasteText('');
+    setPasteText("");
     setIsAddOpen(true);
   };
   const closeAddModal = () => {
@@ -155,15 +161,18 @@ function Voucher(props) {
     e.preventDefault();
     const lines = parsedCodes;
     if (lines.length === 0) {
-      toast.error('Enter at least one voucher code', toastDefault);
+      toast.error("Enter at least one voucher code", toastDefault);
       return;
     }
     setSubmitting(true);
     axiosInstance
-      .post('/admin/packages/add-voucher', { data: lines, package_id: packageId })
+      .post("/admin/packages/add-voucher", {
+        data: lines,
+        package_id: packageId,
+      })
       .then(() => {
         toast.success(`${lines.length} voucher(s) added`, toastDefault);
-        setPasteText('');
+        setPasteText("");
         setIsAddOpen(false);
         setRefreshTick((t) => t + 1);
       })
@@ -175,16 +184,20 @@ function Voucher(props) {
   // Routes through the bulk endpoint with a 1-item array so this and the
   // bulk-delete action share a single auth_module row.
   const deleteVoucher = (id) => {
-    if (!window.confirm('Delete this voucher? This cannot be undone.')) return;
+    if (!window.confirm("Delete this voucher? This cannot be undone.")) return;
     toast.promise(
-      axiosInstance.post('/admin/packages/bulk-delete-voucher', { ids: [id] }),
+      axiosInstance.post("/admin/packages/bulk-delete-voucher", { ids: [id] }),
       {
-        pending: 'Deleting voucher…',
-        error: { render(err) { return getErrors(err.data, false, true); } },
+        pending: "Deleting voucher…",
+        error: {
+          render(err) {
+            return getErrors(err.data, false, true);
+          },
+        },
         success: {
           render() {
             setRefreshTick((t) => t + 1);
-            return 'Voucher deleted';
+            return "Voucher deleted";
           },
         },
       },
@@ -193,10 +206,10 @@ function Voucher(props) {
   };
 
   const clearFilters = () => {
-    setSearch('');
-    setSearchInput('');
-    setFilterDate('');
-    setStatus('');
+    setSearch("");
+    setSearchInput("");
+    setFilterDate("");
+    setStatus("");
   };
 
   // Page-number list, clamped around the current page.
@@ -213,12 +226,16 @@ function Voucher(props) {
     <section className="relative container_admin">
       <div className="bg-white overflow-hidden rounded shadow-sm">
         <div className="px-6 py-3 border-b border-gray-200 flex flex-col">
-          <h3 className="text-xl font-bold text-black mt-2">Voucher Management</h3>
+          <h3 className="text-xl font-bold text-black mt-2">
+            Voucher Management
+          </h3>
           <div className="text-left">
             <p className="text-sm font-bold text-blue-600 uppercase">
-              {data?.product?.name || '—'}
+              {data?.product?.name || "—"}
             </p>
-            <p className="text-lg font-bold text-gray-500">{data?.package?.name || '—'}</p>
+            <p className="text-lg font-bold text-gray-500">
+              {data?.package?.name || "—"}
+            </p>
           </div>
         </div>
 
@@ -369,7 +386,7 @@ function Voucher(props) {
                     return (
                       <tr
                         key={v.id}
-                        className={`border-t border-gray-100 ${checked ? 'bg-red-50/50' : ''}`}
+                        className={`border-t border-gray-100 ${checked ? "bg-red-50/50" : ""}`}
                       >
                         {bulkMode && (
                           <td className="px-3 py-2">
@@ -388,7 +405,7 @@ function Voucher(props) {
                             title="Click to copy"
                             onClick={() => {
                               navigator.clipboard.writeText(v.data);
-                              toast.success('Copied!', {
+                              toast.success("Copied!", {
                                 ...toastDefault,
                                 autoClose: 1000,
                               });
@@ -413,12 +430,12 @@ function Voucher(props) {
                           )}
                         </td>
                         <td className="px-3 py-2 text-gray-500">
-                          {v.order_id ? `#${v.order_id}` : '—'}
+                          {v.order_id ? `#${v.order_id}` : "—"}
                         </td>
                         <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
                           {v.created_at
-                            ? moment(v.created_at).format('MMM D, YYYY h:mm A')
-                            : '—'}
+                            ? moment(v.created_at).format("MMM D, YYYY h:mm A")
+                            : "—"}
                         </td>
                         {!bulkMode && (
                           <td className="px-3 py-2 text-right">
@@ -459,7 +476,7 @@ function Voucher(props) {
 
           <div className="text-gray-500">
             {total === 0
-              ? 'No entries'
+              ? "No entries"
               : `Showing ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}
           </div>
 
@@ -488,8 +505,8 @@ function Voucher(props) {
                 onClick={() => setPage(p)}
                 className={`px-2 py-1 rounded border ${
                   p === page
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 {p}
@@ -542,7 +559,10 @@ function Voucher(props) {
               </button>
             </div>
 
-            <form onSubmit={addVoucher} className="flex flex-col flex-1 min-h-0">
+            <form
+              onSubmit={addVoucher}
+              className="flex flex-col flex-1 min-h-0"
+            >
               <div className="px-5 py-4 overflow-auto flex-1">
                 <p className="text-xs text-gray-500 mb-3">
                   One voucher per line. Each non-empty line is inserted as a
@@ -551,7 +571,7 @@ function Voucher(props) {
                 <textarea
                   className="form_input !mb-0 w-full font-mono"
                   rows={10}
-                  placeholder={'VOUCHER-1\nVOUCHER-2\nVOUCHER-3'}
+                  placeholder={"VOUCHER-1\nVOUCHER-2\nVOUCHER-3"}
                   value={pasteText}
                   onChange={(e) => setPasteText(e.target.value)}
                   autoFocus
@@ -576,8 +596,8 @@ function Voucher(props) {
                   className="cstm_btn disabled:opacity-60"
                 >
                   {submitting
-                    ? 'Adding…'
-                    : `Add ${parsedCodes.length || ''} voucher(s)`.trim()}
+                    ? "Adding…"
+                    : `Add ${parsedCodes.length || ""} voucher(s)`.trim()}
                 </button>
               </div>
             </form>
