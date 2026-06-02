@@ -1,31 +1,36 @@
-import Head from 'next/head';
-import Router, { useRouter } from 'next/router';
-import Nprogress from 'nprogress';
-import 'nprogress/nprogress.css';
-import React, { useEffect, useState } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-import api, { getSiteSettings, getUserProfile } from '../api/api';
-import { googleLogout } from '@react-oauth/google';
-import AuthGuard from '../components/AuthGuard';
-import Layout from '../components/layout/Layout';
-import MobileAppBar from '../components/MobileAppBar';
-import { __access_token_key, __user_key, __site_name_2, __site_name_label } from '../config/globalConfig';
-import routes from '../config/routes';
+import Head from "next/head";
+import Router, { useRouter } from "next/router";
+import Nprogress from "nprogress";
+import "nprogress/nprogress.css";
+import React, { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import api, { getSiteSettings, getUserProfile } from "../api/api";
+import { googleLogout } from "@react-oauth/google";
+import AuthGuard from "../components/AuthGuard";
+import Layout from "../components/layout/Layout";
+import MobileAppBar from "../components/MobileAppBar";
+import {
+  __access_token_key,
+  __user_key,
+  __site_name_2,
+  __site_name_label,
+} from "../config/globalConfig";
+import routes from "../config/routes";
 import {
   getLocal,
   getSession,
   removeBoth,
   setLocal,
   setSession,
-} from '../lib/localStorage';
-import { hexToRgb } from '../helpers/helpers';
-import '../styles/globals.scss';
-import '../styles/why-choose.scss';
+} from "../lib/localStorage";
+import { hexToRgb } from "../helpers/helpers";
+import "../styles/globals.scss";
+import "../styles/why-choose.scss";
 
 const queryClient = new QueryClient();
 
@@ -33,9 +38,9 @@ Nprogress.configure({
   showSpinner: false,
 });
 
-Router.events.on('routeChangeStart', () => Nprogress.start());
-Router.events.on('routeChangeComplete', () => Nprogress.done());
-Router.events.on('routeChangeError', () => Nprogress.done());
+Router.events.on("routeChangeStart", () => Nprogress.start());
+Router.events.on("routeChangeComplete", () => Nprogress.done());
+Router.events.on("routeChangeError", () => Nprogress.done());
 
 // Global context api
 export const globalContext = React.createContext();
@@ -83,19 +88,19 @@ function MyApp({ Component, pageProps }) {
     if (!siteSettings) return;
     const r = document.documentElement;
     if (siteSettings.primary_color) {
-      r.style.setProperty('--theme-primary', siteSettings.primary_color);
+      r.style.setProperty("--theme-primary", siteSettings.primary_color);
       const rgb = hexToRgb(siteSettings.primary_color);
-      if (rgb) r.style.setProperty('--theme-primary-rgb', rgb);
+      if (rgb) r.style.setProperty("--theme-primary-rgb", rgb);
     }
     if (siteSettings.secondary_color) {
-      r.style.setProperty('--theme-secondary', siteSettings.secondary_color);
+      r.style.setProperty("--theme-secondary", siteSettings.secondary_color);
       const rgb = hexToRgb(siteSettings.secondary_color);
-      if (rgb) r.style.setProperty('--theme-secondary-rgb', rgb);
+      if (rgb) r.style.setProperty("--theme-secondary-rgb", rgb);
     }
     if (siteSettings.accent_color) {
-      r.style.setProperty('--theme-accent', siteSettings.accent_color);
+      r.style.setProperty("--theme-accent", siteSettings.accent_color);
       const rgb = hexToRgb(siteSettings.accent_color);
-      if (rgb) r.style.setProperty('--theme-accent-rgb', rgb);
+      if (rgb) r.style.setProperty("--theme-accent-rgb", rgb);
     }
   }, [siteSettings]);
 
@@ -107,7 +112,7 @@ function MyApp({ Component, pageProps }) {
   const signOut = () => {
     removeBoth(__user_key);
     removeBoth(__access_token_key);
-    localStorage.removeItem('closed_notices');
+    localStorage.removeItem("closed_notices");
     googleLogout();
     router.push(routes.login.name).then(() => {
       setIsAuth(false);
@@ -119,7 +124,7 @@ function MyApp({ Component, pageProps }) {
   const saveAuthUser = (userObj, accessToken, rememberMe, redirectUrl) => {
     removeBoth(__user_key);
     removeBoth(__access_token_key);
-    localStorage.removeItem('closed_notices');
+    localStorage.removeItem("closed_notices");
 
     if (rememberMe) {
       setLocal(__user_key, userObj);
@@ -162,15 +167,20 @@ function MyApp({ Component, pageProps }) {
   const isDisabledFooter = Component?.disabledFooter;
   const isDisabledMobileAppBar = Component?.disabledMobileAppBar;
 
-  console.log(siteSettings?.favicon_full_url);
+  console.log(siteSettings?.favicon);
 
   return (
     <>
       <Head>
-        <title>{__site_name_2} | {__site_name_label}</title>
+        <title>
+          {__site_name_2} | {__site_name_label}
+        </title>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="shortcut icon" href={siteSettings?.favicon_full_url || "/favico.ico"} />
-        <link rel="icon" href={siteSettings?.favicon_full_url || "/favico.ico"} />
+        <link
+          rel="shortcut icon"
+          href={siteSettings?.favicon || "/favico.ico"}
+        />
+        <link rel="icon" href={siteSettings?.favicon || "/favico.ico"} />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="apple-touch-icon-precomposed" href="/logo.png" />
         <meta name="theme-color" content="#000000" />
@@ -182,7 +192,10 @@ function MyApp({ Component, pageProps }) {
       </Head>
       <globalContext.Provider value={glovalContextData}>
         <QueryClientProvider client={queryClient}>
-          <Layout disabledHeader={isDisabledHeader} disabledFooter={isDisabledFooter}>
+          <Layout
+            disabledHeader={isDisabledHeader}
+            disabledFooter={isDisabledFooter}
+          >
             <ToastContainer />
             {Component.auth ? (
               <AuthGuard>

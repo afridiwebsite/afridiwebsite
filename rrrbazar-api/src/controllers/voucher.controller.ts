@@ -200,6 +200,139 @@ class VoucherController {
     }
   };
 
+  // POST /admin/voucher/auto-distribute  body: { rawData: string }
+  // Distributes vouchers to packages based on a hardcoded mapping of SKUs to
+  // package names. Cleans noisy input (e.g. from spreadsheets) automatically.
+  autoDistribute = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const { rawData } = req.body;
+      if (!rawData) {
+        response.message = "rawData is required";
+        return res.status(400).send(response.internalError);
+      }
+
+      const mapping: Record<string, string> = {
+        "BDMB-T-S": "🔰 20-UC Voucher",
+        "UPBD-Q-S": "🔰 20-UC Voucher",
+        "BDMB-U-S": "🔰 36-UC Voucher",
+        "UPBD-R-S": "🔰 36-UC Voucher",
+        "BDMB-J-S": "🔰 80-UC Voucher",
+        "UPBD-G-S": "🔰 80-UC Voucher",
+        "BDMB-I-S": "🔰 160-UC Voucher",
+        "UPBD-F-S": "🔰 160-UC Voucher",
+        "BDMB-K-S": "🔰 405-UC Voucher",
+        "UPBD-H-S": "🔰 405-UC Voucher",
+        "BDMB-L-S": "🔰 810-UC Voucher",
+        "UPBD-I-S": "🔰 810-UC Voucher",
+        "BDMB-M-S": "🔰 1625-UC Voucher",
+        "UPBD-J-S": "🔰 1625-UC Voucher",
+        "BDMB-Q-S": "🟪 Weekly-UC Vouchers",
+        "UPBD-N-S": "🟪 Weekly-UC Vouchers",
+        "BDMB-S-S": "🟧Monthly-UC Vouchers",
+        "UPBD-P-S": "🟧Monthly-UC Vouchers",
+      };
+
+      const keys = Object.keys(mapping);
+      const escapedKeys = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const regex = new RegExp(`(${escapedKeys.join("|")})`, "g");
+
+      // Split the entire rawData by keys, keeping the keys in the result.
+      const segments = String(rawData).split(regex);
+      const parsed: { packageName: string; code: string }[] = [];
+
+      // segments[0] is text before the first key (noise/headers).
+      // Then it follows: [key, tail, key, tail, ...]
+      for (let i = 1; i < segments.length; i += 2) {
+        const key = segments[i];
+        const tail = segments[i + 1] || "";
+
+        // The tail contains the serial number, voucher code, and any noise 
+        // until the next key. Clean and split into words.
+        const words = tail
+          .replace(/[:\t\r\n]+/g, " ")
+          .split(/\s+/)
+          .map((w) => w.trim())
+          .filter(Boolean);
+
+        // Find the best candidate for the voucher code in this segment's tail.
+        const candidates = words.filter((w) => {
+          if (/^[0-9]+\.$/.test(w)) return false;
+          if (/^\[.*\]$/.test(w)) return false;
+          const low = w.toLowerCase();
+          if (["ready", "active", "used", "consumed"].includes(low))
+            return false;
+          return w.length > 5;
+        });
+
+        if (candidates.length > 0) {
+          // Heuristic: pick the one with most hyphens, then longest.
+          candidates.sort((a, b) => {
+            const aHyphens = (a.match(/-/g) || []).length;
+            const bHyphens = (b.match(/-/g) || []).length;
+            if (aHyphens !== bHyphens) return bHyphens - aHyphens;
+            return b.length - a.length;
+          });
+
+          parsed.push({
+            packageName: mapping[key],
+            code: candidates[0],
+          });
+        }
+      }
+
+      if (parsed.length === 0) {
+        response.message = "No valid vouchers found for mapping";
+        return res.status(400).send(response.internalError);
+      }
+
+      // Resolve package names to IDs.
+      const uniqueNames = [...new Set(parsed.map((p) => p.packageName))];
+
+      console.log(uniqueNames);
+      const packages = await TopupPackage.findAll({
+        where: { name: { [Op.in]: uniqueNames } },
+        attributes: ["id", "name"],
+        raw: true,
+      });
+
+      const nameToId = new Map((packages as any[]).map((p) => [p.name, p.id]));
+      const rows: any[] = [];
+      const skippedPackages = new Set<string>();
+
+      for (const item of parsed) {
+        const id = nameToId.get(item.packageName);
+        if (id) {
+          rows.push({
+            package_id: id,
+            data: item.code,
+            is_used: 0,
+          });
+        } else {
+          skippedPackages.add(item.packageName);
+        }
+      }
+
+      if (rows.length === 0) {
+        response.message = `No matching packages found in database for ${uniqueNames.join(", ")}`;
+        return res.status(400).send(response.internalError);
+      }
+
+      await Voucher.bulkCreate(rows);
+
+      let msg = `${rows.length} voucher(s) distributed across ${uniqueNames.length - skippedPackages.size} package(s).`;
+      if (skippedPackages.size > 0) {
+        msg += ` Skipped missing packages: ${Array.from(skippedPackages).join(", ")}`;
+      }
+
+      response.message = msg;
+      res.send(response.response);
+    } catch (error) {
+      console.log("voucher.autoDistribute error", error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
   // GET /admin/voucher-products-with-packages
   // Returns voucher-type products (is_voucher = 1) with their packages —
   // used to populate the autodelivery mapping modal.

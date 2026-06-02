@@ -23,4 +23,7 @@
     "UPBD-N-S":"🟪 Weekly-UC Vouchers",
 
     "BDMB-S-S":"🟧Monthly-UC Vouchers",
-    "UPBD-P-S":"🟧Monthly-UC Vouchers"}
+    "UPBD-P-S":"🟧Monthly-UC Vouchers"
+    }
+
+according to this mapping, create a auto distribution system for adding vouchers to packages. this means we have to create a new endpoint and new modal similar to @rrrbazar-admin/src/components/Packages/Voucher/ add voucher modal in @rrrbazar-admin/src/components/Vouchers/VoucherStatistic.js , on top of the table add a new button Add vouchers, based on the input in simlar format as to the reference voucher modal, the input will need to be cleaned at first removing any extra data, create a dedicated function for that,then according tp this map, the endpoint need to search packages and bulk insert vouchers for this packages those match with this map.

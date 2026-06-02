@@ -87,6 +87,7 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/packages/add-voucher',       method: 'POST' },
     { path: '/packages/delete-voucher/:id', method: 'POST' },
     { path: '/packages/bulk-delete-voucher', method: 'POST' },
+    { path: '/voucher/auto-distribute',              method: 'POST' },
     { path: '/voucher/available-voucher-by-package', method: 'GET' },
     { path: '/voucher-products-with-packages',       method: 'GET' },
     { path: '/topup-package/:id/voucher-maps',       method: 'GET' },
