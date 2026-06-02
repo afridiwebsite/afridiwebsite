@@ -17,12 +17,7 @@ import { createAndSendDispatch } from "./dispatchBot";
 
 const { BotDispatch, PackageVoucherMap, StoreUnipin, Voucher } = Schema;
 
-export type BotType =
-  | "none"
-  | "uc-bot"
-  | "shell-bot"
-  | "like-bot"
-  | "pubg-bot";
+export type BotType = "none" | "uc-bot" | "shell-bot" | "like-bot" | "pubg-bot";
 
 // Result returned to the caller (topupPackageOrder) so it knows what
 // brief_note / details to set and what message to send back to the user.
@@ -190,7 +185,7 @@ async function handleShellBot(opts: {
         code: shellValue,
         package_name_sent: tagValue,
         tag: tagValue,
-        bot_type: "shell-bot",
+        // bot_type: "shell-bot",
       });
       if (!ok) {
         bot_failures += 1;
@@ -270,10 +265,10 @@ async function handleUcBot(opts: {
           attempt_count: 0,
         });
       } catch (e) {
-        console.error(
-          "[handleUcBot] failed to persist placeholder dispatch",
-          { order_id: order.id, err: (e as any)?.message || e },
-        );
+        console.error("[handleUcBot] failed to persist placeholder dispatch", {
+          order_id: order.id,
+          err: (e as any)?.message || e,
+        });
       }
     }
     order.status = "pending";
@@ -303,7 +298,7 @@ async function handleUcBot(opts: {
         code: (v as any).data,
         package_name_sent: topupPackage.name,
         voucher_id: (v as any).id,
-        bot_type: "uc-bot",
+        // bot_type: "uc-bot",
       });
       if (!ok) {
         bot_failures += 1;
@@ -355,7 +350,7 @@ async function handleLikeBot(opts: {
     bot_url: url,
     code: "",
     package_name_sent: topupPackage.name,
-    bot_type: "like-bot",
+    // bot_type: "like-bot",
   });
 
   // Like-bot terminates synchronously: ok = success, !ok = failed.
@@ -374,9 +369,7 @@ async function handleLikeBot(opts: {
 }
 
 /** PUBG-bot placeholder. Currently rejects with a clear "coming soon". */
-async function handlePubgBot(opts: {
-  order: any;
-}): Promise<DispatchResult> {
+async function handlePubgBot(opts: { order: any }): Promise<DispatchResult> {
   const { order } = opts;
   order.status = "pending";
   (order as any).details =
@@ -411,7 +404,8 @@ async function handleLegacyUnipinBot(opts: {
     order: Sequelize.literal("RAND()"),
   });
   if (!store_unipin_auto) {
-    (order as any).details = `<span style="color:orange;"><strong>Auto-bot skipped:</strong> No UniPin voucher in stock for UC tier ${topupPackage.uc}.</span>`;
+    (order as any).details =
+      `<span style="color:orange;"><strong>Auto-bot skipped:</strong> No UniPin voucher in stock for UC tier ${topupPackage.uc}.</span>`;
     await order.save();
     return { responseMessage: "Order placed successfully" };
   }
@@ -434,7 +428,7 @@ async function handleLegacyUnipinBot(opts: {
       bot_url: pkgBotUrl,
       code: send_unipin,
       package_name_sent: topupPackage.name,
-      bot_type: "uc-bot",
+      // bot_type: "uc-bot",
     });
     if (!ok) {
       botError =
@@ -455,7 +449,8 @@ async function handleLegacyUnipinBot(opts: {
     order.status = "pending";
     order.uc = "";
     if (botError) {
-      (order as any).details = `<span style="color:red;"><strong>Auto-bot failed:</strong> ${botError}</span>`;
+      (order as any).details =
+        `<span style="color:red;"><strong>Auto-bot failed:</strong> ${botError}</span>`;
     }
   }
   await order.save();
