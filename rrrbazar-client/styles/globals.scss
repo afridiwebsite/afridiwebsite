@@ -199,9 +199,6 @@ body {
   }
 }
 
-
-
-
 // Category filter chips strip
 .cat-chip-row {
   display: flex;
@@ -3572,18 +3569,13 @@ body {
 
 @media (max-width: 540px) {
   .topup-order-row {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     padding: 12px;
   }
   .topup-order-row-side {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    width: calc(100% - 52px);
-    margin-left: 52px;
-    margin-top: 4px;
-    border-top: 1px solid #f1f5f9;
-    padding-top: 8px;
     gap: 8px;
   }
   .topup-order-row-user {
@@ -3619,6 +3611,7 @@ body {
   background: rgba(100, 116, 139, 0.12);
   color: #475569;
   border: 1px solid rgba(100, 116, 139, 0.18);
+      margin-bottom: 25px;
 }
 .topup-status-dot {
   width: 6px;

@@ -2000,22 +2000,23 @@ class UserController {
         for (const voucher of vouchers) {
           let shouldBeUsed = 1;
 
+          const d = await BotDispatch.findOne({
+            where: { order_id: orderid, voucher_id: voucher.id },
+          });
+          const reason =
+            (d
+              ? (d as any).error_reason || (d as any).response_content
+              : safeContent) || "";
+
+          const vIsConsumed = CONSUMED_PATTERNS.some((p) => p.test(reason));
+
           if (mystatus === "cancel") {
             // Only release if NOT consumed.
-            const d = await BotDispatch.findOne({
-              where: { order_id: orderid, voucher_id: voucher.id },
-            });
-            const reason =
-              (d
-                ? (d as any).error_reason || (d as any).response_content
-                : safeContent) || "";
 
-            console.log(reason, "consumed reason");
-            const vIsConsumed = CONSUMED_PATTERNS.some((p) => p.test(reason));
             shouldBeUsed = vIsConsumed ? 2 : 0; // 2 for Consumed
           } else {
             // completed, pending, In Progress all keep the voucher reserved/used
-            shouldBeUsed = 1;
+            shouldBeUsed = vIsConsumed ? 2 : 1;
           }
 
           voucher.is_used = shouldBeUsed;
