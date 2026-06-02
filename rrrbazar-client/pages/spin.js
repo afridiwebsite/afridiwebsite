@@ -12,6 +12,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import ReactHtmlParser from 'react-html-parser';
 import { toast } from 'react-toastify';
 import { FaCoins, FaGift, FaHistory } from 'react-icons/fa';
 import {
@@ -43,23 +44,50 @@ function arcPath(cx, cy, r, startDeg, endDeg) {
 // Pick a font size and label-character budget based on how many slices the
 // wheel has. As slices get thinner the available arc length for the label
 // shrinks, so we both shrink the font and trim/truncate the label.
+// Labels are drawn radially (running from hub toward rim), so the limiting
+// dimension is the segment's arc width — but since the wheel itself got
+// larger we can afford a chunkier font.
 function pickWheelTextStyle(segCount) {
-  if (segCount <= 6) return { fontSize: 14, maxChars: 14 };
-  if (segCount <= 8) return { fontSize: 12, maxChars: 12 };
-  if (segCount <= 10) return { fontSize: 11, maxChars: 10 };
-  if (segCount <= 14) return { fontSize: 10, maxChars: 8 };
-  if (segCount <= 18) return { fontSize: 9, maxChars: 6 };
-  return { fontSize: 8, maxChars: 5 };
+  if (segCount <= 6) return { fontSize: 20, maxChars: 13 };
+  if (segCount <= 8) return { fontSize: 18, maxChars: 11 };
+  if (segCount <= 10) return { fontSize: 16, maxChars: 10 };
+  if (segCount <= 14) return { fontSize: 14, maxChars: 8 };
+  if (segCount <= 18) return { fontSize: 12, maxChars: 6 };
+  return { fontSize: 10, maxChars: 5 };
+}
+
+// Admin authors reward labels as HTML in the TextEditor, but the wheel
+// renders inside an <svg><text>, which doesn't understand markup — so
+// strip tags + decode the common entities before truncating. The rich
+// version is still shown in the "You won" banner and the spin history.
+function labelToPlain(label) {
+  return String(label || '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|li)>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function truncateLabel(label, maxChars) {
-  const s = String(label || '');
+  const s = labelToPlain(label);
   if (s.length <= maxChars) return s;
   return s.slice(0, Math.max(maxChars - 1, 1)) + '…';
 }
 
 function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) {
-  const size = 320;
+  // `size` is the SVG's internal coordinate system (used for radii,
+  // label positions, etc.) — NOT the rendered pixel size. The rendered
+  // size is driven by CSS clamp() below, which shrinks the wheel on
+  // small viewports. viewBox keeps every internal coordinate in sync
+  // so the labels, hub, and pointer-bead stay aligned at any width.
+  const size = 440;
   const r = size / 2;
   const segCount = Math.max(rewards.length, 1);
   const segAngle = 360 / segCount;
@@ -67,14 +95,59 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
 
   return (
     <div className="spin-wheel-wrap">
-      {/* Pointer */}
-      <div className="spin-pointer" aria-hidden="true" />
+      {/* Pointer — inline SVG so the gradient + drop-shadow tip-light
+          all stay crisp at any zoom, and the tip can overlap the wheel
+          rim for a "locked-in" pin look. clamp() shrinks it in lockstep
+          with the wheel so it doesn't dwarf the rim on mobile. */}
+      <svg
+        className="spin-pointer"
+        viewBox="0 0 56 78"
+        aria-hidden="true"
+        focusable="false"
+        style={{ width: 'clamp(30px, 7vw, 44px)' }}
+      >
+        <defs>
+          <linearGradient id="spin-pointer-body" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fde047" />
+            <stop offset="55%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#dc2626" />
+          </linearGradient>
+          <radialGradient id="spin-pointer-hi" cx="0.5" cy="0.3" r="0.6">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {/* Teardrop pin: rounded shoulders at the top, sharp tip at
+            the bottom that sits just inside the wheel rim. */}
+        <path
+          d="M28 76 L4 28 Q4 4 28 4 Q52 4 52 28 Z"
+          fill="url(#spin-pointer-body)"
+          stroke="#ffffff"
+          strokeWidth="3"
+          strokeLinejoin="round"
+        />
+        {/* Soft specular highlight near the top of the pin */}
+        <ellipse cx="28" cy="22" rx="14" ry="8" fill="url(#spin-pointer-hi)" />
+        {/* Small bead at the very tip so the pointer "locks" onto a slice */}
+        <circle cx="28" cy="72" r="3.5" fill="#ffffff" />
+      </svg>
 
       <div
         className={`spin-wheel ${spinning ? 'is-spinning' : ''}`}
         style={{ transform: `rotate(${rotation}deg)` }}
       >
-        <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="spin-svg">
+        {/* Rendered width follows clamp(min, fluid, max):
+              - phones (~360px wide): 88vw ≈ 317px → caps at 280px floor on
+                tiny viewports, otherwise scales fluidly
+              - tablets / large phones: 88vw fills nicely
+              - desktop: caps at 440px so the wheel doesn't blow past its
+                column
+            Internal viewBox stays at 440 so labels + geometry are unchanged. */}
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          className="spin-svg"
+          style={{ width: 'clamp(280px, 88vw, 440px)', height: 'auto' }}
+        >
           <defs>
             <radialGradient id="spin-hub">
               <stop offset="0%" stopColor="#fde68a" />
@@ -91,22 +164,40 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
             const end = start + segAngle;
             const color = reward.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
             const midAngle = start + segAngle / 2;
-            const labelPos = polarToCartesian(r, r, r * 0.62, midAngle);
+            // Labels now run RADIALLY (from hub toward rim) instead of
+            // tangentially around the ring. Rotation = midAngle - 90
+            // aligns the text's reading direction with the radial line
+            // for each segment; left-half segments end up reading
+            // bottom-up, right-half top-down — the standard fortune-
+            // wheel look.
+            const labelPos = polarToCartesian(r, r, r * 0.6, midAngle);
             const path = arcPath(r, r, r - 6, start, end);
             return (
               <g key={i}>
-                <path d={path} fill={color} stroke="rgba(255,255,255,0.85)" strokeWidth="2" />
+                <path d={path} fill={color} stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
                 <g
-                  transform={`translate(${labelPos.x} ${labelPos.y}) rotate(${midAngle})`}
+                  transform={`translate(${labelPos.x} ${labelPos.y}) rotate(${midAngle - 90})`}
                   style={{ pointerEvents: 'none' }}
                 >
                   <text
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#fff"
+                    fill="#ffffff"
                     fontSize={fontSize}
-                    fontWeight="800"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                    fontWeight="900"
+                    // paint-order=stroke draws the stroke UNDER the
+                    // fill, so the dark outline acts as a contrast halo
+                    // and the white fill stays crisp. Combined with the
+                    // shadow this keeps labels readable on every slice
+                    // color.
+                    stroke="rgba(15, 23, 42, 0.55)"
+                    strokeWidth={Math.max(2, fontSize / 6)}
+                    paintOrder="stroke"
+                    strokeLinejoin="round"
+                    style={{
+                      letterSpacing: '0.5px',
+                      textShadow: '0 2px 4px rgba(0, 0, 0, 0.45)',
+                    }}
                   >
                     {truncateLabel(reward.label, maxChars)}
                   </text>
@@ -116,8 +207,8 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
           })}
 
           {/* Inner hub */}
-          <circle cx={r} cy={r} r={36} fill="#fff" />
-          <circle cx={r} cy={r} r={32} fill="url(#spin-hub)" />
+          <circle cx={r} cy={r} r={44} fill="#fff" />
+          <circle cx={r} cy={r} r={40} fill="url(#spin-hub)" />
         </svg>
       </div>
 
@@ -370,7 +461,10 @@ function SpinPage() {
             {lastWin && (
               <div className="spin-last animate-pop-in">
                 <span className="spin-last-emoji">🎉</span>
-                You won <strong>{lastWin.label}</strong>
+                You won{' '}
+                <strong className="spin-last-label">
+                  {ReactHtmlParser(String(lastWin.label || ''))}
+                </strong>
               </div>
             )}
           </div>
@@ -467,7 +561,9 @@ function SpinPage() {
                       <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
                         <td>{new Date(h.created_at).toLocaleString()}</td>
                         <td className="text-gray-700">{h.player_name || `User #${h.user_id}`}</td>
-                        <td className="font-semibold text-gray-800">{h.label}</td>
+                        <td className="font-semibold text-gray-800">
+                          {ReactHtmlParser(String(h.label || ''))}
+                        </td>
                         <td className="capitalize">{h.type}</td>
                         <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
                           {h.amount > 0 ? `+${h.amount}` : '—'}
@@ -493,7 +589,9 @@ function SpinPage() {
                     {mySpinHistory.map((h, i) => (
                       <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
                         <td>{new Date(h.created_at).toLocaleString()}</td>
-                        <td className="font-semibold text-gray-800">{h.label}</td>
+                        <td className="font-semibold text-gray-800">
+                          {ReactHtmlParser(String(h.label || ''))}
+                        </td>
                         <td className="capitalize">{h.type}</td>
                         <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
                           {h.amount > 0 ? `+${h.amount}` : '—'}

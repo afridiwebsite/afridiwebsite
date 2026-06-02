@@ -1,4 +1,5 @@
 import Head from "next/head";
+import App from "next/app";
 import Router, { useRouter } from "next/router";
 import Nprogress from "nprogress";
 import "nprogress/nprogress.css";
@@ -45,7 +46,7 @@ Router.events.on("routeChangeError", () => Nprogress.done());
 // Global context api
 export const globalContext = React.createContext();
 
-function MyApp({ Component, pageProps }) {
+function MyApp({ Component, pageProps, initialSiteSettings }) {
   const router = useRouter();
 
   const user = getLocal(__user_key) || getSession(__user_key);
@@ -55,7 +56,12 @@ function MyApp({ Component, pageProps }) {
   const [authUser, setAuthUser] = useState(user);
   const [accessToken, setAccessToken] = useState(access_token);
   const [isAuth, setIsAuth] = useState(authUser && accessToken ? true : false);
-  const [siteSettings, setSiteSettings] = useState(null);
+  // Seed siteSettings from the SSR-resolved value so the favicon `<link>`
+  // tags ship in the initial HTML. Most browsers lock onto whatever
+  // favicon URL was present at first paint and ignore later mutations to
+  // the `<link>` href, so resolving server-side is the only reliable way
+  // to make an admin-configurable favicon stick in production.
+  const [siteSettings, setSiteSettings] = useState(initialSiteSettings || null);
 
   // Sync user profile on mount to ensure wallet balance and other data is
   // fresh, even after a refresh.
@@ -72,11 +78,14 @@ function MyApp({ Component, pageProps }) {
     }
   }, []);
 
+  // Refresh siteSettings client-side too, so admin edits propagate without
+  // a full reload. This is purely a freshness pass — the favicon was
+  // already resolved server-side; we just keep colors / labels in sync.
   useEffect(() => {
     let mounted = true;
     getSiteSettings()
       .then((res) => {
-        if (mounted) setSiteSettings(res?.data?.data || null);
+        if (mounted && res?.data?.data) setSiteSettings(res.data.data);
       })
       .catch(() => {});
     return () => {
@@ -213,5 +222,23 @@ function MyApp({ Component, pageProps }) {
     </>
   );
 }
+
+// Fetch site settings before the first paint so `siteSettings.favicon` (and
+// the theme colors) are baked into the SSR HTML. Note: defining
+// getInitialProps on _app opts the whole tree out of Next.js's Automatic
+// Static Optimization — that's the intentional tradeoff for having a
+// runtime-configurable favicon. The endpoint should stay small/cacheable.
+MyApp.getInitialProps = async (appContext) => {
+  const appProps = await App.getInitialProps(appContext);
+  let initialSiteSettings = null;
+  try {
+    const res = await getSiteSettings();
+    initialSiteSettings = res?.data?.data || null;
+  } catch (e) {
+    // If the API is down on render, fall back to the client-side
+    // useEffect refetch — degraded experience but not a hard failure.
+  }
+  return { ...appProps, initialSiteSettings };
+};
 
 export default MyApp;

@@ -1,8 +1,24 @@
 import React, { useEffect, useState } from 'react';
+import parse from 'html-react-parser';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../common/axios';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
+import TextEditor from '../TextEditor/TextEditor';
+
+// The Draft-WYSIWYG editor still emits a single `<p></p>` (or
+// `<p><br></p>`) when the user has typed nothing — `.trim()` against
+// raw HTML therefore reports the label as non-empty even when it is.
+// Strip tags + entities before deciding the field is empty.
+function isHtmlEmpty(html) {
+  return (
+    String(html || '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g, ' ')
+      .trim().length === 0
+  );
+}
 
 const EMPTY_FORM = {
   label: '',
@@ -61,7 +77,7 @@ function SpinRewards() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.label.trim()) {
+    if (isHtmlEmpty(form.label)) {
       toast.error('Label is required', toastDefault);
       return;
     }
@@ -159,9 +175,18 @@ function SpinRewards() {
           <form onSubmit={submit} className="border border-gray-200 rounded p-4 mb-6">
             <h4 className="font-bold mb-3">{editingId ? `Edit reward #${editingId}` : 'Add a reward'}</h4>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
+              <div className="md:col-span-4">
                 <label className="text-xs">Label</label>
-                <input className="form_input" value={form.label} onChange={(e) => onField('label', e.target.value)} placeholder="e.g. 5 Coins" required />
+                <TextEditor
+                  value={form.label}
+                  onHtmlChange={(html) => onField('label', html)}
+                  minHeight={120}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Rich text is rendered in the "You won" banner and the spin
+                  history. The wheel itself shows the plain-text version
+                  (formatting is stripped to fit inside a pie slice).
+                </p>
               </div>
               <div>
                 <label className="text-xs">Type</label>
@@ -232,7 +257,7 @@ function SpinRewards() {
                   return (
                     <tr key={r.id}>
                       <td>{r.id}</td>
-                      <td className="font-semibold">{r.label}</td>
+                      <td className="font-semibold">{parse(String(r.label || ''))}</td>
                       <td className="capitalize">{r.type}</td>
                       <td>{r.amount}</td>
                       <td>{r.weight}</td>
