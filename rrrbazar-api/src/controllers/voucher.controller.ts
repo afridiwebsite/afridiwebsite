@@ -234,49 +234,30 @@ class VoucherController {
       };
 
       const keys = Object.keys(mapping);
-      const escapedKeys = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-      const regex = new RegExp(`(${escapedKeys.join("|")})`, "g");
-
-      // Split the entire rawData by keys, keeping the keys in the result.
-      const segments = String(rawData).split(regex);
+      const lines = String(rawData).split(/\r?\n/);
       const parsed: { packageName: string; code: string }[] = [];
 
-      // segments[0] is text before the first key (noise/headers).
-      // Then it follows: [key, tail, key, tail, ...]
-      for (let i = 1; i < segments.length; i += 2) {
-        const key = segments[i];
-        const tail = segments[i + 1] || "";
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
 
-        // The tail contains the serial number, voucher code, and any noise 
-        // until the next key. Clean and split into words.
-        const words = tail
-          .replace(/[:\t\r\n]+/g, " ")
-          .split(/\s+/)
-          .map((w) => w.trim())
-          .filter(Boolean);
+        const matchingKey = keys.find((key) => line.includes(key));
+        if (matchingKey) {
+          // Find where the key starts to remove any prefix noise (like "1. ")
+          const startIndex = line.indexOf(matchingKey);
+          let code = line.substring(startIndex).trim();
 
-        // Find the best candidate for the voucher code in this segment's tail.
-        const candidates = words.filter((w) => {
-          if (/^[0-9]+\.$/.test(w)) return false;
-          if (/^\[.*\]$/.test(w)) return false;
-          const low = w.toLowerCase();
-          if (["ready", "active", "used", "consumed"].includes(low))
-            return false;
-          return w.length > 5;
-        });
-
-        if (candidates.length > 0) {
-          // Heuristic: pick the one with most hyphens, then longest.
-          candidates.sort((a, b) => {
-            const aHyphens = (a.match(/-/g) || []).length;
-            const bHyphens = (b.match(/-/g) || []).length;
-            if (aHyphens !== bHyphens) return bHyphens - aHyphens;
-            return b.length - a.length;
-          });
+          // Basic cleanup: remove common status indicators that might be at the end
+          code = code
+            .replace(
+              /\s+(ready|active|used|consumed|\[ready\]|\[active\]|\[used\]|\[consumed\])$/i,
+              "",
+            )
+            .trim();
 
           parsed.push({
-            packageName: mapping[key],
-            code: candidates[0],
+            packageName: mapping[matchingKey],
+            code: code,
           });
         }
       }
