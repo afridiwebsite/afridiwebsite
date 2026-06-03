@@ -175,6 +175,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   const isDisabledHeader = Component?.disabledHeader;
   const isDisabledFooter = Component?.disabledFooter;
   const isDisabledMobileAppBar = Component?.disabledMobileAppBar;
+
   console.log(siteSettings?.favicon_full_url, "favico");
 
   return (
@@ -184,14 +185,8 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
           {__site_name_2} | {__site_name_label}
         </title>
         <link rel="manifest" href="/manifest.json" />
-        <link
-          rel="shortcut icon"
-          href={siteSettings?.favicon || "/favico.ico"}
-        />
-        <link
-          rel="icon"
-          href={siteSettings?.favicon_full_url || "/favico.ico"}
-        />
+        <link rel="shortcut icon" href={"/favico.ico"} />
+        <link rel="icon" href={"/favico.ico"} />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="apple-touch-icon-precomposed" href="/logo.png" />
         <meta name="theme-color" content="#000000" />
