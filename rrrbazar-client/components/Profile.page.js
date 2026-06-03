@@ -16,6 +16,7 @@ import {
   FaCoins,
   FaSignOutAlt,
   FaPlusCircle,
+  FaGift,
 } from 'react-icons/fa';
 import { GiTwoCoins, GiCoins } from 'react-icons/gi';
 import { HiSparkles } from 'react-icons/hi';
@@ -105,6 +106,13 @@ function ProfilePage() {
                            25%     { transform: rotate(15deg); }
                            75%     { transform: rotate(-15deg); } }
   `;
+
+  const isReseller =
+    String(authUser?.user_type || '').toLowerCase() === 'reseller';
+  // Lifetime cashback (BDT) received across all completed orders. Mirrors
+  // the admin reseller view's card. Hidden for normal users so the stats
+  // grid stays at six tiles.
+  const cashbackTotal = Number(authUser?.cashback_total || 0);
 
   return (
     <section className="mb-7">
@@ -236,6 +244,22 @@ function ProfilePage() {
               color: '#06b6d4', // cyan
               anim: 'pp-swing 2.4s ease-in-out infinite',
             },
+            // Reseller-only: lifetime cashback / cash reward credited. The
+            // counter is bumped server-side by syncOrderCashbackForStatus
+            // whenever an order completes, so this stays in sync without
+            // an extra fetch.
+            ...(isReseller
+              ? [
+                  {
+                    label: 'Cashback / Rewards',
+                    value: `৳ ${cashbackTotal.toFixed(2)}`,
+                    delay: 360,
+                    icon: <FaGift />,
+                    color: '#ec4899', // pink
+                    anim: 'pp-bounce 1.6s ease-in-out infinite',
+                  },
+                ]
+              : []),
           ].map((stat) => {
             const isCoin = stat.accent === 'coin';
             return (

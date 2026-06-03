@@ -15,6 +15,7 @@ import { Sequelize } from "sequelize";
 import Schema from "../models";
 import { createAndSendDispatch } from "./dispatchBot";
 import syncOrderCoinsForStatus from "./orderCoinSync";
+import syncOrderCashbackForStatus from "./orderCashbackSync";
 
 const {
   BotDispatch,
@@ -242,8 +243,16 @@ export async function handleVoucherProduct(opts: {
 
   // Award coin reward inline — voucher orders never reach checkOrder,
   // so the deferred path in syncOrderCoinsForStatus won't credit them.
+  // Only when the package is configured for coin rewards; money rewards
+  // are handled by syncOrderCashbackForStatus below.
   try {
-    const coinReward = Number(topupPackage.coin_value || 0) * quantity;
+    const rewardType = String(
+      (topupPackage as any).reward_type || "coin",
+    ).toLowerCase();
+    const coinReward =
+      rewardType === "money"
+        ? 0
+        : Number(topupPackage.coin_value || 0) * quantity;
     if (coinReward > 0) {
       user.coins = (user.coins || 0) + coinReward;
       await user.save();
@@ -262,6 +271,11 @@ export async function handleVoucherProduct(opts: {
       err: (e as any)?.message || e,
     });
   }
+
+  // Money-reward + reseller-cashback path. Idempotent — safe to call
+  // even if a retry already credited it. Quantity-aware so bulk voucher
+  // orders pay per-unit cashback (matches the coin reward shape above).
+  await syncOrderCashbackForStatus(order, "completed", quantity);
 
   return { responseMessage: "Order placed successfully" };
 }
@@ -609,6 +623,7 @@ async function handleLikeBot(opts: {
     // is idempotent (reads existing CoinTransaction rows) so safe to
     // call even if a retry path triggered it before.
     await syncOrderCoinsForStatus(order, "completed");
+    await syncOrderCashbackForStatus(order, "completed");
     return { responseMessage: "Order placed successfully" };
   }
 
@@ -674,6 +689,7 @@ async function handleLikeBot(opts: {
   // Reverse any coin reward that might have been credited (no-op if
   // none — the helper is idempotent).
   await syncOrderCoinsForStatus(order, "cancel");
+  await syncOrderCashbackForStatus(order, "cancel");
 
   return { responseMessage: "Order placed successfully" };
 }
@@ -872,6 +888,7 @@ async function handlePubgBot(opts: {
     // Like the like-bot path, PUBG-bot orders never hit checkOrder, so
     // award the coin reward here. syncOrderCoinsForStatus is idempotent.
     await syncOrderCoinsForStatus(order, "completed");
+    await syncOrderCashbackForStatus(order, "completed");
     return { responseMessage: "Order placed successfully" };
   }
 
@@ -962,6 +979,7 @@ async function handlePubgBot(opts: {
     });
   }
   await syncOrderCoinsForStatus(order, "cancel");
+  await syncOrderCashbackForStatus(order, "cancel");
 
   return { responseMessage: "Order placed successfully" };
 }

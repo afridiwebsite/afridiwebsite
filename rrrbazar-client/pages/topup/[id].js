@@ -504,9 +504,25 @@ function TopupOrderPage() {
                           {/* Select Recharge --Start-- */}
                           {hasPackages &&
                             (() => {
-                              const selectedCoin = Number(
-                                values.selectedpackage?.coin_value || 0,
-                              );
+                              const selectedPkg = values.selectedpackage;
+                              const rewardType = String(
+                                selectedPkg?.reward_type || 'coin',
+                              ).toLowerCase();
+                              const selectedCoin =
+                                rewardType === 'money'
+                                  ? 0
+                                  : Number(selectedPkg?.coin_value || 0);
+                              const selectedCashback =
+                                rewardType === 'money'
+                                  ? Number(selectedPkg?.cashback_amount || 0)
+                                  : 0;
+                              const isReseller =
+                                String(
+                                  authUser?.user_type || '',
+                                ).toLowerCase() === 'reseller';
+                              const selectedResellerCashback = isReseller
+                                ? Number(selectedPkg?.reseller_cashback || 0)
+                                : 0;
                               return (
                                 <div
                                   className="_order_box_wrapper animate-fade-in-up"
@@ -545,6 +561,30 @@ function TopupOrderPage() {
                                     {selectedCoin > 0 && (
                                       <span className="topup-pack-header-coin">
                                         <GiTwoCoins /> +{selectedCoin} coins
+                                      </span>
+                                    )}
+                                    {selectedCashback > 0 && (
+                                      <span
+                                        className="topup-pack-header-coin"
+                                        style={{
+                                          background: '#10b9811a',
+                                          color: '#047857',
+                                          borderColor: '#10b98166',
+                                        }}
+                                      >
+                                        ৳ {selectedCashback.toFixed(2)} cashback
+                                      </span>
+                                    )}
+                                    {selectedResellerCashback > 0 && (
+                                      <span
+                                        className="topup-pack-header-coin"
+                                        style={{
+                                          background: '#ec48991a',
+                                          color: '#9d174d',
+                                          borderColor: '#ec489966',
+                                        }}
+                                      >
+                                        ৳ {selectedResellerCashback.toFixed(2)} reseller cashback
                                       </span>
                                     )}
                                   </div>

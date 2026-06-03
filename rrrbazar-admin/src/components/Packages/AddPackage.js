@@ -41,6 +41,16 @@ function AddPackage(props) {
   const [stockTracking, setStockTracking] = useState(false);
   const [stockQuantity, setStockQuantity] = useState(0);
 
+  // Reward shape per package. 'coin' = legacy coin_value reward, 'money'
+  // = BDT cashback (cashbackAmount) credited to user.wallet on completion.
+  // The two modes are mutually exclusive in the UI; the server zeros out
+  // whichever field doesn't match the picked mode to keep the DB clean.
+  // resellerCashback is independent and pays out to reseller users in
+  // addition to whatever reward the package is configured for.
+  const [rewardType, setRewardType] = useState("coin");
+  const [cashbackAmount, setCashbackAmount] = useState(0);
+  const [resellerCashback, setResellerCashback] = useState(0);
+
   const [selectedProductId, setSelectedProductId] = useState(productId || "");
   const selectedProduct =
     (products || []).find((p) => String(p.id) === String(selectedProductId)) ||
@@ -212,7 +222,17 @@ function AddPackage(props) {
         bprice: buy_price.current.value,
         serial: serial.current.value,
         logo: path,
-        coin_value: coin_value.current.value || 0,
+        // Reward fields. The two sides of the picker are mutually
+        // exclusive — zero out whichever the admin didn't pick so the
+        // backend never sees stale data from a previous shape.
+        reward_type: rewardType,
+        coin_value:
+          rewardType === "coin"
+            ? Number(coin_value.current?.value || 0)
+            : 0,
+        cashback_amount:
+          rewardType === "money" ? Number(cashbackAmount) || 0 : 0,
+        reseller_cashback: Number(resellerCashback) || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
         allow_quantity:
@@ -363,20 +383,75 @@ function AddPackage(props) {
                     </div>
                   </div>
 
+                  {/* Reward picker — admin picks money vs coin and the
+                      matching input renders. Reseller cashback is
+                      independent and always renders below. */}
                   <div className="form_grid">
                     <div>
-                      <label htmlFor="coin_value">
-                        Coin reward per purchase
+                      <label htmlFor="reward_type">Reward type</label>
+                      <select
+                        id="reward_type"
+                        className="form_input"
+                        value={rewardType}
+                        onChange={(e) => setRewardType(e.target.value)}
+                      >
+                        <option value="coin">Coin</option>
+                        <option value="money">Money (Cashback)</option>
+                      </select>
+                    </div>
+                    {rewardType === "coin" ? (
+                      <div>
+                        <label htmlFor="coin_value">
+                          Coin reward per purchase
+                        </label>
+                        <input
+                          ref={coin_value}
+                          id="coin_value"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          defaultValue={0}
+                          placeholder="0"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label htmlFor="cashback_amount">
+                          Cashback per purchase (৳)
+                        </label>
+                        <input
+                          id="cashback_amount"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={cashbackAmount}
+                          onChange={(e) => setCashbackAmount(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form_grid">
+                    <div>
+                      <label htmlFor="reseller_cashback">
+                        Reseller cashback (৳)
                       </label>
                       <input
-                        ref={coin_value}
-                        id="coin_value"
+                        id="reseller_cashback"
                         className="form_input"
                         type="number"
                         min="0"
-                        defaultValue={0}
+                        step="0.01"
+                        value={resellerCashback}
+                        onChange={(e) => setResellerCashback(e.target.value)}
                         placeholder="0"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Paid to users marked as Reseller, in addition to the
+                        regular reward above. Credited on completion only.
+                      </p>
                     </div>
                     <div>
                       <label class="inline-flex items-center mt-6">

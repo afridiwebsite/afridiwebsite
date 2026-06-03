@@ -8,6 +8,7 @@ import smsHelper from "../helpers/sms";
 import fastPay from "../helpers/fastpay";
 import playerName from "../helpers/playername";
 import syncOrderCoinsForStatus from "../helpers/orderCoinSync";
+import syncOrderCashbackForStatus from "../helpers/orderCashbackSync";
 import {
   aggregateOrderFromDispatches,
   buildOrderDetailsHtml,
@@ -57,28 +58,36 @@ class UserController {
     const response = new responseUtils();
 
     const query = req.query.q || "";
+    const user_type = req.query.user_type as string | undefined;
 
     const limit: any = parseInt(req.query.limit?.toString() || "20");
     const page: any = parseInt(req.query.page?.toString() || "1");
 
-    const user_count = await User.count();
+    // Build a filter that combines the free-text search (email/phone/id)
+    // with the optional user_type narrowing. user_type is only honoured
+    // when it matches one of the known shapes — anything else falls back
+    // to "no filter" so callers can't injectraw values.
+    const where: any = {
+      [Op.or]: [
+        { email: { [Op.like]: `%${query}%` } },
+        { phone: { [Op.like]: `%${query}%` } },
+        { id: { [Op.like]: `%${query}%` } },
+      ],
+    };
+    if (typeof user_type === 'string') {
+      const utl = user_type.toLowerCase();
+      if (utl === 'reseller') where.user_type = 'reseller';
+      else if (utl === 'normal') where.user_type = { [Op.or]: ['normal', null, ''] };
+    }
+
+    // user_count tracks the filtered slice so the pagination total in
+    // the admin UI lines up with the rows returned.
+    const user_count = await User.count({ where });
 
     const data = await User.findAll({
       offset: (page - 1) * limit,
       limit: limit,
-      where: {
-        [Op.or]: [
-          {
-            email: { [Op.like]: `%${query}%` },
-          },
-          {
-            phone: { [Op.like]: `%${query}%` },
-          },
-          {
-            id: { [Op.like]: `%${query}%` },
-          },
-        ],
-      },
+      where,
       // order: [
       //   ['created_at', 'DESC'],
       // ],
@@ -1201,6 +1210,9 @@ class UserController {
       // own quantity-multiplied award, so the helper no-ops there.
       if (order.status === "completed") {
         await syncOrderCoinsForStatus(order, "completed");
+        // Cashback (money reward + reseller cashback) follows the same
+        // gate. Multiplier defaults to 1 — UniPin path is single-unit.
+        await syncOrderCashbackForStatus(order, "completed");
       }
 
       // Voucher-pool products: pull `quantity` codes from the package's
@@ -1499,6 +1511,9 @@ class UserController {
       // Idempotent: re-running checkOrder for the same order never
       // double-credits or double-reverses.
       await syncOrderCoinsForStatus(order, mystatus);
+      // Cashback (money reward + reseller cashback) follows the same
+      // terminal transitions and is independently idempotent.
+      await syncOrderCashbackForStatus(order, mystatus);
 
       // Voucher state mirrors order outcome. For modern orders we use the
       // per-dispatch tracking to ensure we only release vouchers that

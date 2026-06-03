@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useHistory, withRouter } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -8,6 +8,7 @@ import {
   FaCoins,
   FaShoppingCart,
   FaClipboardList,
+  FaGift,
 } from "react-icons/fa";
 import axiosInstance from "../../common/axios";
 import useGet from "../../hooks/useGet";
@@ -101,6 +102,18 @@ function EditUser(props) {
   const coins = useRef(null);
   const password = useRef(null);
 
+  // Reseller toggle — hydrated from the user row once it loads. Persisted
+  // through the existing /admin/user/update/:id endpoint as `user_type`
+  // ('reseller' | 'normal'). Resellers unlock the cashback stat card.
+  const [isReseller, setIsReseller] = useState(false);
+  useEffect(() => {
+    if (data?.user_type != null) {
+      setIsReseller(
+        String(data.user_type).toLowerCase() === "reseller"
+      );
+    }
+  }, [data?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const editPaymentMethodHandler = (e) => {
     e.preventDefault();
     setLoading(true);
@@ -108,6 +121,7 @@ function EditUser(props) {
       .post(`/admin/user/update/${userId}`, {
         wallet: wallet.current.value,
         coins: coins.current.value,
+        user_type: isReseller ? "reseller" : "normal",
         // The password input is currently commented out, so the ref
         // never gets attached. Use optional chaining so accessing it
         // doesn't throw and abort the submit.
@@ -159,7 +173,9 @@ function EditUser(props) {
                   <p className="text-gray-500 text-sm">{data?.email}</p>
                 </div>
 
-                {/* Stat cards — mirror of the storefront Profile page. */}
+                {/* Stat cards — mirror of the storefront Profile page.
+                    The cashback card is appended only when this user is a
+                    reseller; non-resellers stay on the six-card row. */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
                   {STAT_DEFS.map((s) => {
                     const value = s.key === "id" ? data?.id : stats?.[s.key];
@@ -192,6 +208,33 @@ function EditUser(props) {
                       </div>
                     );
                   })}
+                  {isReseller && (
+                    <div
+                      className="relative bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+                      style={{ borderTop: "3px solid #ec4899" }}
+                    >
+                      <div className="flex flex-col items-center gap-2 py-4 px-2">
+                        <div
+                          className="inline-flex items-center justify-center w-10 h-10 rounded-full text-lg"
+                          style={{
+                            color: "#ec4899",
+                            background: "#ec48991a",
+                            animation: "pp-bounce 1.6s ease-in-out infinite",
+                          }}
+                        >
+                          <FaGift />
+                        </div>
+                        <p className="text-lg font-bold text-gray-800 leading-tight text-center">
+                          {loadingStats
+                            ? "…"
+                            : `৳ ${Number(stats?.cashback_total || 0).toFixed(2)}`}
+                        </p>
+                        <p className="text-xs text-gray-500 text-center">
+                          Cashback / Rewards
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -222,6 +265,25 @@ function EditUser(props) {
                       />
                     </div>
                   </div>
+                  <div className="form_grid">
+                    <div>
+                      <label className="inline-flex items-center cursor-pointer select-none mt-2">
+                        <input
+                          type="checkbox"
+                          className="form-checkbox"
+                          checked={isReseller}
+                          onChange={(e) => setIsReseller(e.target.checked)}
+                        />
+                        <span className="ml-2">Reseller</span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Resellers earn the per-package Reseller cashback (BDT)
+                        on every completed order, on top of the regular
+                        coin/cashback reward.
+                      </p>
+                    </div>
+                  </div>
+
                   {/* <div className="form_grid">
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-bold mb-1">Set new password (leave blank to keep current)</label>

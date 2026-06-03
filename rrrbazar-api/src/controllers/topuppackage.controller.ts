@@ -175,6 +175,9 @@ class TopupPackageController {
       tags,
       bot_type,
       bot_config,
+      reward_type,
+      cashback_amount,
+      reseller_cashback,
     } = req.body;
 
     try {
@@ -215,6 +218,19 @@ class TopupPackageController {
         return res.status(400).send(response.response);
       }
 
+      // Normalise the reward picker so unknown values fall back to 'coin'
+      // (the legacy shape) and the off-mode field is zeroed — matching
+      // the admin form's own exclusivity rule.
+      const normRewardType =
+        String(reward_type || "coin").toLowerCase() === "money"
+          ? "money"
+          : "coin";
+      const normCoinValue =
+        normRewardType === "money" ? 0 : Number(coin_value) || 0;
+      const normCashback =
+        normRewardType === "money" ? Number(cashback_amount) || 0 : 0;
+      const normResellerCashback = Math.max(0, Number(reseller_cashback) || 0);
+
       const topupPackage = await TopupPackage.create({
         product_id,
         name,
@@ -223,7 +239,7 @@ class TopupPackageController {
         in_stock,
         serial,
         logo,
-        coin_value: Number(coin_value) || 0,
+        coin_value: normCoinValue,
         description: description || "",
         order_once:
           Number(order_once) === 2 ? 2 : Number(order_once) === 1 ? 1 : 0,
@@ -240,6 +256,9 @@ class TopupPackageController {
         tags: JSON.stringify(cleanTags),
         bot_type: resolvedBotType,
         bot_config: JSON.stringify(pickedConfig),
+        reward_type: normRewardType,
+        cashback_amount: normCashback,
+        reseller_cashback: normResellerCashback,
       });
 
       response.message = "Created successfully";
@@ -279,6 +298,9 @@ class TopupPackageController {
       tags,
       bot_type,
       bot_config,
+      reward_type,
+      cashback_amount,
+      reseller_cashback,
     } = req.body;
 
     try {
@@ -299,6 +321,36 @@ class TopupPackageController {
       }
       if (coin_value !== undefined) {
         topupPackage.coin_value = Number(coin_value) || 0;
+      }
+      // Reward shape. We only touch a field when the caller actually
+      // sent it, so a partial update (e.g. status edit) doesn't blow
+      // away a reward saved by an earlier full edit. When reward_type
+      // is provided, both reward fields are reconciled to match.
+      if (reward_type !== undefined) {
+        const normRewardType =
+          String(reward_type).toLowerCase() === "money" ? "money" : "coin";
+        (topupPackage as any).reward_type = normRewardType;
+        if (normRewardType === "money") {
+          (topupPackage as any).cashback_amount =
+            cashback_amount !== undefined
+              ? Number(cashback_amount) || 0
+              : Number((topupPackage as any).cashback_amount) || 0;
+          // Money mode → ensure the coin field is zero so it can't double-credit.
+          topupPackage.coin_value = 0;
+        } else {
+          (topupPackage as any).cashback_amount = 0;
+          if (coin_value !== undefined) {
+            topupPackage.coin_value = Number(coin_value) || 0;
+          }
+        }
+      } else if (cashback_amount !== undefined) {
+        (topupPackage as any).cashback_amount = Number(cashback_amount) || 0;
+      }
+      if (reseller_cashback !== undefined) {
+        (topupPackage as any).reseller_cashback = Math.max(
+          0,
+          Number(reseller_cashback) || 0,
+        );
       }
       if (description !== undefined) {
         topupPackage.description = description;

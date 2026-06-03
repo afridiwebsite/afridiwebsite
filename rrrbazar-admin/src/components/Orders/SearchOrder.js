@@ -32,6 +32,11 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
     const [orderId, setOrderId] = useState('')
     const [orserStatus, setOrderStatus] = useState('')
     const [uc, setUc] = useState('')
+    // Date range filter. Both ends optional; the backend interprets
+    // start_date as inclusive (00:00:00) and end_date as inclusive
+    // (23:59:59) so a same-day pair returns the whole day.
+    const [startDate, setStartDate] = useState('')
+    const [endDate, setEndDate] = useState('')
 
     // useEffect(() => {
     //     setTimeout(() => {
@@ -59,6 +64,16 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
         if (uc) addSearchParam('uc', uc)
         else removeSearchParam('uc')
     }, [uc])
+
+    useEffect(() => {
+        if (startDate) addSearchParam('start_date', startDate)
+        else removeSearchParam('start_date')
+    }, [startDate])
+
+    useEffect(() => {
+        if (endDate) addSearchParam('end_date', endDate)
+        else removeSearchParam('end_date')
+    }, [endDate])
 
     const submitHandler = (e) => {
         e.preventDefault()
@@ -130,6 +145,43 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
                             }}
                         />
                     </div>
+                </div>
+
+                {/* Row 3 — date range. Both inputs are optional and a Clear
+                    button next to them wipes the range in one click. */}
+                <div className="flex w-full items-center gap-2 md:gap-3 justify-end flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-600 whitespace-nowrap">From</label>
+                        <input
+                            type="date"
+                            className="form_input mb-0"
+                            value={startDate}
+                            max={endDate || undefined}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-600 whitespace-nowrap">To</label>
+                        <input
+                            type="date"
+                            className="form_input mb-0"
+                            value={endDate}
+                            min={startDate || undefined}
+                            onChange={(e) => setEndDate(e.target.value)}
+                        />
+                    </div>
+                    {(startDate || endDate) && (
+                        <button
+                            type="button"
+                            className="cstm_btn_small !bg-gray-200 !text-gray-700 hover:!bg-gray-300"
+                            onClick={() => {
+                                setStartDate('')
+                                setEndDate('')
+                            }}
+                        >
+                            Clear dates
+                        </button>
+                    )}
                 </div>
             </div>
         </form>

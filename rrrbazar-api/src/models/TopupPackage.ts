@@ -65,6 +65,17 @@ export default (sequelize: Sequelize) => {
         // Other types ignore this field today (`bot_url` is the per-package
         // endpoint for uc/shell bots).
         public bot_config!: string;
+        // Reward shape on order completion.
+        //   reward_type = 'coin'  → award `coin_value` to user.coins (legacy)
+        //   reward_type = 'money' → credit `cashback_amount` BDT to user.wallet
+        //                           AND bump user.cashback_total
+        // `reseller_cashback` (BDT) is paid *in addition* whenever the user
+        // placing the order has user_type = 'reseller', regardless of
+        // reward_type. All cashback paths are gated on terminal 'completed'
+        // (see helpers/orderCashbackSync.ts) and reversed on 'cancel'.
+        public reward_type!: string;
+        public cashback_amount!: string;
+        public reseller_cashback!: string;
 
         static associate({ StoreUnipin }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -208,6 +219,21 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.TEXT,
             allowNull: true,
             defaultValue: '{}',
+        },
+        reward_type: {
+            type: DataTypes.STRING(16),
+            allowNull: true,
+            defaultValue: 'coin',
+        },
+        cashback_amount: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            defaultValue: 0,
+        },
+        reseller_cashback: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            defaultValue: 0,
         },
         created_at: {
             type: DataTypes.DATE,

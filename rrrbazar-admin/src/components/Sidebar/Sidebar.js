@@ -26,6 +26,11 @@ export default function Sidebar({ isOpenSidebar }) {
           path: "/user",
           icon: "fas fa-tachometer-alt",
         },
+        {
+          text: "Reseller",
+          path: "/resellers",
+          icon: "fas fa-user-tag",
+        },
       ],
     },
     {

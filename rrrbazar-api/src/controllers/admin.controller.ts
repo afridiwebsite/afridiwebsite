@@ -6,6 +6,7 @@ import Schema from '../models';
 import { sequelize } from '../models/Schemas';
 import responseUtils from '../utils/response.utils';
 import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
+import syncOrderCashbackForStatus from '../helpers/orderCashbackSync';
 import {
   aggregateOrderFromDispatches,
   buildOrderDetailsHtml,
@@ -73,7 +74,7 @@ class AdminController {
   async getOrders(req: express.Request, res: express.Response) {
     const response = new responseUtils()
     try {
-      const { user_id, order_id, status, uc } = req.query;
+      const { user_id, order_id, status, uc, start_date, end_date } = req.query;
       const filter: any = {};
 
       filter.payment_status = 1
@@ -87,6 +88,30 @@ class AdminController {
 
       if (status) {
         filter.status = status
+      }
+
+      // Date range — both ends inclusive, both optional. The admin filter
+      // UI sends ISO YYYY-MM-DD strings; we anchor end_date to 23:59:59 so
+      // the same-day case (start == end) returns rows from the whole day.
+      if (start_date || end_date) {
+        const range: any = {};
+        if (start_date) {
+          const s = new Date(String(start_date));
+          if (!isNaN(s.getTime())) {
+            s.setHours(0, 0, 0, 0);
+            range[Op.gte] = s;
+          }
+        }
+        if (end_date) {
+          const e = new Date(String(end_date));
+          if (!isNaN(e.getTime())) {
+            e.setHours(23, 59, 59, 999);
+            range[Op.lte] = e;
+          }
+        }
+        if (Object.getOwnPropertySymbols(range).length > 0) {
+          filter.created_at = range;
+        }
       }
 
       if (uc) {
@@ -250,6 +275,9 @@ class AdminController {
     });
     if (statusToUpdate !== previousStatus) {
       await syncOrderCoinsForStatus(order, statusToUpdate);
+      // Cashback follows the same terminal-transition gate. Idempotent
+      // so saving the modal twice does not double-credit.
+      await syncOrderCashbackForStatus(order, statusToUpdate);
     }
 
     response.message = 'Order updated successfully';
@@ -2488,7 +2516,7 @@ class AdminController {
     const response = new responseUtils();
     try {
       const id = req.params.id as any;
-      const { wallet, coins, password } = req.body;
+      const { wallet, coins, password, user_type } = req.body;
       const user = await User.findByPk(id);
 
       if (!user) {
@@ -2499,6 +2527,14 @@ class AdminController {
       }
 
       const admin = (req as any).admin;
+
+      // Reseller toggle. Only persists the two recognised values so a
+      // malformed payload can't store garbage. Cashback wiring keys off
+      // 'reseller' (case-insensitive) so the comparison stays the same.
+      if (typeof user_type === 'string') {
+        const next = user_type.toLowerCase() === 'reseller' ? 'reseller' : 'normal';
+        (user as any).user_type = next;
+      }
 
       // Handle wallet update and transaction
       if (wallet !== undefined && Number(wallet) !== Number(user.wallet)) {
@@ -2569,6 +2605,8 @@ class AdminController {
         total_added: Number(total_added) || 0,
         total_spent: Number(total_spent) || 0,
         total_order: Number(total_order) || 0,
+        user_type: String((user as any).user_type || 'normal'),
+        cashback_total: Number((user as any).cashback_total) || 0,
       }
       res.send(response.response)
     } catch (error) {

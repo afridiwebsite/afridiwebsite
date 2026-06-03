@@ -17,6 +17,14 @@ export default (sequelize: Sequelize) => {
     public email!: string;
     public wallet!: number;
     public coins!: number;
+    // Distinguishes a regular customer from a reseller. Resellers get an
+    // extra per-package cashback on completed orders (reseller_cashback,
+    // set on TopupPackage). Anything else behaves like a normal user.
+    public user_type!: string;
+    // Lifetime BDT credited to this user from package cashback / reseller
+    // cashback. Tracked as a stored counter so the profile/reseller card
+    // can render it without aggregating Transaction rows on every load.
+    public cashback_total!: number;
     public last_coin_claim_at!: Date;
     public claim_streak!: number;
     // Accumulated free spins granted by 'try_again' rewards. Each spin
@@ -86,6 +94,16 @@ export default (sequelize: Sequelize) => {
     },
     spin_free_count: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    user_type: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      defaultValue: 'normal',
+    },
+    cashback_total: {
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0,
     },

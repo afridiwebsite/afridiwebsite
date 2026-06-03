@@ -41,6 +41,7 @@ import TopupProduct from "./components/TopupProduct/TopupProduct";
 import EditUser from "./components/Users/EditUser";
 import EditEarnWallet from "./components/Users/EditEarnWallet";
 import Users from "./components/Users/Users";
+import Resellers from "./components/Resellers/Resellers";
 import AdminLayout from "./layouts/AdminLayout";
 import BlankLayout from "./layouts/BlankLayout";
 import { isAuth } from "./utils/handler.utils";
@@ -78,6 +79,7 @@ function App() {
             <Route path="/user" exact component={Users} />
             <Route path="/user/edit/:id" exact component={EditUser} />
             <Route path="/user/earn-wallet/edit/:id" exact component={EditEarnWallet} />
+            <Route path="/resellers" exact component={Resellers} />
 
             <Route path="/bots" exact component={Bots} />
             <Route path="/botserver/add" exact component={AddBot} />

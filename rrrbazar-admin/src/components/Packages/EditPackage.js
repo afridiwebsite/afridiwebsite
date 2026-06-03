@@ -51,6 +51,21 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
+  // Reward picker state — hydrated below from data.reward_type. Legacy
+  // packages saved before this field existed will fall through to 'coin'
+  // so their existing coin_value keeps paying out unchanged.
+  const [rewardType, setRewardType] = useState("coin");
+  const [cashbackAmount, setCashbackAmount] = useState(0);
+  const [resellerCashback, setResellerCashback] = useState(0);
+  useEffect(() => {
+    if (!data) return;
+    const t = String(data.reward_type || "coin").toLowerCase();
+    setRewardType(t === "money" ? "money" : "coin");
+    setCashbackAmount(Number(data.cashback_amount) || 0);
+    setResellerCashback(Number(data.reseller_cashback) || 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.id]);
+
   // Tracks the selected product so the "Allow quantity" checkbox only
   // renders for voucher-type products. Hydrated from the package's
   // product_id once the package finishes loading.
@@ -288,7 +303,17 @@ function EditPackage(props) {
         bprice: buy_price.current.value,
         serial: serial.current.value,
         logo: path || data?.logo,
-        coin_value: coin_value.current.value || 0,
+        // Reward fields. Same exclusivity rule as AddPackage — the
+        // unselected mode's value is zeroed so a stale legacy coin_value
+        // doesn't keep paying out after the admin switches to money.
+        reward_type: rewardType,
+        coin_value:
+          rewardType === "coin"
+            ? Number(coin_value.current?.value || 0)
+            : 0,
+        cashback_amount:
+          rewardType === "money" ? Number(cashbackAmount) || 0 : 0,
+        reseller_cashback: Number(resellerCashback) || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
         allow_quantity:
@@ -445,20 +470,78 @@ function EditPackage(props) {
                     </div>
                   </div>
 
+                  {/* Reward picker — mirrors AddPackage. The coin_value
+                      ref still hydrates from data so legacy packages keep
+                      their saved coin reward visible even after switching
+                      to money mode (admin can switch back without losing
+                      the number). */}
                   <div className="form_grid">
                     <div>
-                      <label htmlFor="coin_value">
-                        Coin reward per purchase
+                      <label htmlFor="reward_type">Reward type</label>
+                      <select
+                        id="reward_type"
+                        className="form_input"
+                        value={rewardType}
+                        onChange={(e) => setRewardType(e.target.value)}
+                      >
+                        <option value="coin">Coin</option>
+                        <option value="money">Money (Cashback)</option>
+                      </select>
+                    </div>
+                    {rewardType === "coin" ? (
+                      <div>
+                        <label htmlFor="coin_value">
+                          Coin reward per purchase
+                        </label>
+                        <input
+                          ref={coin_value}
+                          defaultValue={data?.coin_value || 0}
+                          key={`cv-${data?.id}-${rewardType}`}
+                          id="coin_value"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label htmlFor="cashback_amount">
+                          Cashback per purchase (৳)
+                        </label>
+                        <input
+                          id="cashback_amount"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={cashbackAmount}
+                          onChange={(e) => setCashbackAmount(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form_grid">
+                    <div>
+                      <label htmlFor="reseller_cashback">
+                        Reseller cashback (৳)
                       </label>
                       <input
-                        ref={coin_value}
-                        defaultValue={data?.coin_value || 0}
-                        id="coin_value"
+                        id="reseller_cashback"
                         className="form_input"
                         type="number"
                         min="0"
+                        step="0.01"
+                        value={resellerCashback}
+                        onChange={(e) => setResellerCashback(e.target.value)}
                         placeholder="0"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Paid to users marked as Reseller, in addition to the
+                        regular reward above. Credited on completion only.
+                      </p>
                     </div>
                     <div>
                       <label class="inline-flex items-center mt-6">
