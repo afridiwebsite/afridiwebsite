@@ -175,7 +175,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   const isDisabledHeader = Component?.disabledHeader;
   const isDisabledFooter = Component?.disabledFooter;
   const isDisabledMobileAppBar = Component?.disabledMobileAppBar;
-  console.log(siteSettings);
+  console.log(siteSettings?.favicon_full_url, "favico");
 
   return (
     <>

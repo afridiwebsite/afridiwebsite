@@ -3271,8 +3271,12 @@ body {
   border-color: rgba(var(--theme-primary-rgb, 56 86 181) / 0.4);
 }
 .tutorial-card-thumb {
+  // Height comes from the `aspect-[600/395]` utility on the wrapper so
+  // the thumbnail scales with the card width while keeping its shape.
+  // Don't pin a fixed height here — it'd override aspect-ratio and
+  // bring back the uneven sizes the cards used to have on sm+ screens.
   position: relative;
-  height: 160px;
+  width: 100%;
   background: linear-gradient(
     135deg,
     var(--theme-primary, #2563eb) 0%,

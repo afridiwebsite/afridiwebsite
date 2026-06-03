@@ -1,13 +1,13 @@
-import Head from 'next/head';
-import { useState } from 'react';
-import ReactHtmlParser from 'react-html-parser';
-import { useQuery } from 'react-query';
-import { FaPlayCircle } from 'react-icons/fa';
-import { getTutorials } from '../api/api';
-import ActivityIndicator from '../components/ActivityIndicator';
-import { __page_title_end } from '../config/globalConfig';
-import reactQueryConfig from '../config/reactQueryConfig';
-import { hasData } from '../helpers/helpers';
+import Head from "next/head";
+import { useState } from "react";
+import ReactHtmlParser from "react-html-parser";
+import { useQuery } from "react-query";
+import { FaPlayCircle } from "react-icons/fa";
+import { getTutorials } from "../api/api";
+import ActivityIndicator from "../components/ActivityIndicator";
+import { __page_title_end } from "../config/globalConfig";
+import reactQueryConfig from "../config/reactQueryConfig";
+import { hasData } from "../helpers/helpers";
 
 // Pull a YouTube video id out of any of the common URL shapes:
 //   https://www.youtube.com/watch?v=ID
@@ -36,9 +36,13 @@ function TutorialThumb({ videoLink }) {
   // video (maxres can 404 on older or unlisted clips). Fall back to the
   // gradient + play-icon hero when extraction fails or the image errors.
   const [thumbFailed, setThumbFailed] = useState(false);
+  // The container locks to a 600:395 aspect ratio at every breakpoint
+  // so the thumbnail keeps its shape on phone, tablet and desktop —
+  // previously `sm:aspect-auto` released the ratio on sm+ which let
+  // each card size itself off its image and produced uneven rows.
   if (youtubeId && !thumbFailed) {
     return (
-      <div className="tutorial-card-thumb tutorial-card-thumb--img">
+      <div className="aspect-[600/335] tutorial-card-thumb tutorial-card-thumb--img">
         <img
           src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
           alt=""
@@ -53,7 +57,7 @@ function TutorialThumb({ videoLink }) {
     );
   }
   return (
-    <div className="tutorial-card-thumb">
+    <div className="aspect-[600/450] tutorial-card-thumb">
       <FaPlayCircle className="tutorial-card-play" />
     </div>
   );
@@ -64,7 +68,7 @@ function TutorialsPage() {
     data: tutorials,
     isLoading,
     isError,
-  } = useQuery('tutorials', getTutorials, reactQueryConfig);
+  } = useQuery("tutorials", getTutorials, reactQueryConfig);
 
   return (
     <>
@@ -76,7 +80,8 @@ function TutorialsPage() {
         <div className="text-center mb-8 animate-fade-in-up">
           <h1 className="_h2 mb-2">Tutorials</h1>
           <p className="_body2 text-gray-500 max-w-xl mx-auto">
-            Step-by-step video guides. Click a card to open the video in a new tab.
+            Step-by-step video guides. Click a card to open the video in a new
+            tab.
           </p>
         </div>
 
@@ -91,14 +96,16 @@ function TutorialsPage() {
             {tutorials.map((t) => (
               <a
                 key={t.id}
-                href={t.video_link || '#'}
+                href={t.video_link || "#"}
                 target="_blank"
                 rel="noreferrer"
                 className="group tutorial-card"
               >
                 <TutorialThumb videoLink={t.video_link} />
                 <div className="tutorial-card-body">
-                  <h3 className="tutorial-card-title">{t.title || 'Untitled'}</h3>
+                  <h3 className="tutorial-card-title">
+                    {t.title || "Untitled"}
+                  </h3>
                   {t.description && (
                     <div className="tutorial-card-desc">
                       {ReactHtmlParser(t.description)}

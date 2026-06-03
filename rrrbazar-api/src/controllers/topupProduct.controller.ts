@@ -34,6 +34,122 @@ class TopupProductController {
         res.send(response.response)
     }
 
+    /**
+     * Topup products grouped by category for the admin product list.
+     *
+     * Returns one entry per category (active ones, ordered by `serial`)
+     * with its products nested inside, plus an "Uncategorized" bucket
+     * at the end for products that aren't pinned to any category.
+     *
+     * Because the relationship is many-to-many a product can show up in
+     * more than one category — that's intentional, the admin sees the
+     * product everywhere it's reachable in the storefront. The
+     * "Uncategorized" bucket therefore only contains products that
+     * belong to *no* category at all.
+     *
+     * Shape:
+     *   [{ id, name, serial, products: [...] }, …,
+     *    { id: null, name: 'Uncategorized', products: [...] }]
+     */
+    async getProductsGroupedByCategory(
+        req: express.Request,
+        res: express.Response,
+    ) {
+        const response = new responseUtils();
+        try {
+            const reqPath = req.protocol + "://" + req.get("host");
+
+            // Pull every category with its products in one go. `through:
+            // { attributes: [] }` strips the pivot row so the payload
+            // stays small. Products are sorted by id DESC inside the
+            // group so the newest ones float to the top — matches what
+            // admins expect when adding new products.
+            const categories = await Category.findAll({
+                where: { is_active: 1 },
+                order: [
+                    ["serial", "ASC"],
+                    ["id", "ASC"],
+                ],
+                include: [
+                    {
+                        model: TopupProduct,
+                        as: "topup_products",
+                        required: false,
+                        through: { attributes: [] },
+                        attributes: {
+                            include: [
+                                "logo",
+                                [
+                                    fn(
+                                        "CONCAT",
+                                        reqPath + "/images/",
+                                        col("topup_products.logo"),
+                                    ),
+                                    "logo_full_url",
+                                ],
+                            ],
+                        },
+                    },
+                ],
+            });
+
+            // Now find products that belong to no category at all.
+            // Easier than a NOT-IN subquery: load every product, then
+            // filter out the ones that appeared in any category above.
+            const allProducts = await TopupProduct.findAll({
+                attributes: {
+                    include: [
+                        "logo",
+                        [
+                            fn(
+                                "CONCAT",
+                                reqPath + "/images/",
+                                col("TopupProduct.logo"),
+                            ),
+                            "logo_full_url",
+                        ],
+                    ],
+                },
+            });
+
+            const categorizedIds = new Set<number>();
+            for (const c of categories as any[]) {
+                for (const p of c.topup_products || []) {
+                    categorizedIds.add(p.id);
+                }
+            }
+            const uncategorizedProducts = (allProducts as any[]).filter(
+                (p) => !categorizedIds.has(p.id),
+            );
+
+            const groups: any[] = (categories as any[]).map((c) => ({
+                id: c.id,
+                name: c.name,
+                emoji: c.emoji,
+                serial: c.serial,
+                products: c.topup_products || [],
+            }));
+            if (uncategorizedProducts.length > 0) {
+                groups.push({
+                    id: null,
+                    name: "Uncategorized",
+                    emoji: "",
+                    serial: null,
+                    products: uncategorizedProducts,
+                });
+            }
+
+            response.data = groups;
+            res.send(response.response);
+        } catch (error) {
+            console.log("getProductsGroupedByCategory error", error);
+            response.message = "Failed to load grouped products";
+            response.status = 400;
+            response.success = false;
+            res.status(400).send(response.response);
+        }
+    }
+
     async getProductById(req: express.Request, res: express.Response) {
         const response = new responseUtils()
         const reqPath = req.protocol + "://" + req.get("host");

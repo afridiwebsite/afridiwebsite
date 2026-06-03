@@ -156,6 +156,7 @@ router.post('/spin-rewards/delete/:id', auth, spinController.adminDelete)
 
 // Topup Products apis ----START----
 router.get('/topup-products', auth, topupProductController.getProducts)
+router.get('/topup-products-by-category', auth, topupProductController.getProductsGroupedByCategory) // Admin Products page accordion view, grouped by Category with an Uncategorized bucket
 router.get('/topup-product/:id', auth, topupProductController.getProductById)
 router.post('/topup-product/create', auth, topupProductSchema, topupProductController.createProduct)
 router.post('/topup-product/update/:id', auth, topupProductSchema, topupProductController.updateProduct)

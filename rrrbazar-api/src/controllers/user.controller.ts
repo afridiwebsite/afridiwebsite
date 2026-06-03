@@ -1569,7 +1569,7 @@ class UserController {
   async addWallet(req: express.Request, res: express.Response) {
     const response = new responseUtils();
     try {
-      const { purpose, amount, number, paymentmethod } = req.body;
+      const { purpose, amount: rawAmount, number, paymentmethod } = req.body;
 
       let user_id = req.user.id;
 
@@ -1580,7 +1580,14 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      if (!user_id || amount < 0) {
+      // Coerce to a real number — the client sends amount as a string from
+      // the Yup-validated text input, and DECIMAL(10,2) on the Transaction
+      // column means anything beyond 2 decimal places gets truncated by the
+      // DB. The string `"10.5"` < `0` returns false (NaN comparison) so
+      // without parseFloat the guard below silently lets bad payloads
+      // through. UddoktaPay also expects a numeric `amount`.
+      const amount = Number.parseFloat(String(rawAmount));
+      if (!user_id || !Number.isFinite(amount) || amount <= 0) {
         response.message = "Please Refresh The Page And Send Again";
         return res.status(400).send(response.response);
       }

@@ -107,6 +107,9 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     // Add/Edit Package form by forwarding to GamersPay's
     // /api/v1/products/{game} with the admin's X-API-Key.
     { path: '/pubg-bot/products',   method: 'POST' },
+    // Admin Products page — accordion view grouped by Category, plus an
+    // Uncategorized bucket for products with no category pinned.
+    { path: '/topup-products-by-category', method: 'GET' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

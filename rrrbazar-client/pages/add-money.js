@@ -41,10 +41,18 @@ const initialValues = {
 const validationSchema = Yup.object().shape({
   amount: Yup.string()
     .required()
-    .matches(/^([1-9])/, "Amount can't be start with 0")
-    .matches(/^\d+$/, "Amount must be a number")
+    .matches(/^[1-9]/, "Amount can't start with 0")
+    // Allow whole or fractional values — `10`, `10.5`, `10.50`. Server
+    // parses with parseFloat and the Transaction column is DECIMAL(10,2)
+    // so anything past two decimal places gets truncated by the DB
+    // anyway; the regex just keeps things parseable.
+    .matches(/^\d+(\.\d+)?$/, "Amount must be a number")
     .trim()
-    .min(2, "Amount must be at least 10 taka")
+    .test(
+      "min-amount",
+      "Amount must be at least 10 taka",
+      (v) => parseFloat(v || "0") >= 10,
+    )
     .label("Amount"),
   number: Yup.string().trim().label("Sender number"),
   paymentmethod: Yup.string().required("Please select a payment method").trim(),
