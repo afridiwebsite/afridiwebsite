@@ -103,6 +103,10 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/tutorial/delete/:id', method: 'POST' },
     // Bulk / single bot-dispatch retry (admin Orders page action menu).
     { path: '/orders/bot-retry',    method: 'POST' },
+    // PUBG-bot catalogue proxy — populates the SKU dropdown on the
+    // Add/Edit Package form by forwarding to GamersPay's
+    // /api/v1/products/{game} with the admin's X-API-Key.
+    { path: '/pubg-bot/products',   method: 'POST' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

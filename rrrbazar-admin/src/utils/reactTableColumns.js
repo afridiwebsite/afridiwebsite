@@ -911,14 +911,6 @@ export const packageTableColumns = [
     accessor: "serial",
   },
   {
-    Header: "In-Stock Voucher",
-    accessor: "voucher",
-    Cell: (e) => {
-      console.log(e);
-      return <Link to={`/upins?package_id=${e.value}`}>{e.value}</Link>;
-    },
-  },
-  {
     Header: "Logo",
     accessor: "logo",
     Cell: (e) => {

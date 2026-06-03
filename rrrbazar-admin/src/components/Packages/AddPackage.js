@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useHistory, withRouter } from "react-router-dom";
 import { toast } from "react-toastify";
 import axiosInstance from "../../common/axios";
@@ -71,6 +71,54 @@ function AddPackage(props) {
   // from us — if the upstream needs it, the admin puts it directly in
   // the URL.
   const [likeBotKey, setLikeBotKey] = useState("");
+  // PUBG-bot config — admin supplies an API key + picks a game and SKU.
+  // The orders endpoint URL is hardcoded server-side; the SKU dropdown
+  // is populated by proxying GamersPay's product catalogue through
+  // /admin/pubg-bot/products. `player_id` is filled from the customer's
+  // input at order time. No server field — game IDs already encode
+  // region for FF, and PUBG's API doesn't require a server slug here.
+  const [pubgKey, setPubgKey] = useState("");
+  const [pubgGame, setPubgGame] = useState("pubg");
+  const [pubgSku, setPubgSku] = useState("");
+  const [pubgSkus, setPubgSkus] = useState([]); // [{ sku, price, display }]
+  const [pubgSkusLoading, setPubgSkusLoading] = useState(false);
+  const [pubgSkusError, setPubgSkusError] = useState(null);
+
+  // Fetch the SKU catalogue whenever the admin types/changes the key or
+  // picks a different game. Debounced 500ms so typing the key doesn't
+  // hammer the upstream — the request only fires once they pause.
+  useEffect(() => {
+    if (botType !== "pubg-bot") return undefined;
+    const game = String(pubgGame || "").trim();
+    const key = String(pubgKey || "").trim();
+    if (!game || !key) {
+      setPubgSkus([]);
+      setPubgSkusError(null);
+      return undefined;
+    }
+    const handle = setTimeout(() => {
+      setPubgSkusLoading(true);
+      setPubgSkusError(null);
+      axiosInstance
+        .post(`/admin/pubg-bot/products`, { game, api_key: key })
+        .then((res) => {
+          const payload = res?.data?.data || res?.data || {};
+          const items = Array.isArray(payload.items) ? payload.items : [];
+          setPubgSkus(items);
+          if (items.length === 0) {
+            setPubgSkusError("No SKUs returned for this game.");
+          }
+        })
+        .catch((err) => {
+          setPubgSkus([]);
+          setPubgSkusError(
+            getErrors(err, false, true) || "Failed to load SKUs",
+          );
+        })
+        .finally(() => setPubgSkusLoading(false));
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [botType, pubgGame, pubgKey]);
   const [mappings, setMappings] = useState([]); // [{ voucher_package_id, voucher_package_name, voucher_product_name }]
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
@@ -142,8 +190,18 @@ function AddPackage(props) {
       }
     }
     if (botType === "pubg-bot") {
-      toast.error("PUBG-bot is not yet supported", toastDefault);
-      return;
+      if (!String(pubgKey || "").trim()) {
+        toast.error("PUBG-bot requires an API key", toastDefault);
+        return;
+      }
+      if (!String(pubgGame || "").trim()) {
+        toast.error("PUBG-bot requires a game selection", toastDefault);
+        return;
+      }
+      if (!String(pubgSku || "").trim()) {
+        toast.error("PUBG-bot requires a SKU", toastDefault);
+        return;
+      }
     }
     setLoading(true);
     axiosInstance
@@ -177,7 +235,13 @@ function AddPackage(props) {
         bot_config:
           botType === "like-bot"
             ? { key: String(likeBotKey || "").trim() }
-            : {},
+            : botType === "pubg-bot"
+              ? {
+                  key: String(pubgKey || "").trim(),
+                  game: String(pubgGame || "").trim(),
+                  sku: String(pubgSku || "").trim(),
+                }
+              : {},
       })
       .then(async (res) => {
         // Persist voucher-map rows once we know the new package id. Maps
@@ -447,8 +511,8 @@ function AddPackage(props) {
                         <option value="like-bot">
                           Like-bot (Free Fire likes)
                         </option>
-                        <option value="pubg-bot" disabled>
-                          PUBG-bot — coming soon
+                        <option value="pubg-bot">
+                          PUBG-bot (GamersPay UC/diamonds)
                         </option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
@@ -521,6 +585,89 @@ function AddPackage(props) {
                             />
                           </div>
                         </div>
+                      )}
+
+                      {botType === "pubg-bot" && (
+                        <>
+                          <div className="form_grid">
+                            <div>
+                              <label htmlFor="pubg_key">
+                                PUBG-bot API key
+                              </label>
+                              <input
+                                id="pubg_key"
+                                type="text"
+                                className="form_input"
+                                value={pubgKey}
+                                onChange={(e) => setPubgKey(e.target.value)}
+                                placeholder="X-API-Key value"
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="pubg_game">Game</label>
+                              <select
+                                id="pubg_game"
+                                className="form_input"
+                                value={pubgGame}
+                                onChange={(e) => {
+                                  setPubgGame(e.target.value);
+                                  setPubgSku("");
+                                }}
+                              >
+                                <option value="pubg">pubg</option>
+                                <option value="ff_mena">ff_mena</option>
+                                <option value="ff_cis">ff_cis</option>
+                                <option value="ff_sg">ff_sg</option>
+                                <option value="ff_eu">ff_eu</option>
+                                <option value="ff_bd">ff_bd</option>
+                                <option value="ff_pk">ff_pk</option>
+                                <option value="ff_latam">ff_latam</option>
+                                <option value="ff_vn">ff_vn</option>
+                                <option value="ff_tw">ff_tw</option>
+                                <option value="ff_br">ff_br</option>
+                                <option value="ff_id">ff_id</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="form_grid">
+                            <div>
+                              <label htmlFor="pubg_sku">SKU</label>
+                              <select
+                                id="pubg_sku"
+                                className="form_input"
+                                value={pubgSku}
+                                onChange={(e) => setPubgSku(e.target.value)}
+                                disabled={
+                                  pubgSkusLoading || pubgSkus.length === 0
+                                }
+                              >
+                                <option value="">
+                                  {pubgSkusLoading
+                                    ? "Loading SKUs…"
+                                    : pubgSkus.length === 0
+                                      ? "Enter API key to load SKUs"
+                                      : "-- Select SKU --"}
+                                </option>
+                                {pubgSkus.map((item) => (
+                                  <option key={item.sku} value={item.sku}>
+                                    {item.display || item.sku}
+                                  
+                                  </option>
+                                ))}
+                              </select>
+                              {pubgSkusError && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  {pubgSkusError}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Player ID comes from the customer's order. SKUs
+                            are pulled from GamersPay using the API key
+                            above — change the game to refresh the list.
+                          </p>
+                        </>
                       )}
 
                       {autoDeliveryOn && isShell && (

@@ -258,6 +258,64 @@ class AdminController {
   }
 
   /**
+   * Server-side proxy for the GamersPay PUBG-bot product catalogue.
+   *
+   * The admin Add/Edit Package form needs to populate the SKU dropdown
+   * dynamically — different games (pubg, ff_*) have different SKU lists,
+   * and the upstream catalogue can change without warning. We proxy the
+   * call rather than firing it from the browser so:
+   *   - the X-API-Key header doesn't leave the server (no CORS exposure),
+   *   - the admin's API key doesn't end up in the browser's network tab
+   *     reflected back from the upstream.
+   *
+   * Body: { game: string, api_key: string }
+   * Returns the raw upstream payload, e.g.
+   *   { game, display_name, items: [{ sku, price, display }] }
+   */
+  async getPubgBotProducts(req: express.Request, res: express.Response) {
+    const response = new responseUtils();
+    try {
+      const game = String(req.body?.game || '').trim();
+      const apiKey = String(req.body?.api_key || '').trim();
+      if (!game || !apiKey) {
+        response.message = 'game and api_key are required';
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      const url = `https://api.gamerspay.app/api/v1/products/${encodeURIComponent(game)}`;
+      const upstream = await axios.get(url, {
+        timeout: 10000,
+        headers: { 'X-API-Key': apiKey },
+        // Don't throw on 4xx — we want to surface the upstream error
+        // message to the admin instead of swallowing it as a generic 500.
+        validateStatus: () => true,
+      });
+      if (upstream.status < 200 || upstream.status >= 300) {
+        const upstreamMsg =
+          (upstream.data && (upstream.data.message || upstream.data.error)) ||
+          `upstream returned HTTP ${upstream.status}`;
+        response.message = `GamersPay rejected the request: ${upstreamMsg}`;
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      response.data = upstream.data;
+      return res.send(response.response);
+    } catch (error: any) {
+      console.error(
+        '[getPubgBotProducts] failed',
+        error?.message || error,
+      );
+      response.message =
+        'Could not reach GamersPay product catalogue. Try again in a moment.';
+      response.status = 502;
+      response.success = false;
+      return res.status(502).send(response.response);
+    }
+  }
+
+  /**
    * Resend the auto-bot for every `failed` BotDispatch row belonging to
    * each order in `order_ids`. Cancelled dispatches (Invalid player ID,
    * Invalid region) are intentionally NOT retried — those are permanent.

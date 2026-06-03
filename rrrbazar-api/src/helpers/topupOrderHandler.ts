@@ -28,6 +28,10 @@ const {
 
 export type BotType = "none" | "uc-bot" | "shell-bot" | "like-bot" | "pubg-bot";
 
+// GamersPay orders endpoint. PUBG-bot packages all dispatch here — no
+// per-package URL, so the admin form doesn't ask for one.
+const PUBG_BOT_ORDERS_URL = "https://api.gamerspay.app/api/v1/orders";
+
 // Result returned to the caller (topupPackageOrder) so it knows what
 // brief_note / details to set and what message to send back to the user.
 export interface DispatchResult {
@@ -700,17 +704,281 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** PUBG-bot placeholder. Currently rejects with a clear "coming soon". */
-async function handlePubgBot(opts: { order: any }): Promise<DispatchResult> {
-  const { order } = opts;
-  order.status = "pending";
-  (order as any).details =
-    "<span style='color:#dc2626;'><strong>PUBG-bot not yet supported.</strong> Order awaiting manual fulfilment.</span>";
-  await order.save();
-  return {
-    responseMessage:
-      "Order placed — PUBG-bot dispatch is not yet supported, awaiting admin fulfilment.",
+/**
+ * PUBG-bot: synchronous POST to the GamersPay orders endpoint (hard-
+ * coded at PUBG_BOT_ORDERS_URL). Body is `{ game, sku, player_id }`,
+ * API key goes in the `X-API-Key` header. Outcome decided inline from
+ * the response body (no /check_order callback), mirroring the like-bot
+ * pattern.
+ *
+ * Status routing (matches the upstream API contract):
+ *   completed                  → success, wallet stays charged
+ *   errorrisk                  → success (code delivered, flagged for
+ *                                manual redemption); brief_note tells the
+ *                                user
+ *   risk_error_manual_charge   → success; data.code_plaintext is the
+ *                                code to redeem at the official center
+ *   pending_review             → keep order pending, no refund
+ *   failed / success:false     → cancel + refund (same as like-bot)
+ *
+ * The dispatch row's `code` field carries a JSON envelope
+ * (`{ api_key, body }`) so the retry endpoint can re-fire the exact
+ * same payload even if the package's bot_config has drifted since.
+ */
+async function handlePubgBot(opts: {
+  order: any;
+  topupPackage: any;
+  playerid: string;
+}): Promise<DispatchResult> {
+  const { order, topupPackage, playerid } = opts;
+  const cfg = parseBotConfig(topupPackage?.bot_config);
+  const apiKey = String(cfg.key || "").trim();
+  const game = String(cfg.game || "").trim();
+  const sku = String(cfg.sku || "").trim();
+
+  console.log("[handlePubgBot] entering", {
+    order_id: order.id,
+    package_id: topupPackage.id,
+    package_name: topupPackage.name,
+    playerid,
+    game,
+    sku,
+    key_present: !!apiKey,
+  });
+
+  if (!apiKey || !game || !sku) {
+    console.warn("[handlePubgBot] misconfigured — refusing to fire", {
+      order_id: order.id,
+      package_id: topupPackage.id,
+      has_key: !!apiKey,
+      has_game: !!game,
+      has_sku: !!sku,
+    });
+    order.status = "pending";
+    (order as any).details =
+      "<span style='color:#dc2626;'><strong>PUBG-bot misconfigured:</strong> API key, game, or SKU missing.</span>";
+    await order.save();
+    return {
+      responseMessage:
+        "Order placed — PUBG-bot config is incomplete, awaiting admin fix.",
+    };
+  }
+
+  const body: Record<string, any> = {
+    game,
+    sku,
+    player_id: String(playerid || "").trim(),
   };
+
+  // Envelope on the dispatch row — see function-level comment.
+  const codeEnvelope = JSON.stringify({ api_key: apiKey, body });
+
+  const { dispatch, ok, error_reason } = await createAndSendDispatch({
+    order_id: order.id,
+    player_id: playerid,
+    uc: topupPackage.uc || 0,
+    bot_url: PUBG_BOT_ORDERS_URL,
+    code: codeEnvelope,
+    package_name_sent: topupPackage.name,
+    bot_type: "pubg-bot",
+  });
+
+  const refreshed = await BotDispatch.findByPk(dispatch.id);
+  const respContent = String((refreshed as any)?.response_content ?? "");
+  const errReason = String(
+    (refreshed as any)?.error_reason ?? error_reason ?? "",
+  );
+
+  const parsed = parsePubgBotBody(respContent);
+  const apiSuccess = parsed?.success === true;
+  const apiStatus = String(parsed?.status || "")
+    .toLowerCase()
+    .trim();
+  const apiOrderId = String(parsed?.order_id || "");
+  const apiMessage = String(parsed?.message || "");
+  const apiPlayerName = String(parsed?.player_name || "");
+  const amountCharged = parsed?.amount_charged;
+  const manualCode = String(parsed?.data?.code_plaintext || "");
+
+  const isDelivered = ok && apiSuccess && apiStatus === "completed";
+  const isManualCharge = ok && apiStatus === "risk_error_manual_charge";
+  const isErrorRisk = ok && apiStatus === "errorrisk";
+  const isPendingReview = ok && apiStatus === "pending_review";
+
+  console.log("[handlePubgBot] outcome classified", {
+    order_id: order.id,
+    dispatch_id: dispatch.id,
+    transport_ok: !!ok,
+    api_success: apiSuccess,
+    api_status: apiStatus,
+    api_order_id: apiOrderId,
+    delivered: isDelivered,
+    manual_charge: isManualCharge,
+    error_risk: isErrorRisk,
+    pending_review: isPendingReview,
+  });
+
+  // Terminal success: completed, errorrisk (code delivered + flagged),
+  // and risk_error_manual_charge (admin gets code_plaintext to hand
+  // off). All three mean the wallet charge is justified.
+  if (isDelivered || isManualCharge || isErrorRisk) {
+    if (refreshed && (refreshed as any).status !== "success") {
+      (refreshed as any).status = "success";
+      await refreshed.save();
+    }
+    order.status = "completed";
+    const playerLine = apiPlayerName
+      ? `Name : ${escapeHtml(apiPlayerName)}<br/>`
+      : "";
+    if (isManualCharge && manualCode) {
+      order.brief_note =
+        playerLine +
+        `Manual Redemption Code : ${escapeHtml(manualCode)}<br/>` +
+        `Redeem at the official PUBG redemption center.`;
+    } else if (isErrorRisk) {
+      order.brief_note =
+        playerLine +
+        `Note : ${escapeHtml(apiMessage || "Provider flagged this order for manual review — code delivered.")}`;
+    } else {
+      order.brief_note =
+        playerLine +
+        `Order ID : ${escapeHtml(apiOrderId || String(order.id))}`;
+    }
+    (order as any).details =
+      `<span style='color:#059669;'><strong>PUBG-bot delivered successfully.</strong></span>` +
+      `<ul style='text-align:left; margin-top:6px; list-style-type:disc; padding-left:20px;'>` +
+      `<li><strong>Upstream order:</strong> ${escapeHtml(apiOrderId || "—")}</li>` +
+      `<li><strong>Status:</strong> ${escapeHtml(apiStatus)}</li>` +
+      (apiPlayerName
+        ? `<li><strong>Player:</strong> ${escapeHtml(apiPlayerName)}</li>`
+        : "") +
+      (amountCharged != null
+        ? `<li><strong>Charged (USD):</strong> ${escapeHtml(String(amountCharged))}</li>`
+        : "") +
+      (apiMessage
+        ? `<li><strong>Message:</strong> ${escapeHtml(apiMessage)}</li>`
+        : "") +
+      (isManualCharge && manualCode
+        ? `<li><strong>Manual code:</strong> ${escapeHtml(manualCode)}</li>`
+        : "") +
+      `</ul>` +
+      (respContent
+        ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
+          `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
+          escapeHtml(respContent) +
+          `</pre></div>`
+        : "");
+    await order.save();
+    // Like the like-bot path, PUBG-bot orders never hit checkOrder, so
+    // award the coin reward here. syncOrderCoinsForStatus is idempotent.
+    await syncOrderCoinsForStatus(order, "completed");
+    return { responseMessage: "Order placed successfully" };
+  }
+
+  if (isPendingReview) {
+    // Upstream is reviewing — order stays pending, no refund. Park the
+    // dispatch row as `sent` so a future poll/callback (if the provider
+    // ever adds one) or an admin can resolve it.
+    if (refreshed) {
+      (refreshed as any).status = "sent";
+      await refreshed.save();
+    }
+    order.status = "pending";
+    order.brief_note =
+      "অর্ডারটি প্রদানকারীর পর্যালোচনাধীন রয়েছে। কয়েক মিনিটের মধ্যেই আপডেট হবে।";
+    (order as any).details =
+      `<span style='color:#d97706;'><strong>PUBG-bot held for review.</strong></span>` +
+      (apiMessage
+        ? `<div style='margin-top:6px;'>${escapeHtml(apiMessage)}</div>`
+        : "") +
+      (respContent
+        ? `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:6px;'>` +
+          escapeHtml(respContent) +
+          `</pre>`
+        : "");
+    await order.save();
+    return {
+      responseMessage:
+        "Order placed — awaiting upstream review, no charge change.",
+    };
+  }
+
+  // Failure — refund + cancel, identical to handleLikeBot.
+  if (refreshed) {
+    (refreshed as any).status = "cancelled";
+    (refreshed as any).error_reason =
+      errReason ||
+      apiMessage ||
+      `PUBG-bot reported failure (status=${apiStatus || "unknown"})`;
+    await refreshed.save();
+  }
+
+  const failureReason = errReason || apiMessage || "PUBG-bot reported failure";
+  order.status = "cancel";
+  order.brief_note =
+    "PUBG-bot অর্ডার সম্পন্ন করা যায়নি। অর্ডার বাতিল করা হয়েছে এবং অর্থ আপনার ওয়ালেটে ফেরত দেওয়া হয়েছে।";
+  (order as any).details =
+    `<span style='color:#dc2626;'><strong>PUBG-bot failed:</strong> ` +
+    escapeHtml(failureReason) +
+    `</span>` +
+    `<ul style='text-align:left; margin-top:6px; list-style-type:disc; padding-left:20px;'>` +
+    `<li><strong>Status:</strong> ${escapeHtml(apiStatus || "unknown")}</li>` +
+    (apiOrderId
+      ? `<li><strong>Upstream order:</strong> ${escapeHtml(apiOrderId)}</li>`
+      : "") +
+    (apiMessage
+      ? `<li><strong>Message:</strong> ${escapeHtml(apiMessage)}</li>`
+      : "") +
+    `</ul>` +
+    (respContent
+      ? `<div style='margin-top:6px;'><strong>Upstream response:</strong>` +
+        `<pre style='background:#f3f4f6; padding:6px; border-radius:4px; white-space:pre-wrap; word-break:break-word; font-size:12px; margin-top:4px;'>` +
+        escapeHtml(respContent) +
+        `</pre></div>`
+      : "");
+  (order as any).uc = "";
+  await order.save();
+
+  try {
+    const [refundUser, refundProduct] = await Promise.all([
+      User.findByPk((order as any).user_id),
+      TopupProduct.findByPk((order as any).product_id),
+    ]);
+    if (refundUser) {
+      (refundUser as any).wallet =
+        Number((refundUser as any).wallet) + Number((order as any).amount);
+      await refundUser.save();
+    }
+    if (refundProduct && (order as any).bprice) {
+      (refundProduct as any).price =
+        Number((refundProduct as any).price) +
+        parseFloat((order as any).bprice);
+      await refundProduct.save();
+    }
+  } catch (e) {
+    console.error("[handlePubgBot] wallet refund failed", {
+      order_id: order.id,
+      err: (e as any)?.message || e,
+    });
+  }
+  await syncOrderCoinsForStatus(order, "cancel");
+
+  return { responseMessage: "Order placed successfully" };
+}
+
+// Parse the pubg-bot's JSON response into an object. Returns {} when
+// the body wasn't valid JSON or isn't an object — callers treat that
+// as "no useful info" and fall through to the failure branch.
+function parsePubgBotBody(raw: string): Record<string, any> {
+  const s = String(raw || "").trim();
+  if (!s) return {};
+  try {
+    const v = JSON.parse(s);
+    if (v && typeof v === "object" && !Array.isArray(v)) return v;
+  } catch {
+    /* fall through */
+  }
+  return {};
 }
 
 /**

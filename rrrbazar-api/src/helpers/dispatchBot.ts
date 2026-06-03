@@ -7,6 +7,9 @@ const { BotDispatch } = Schema;
 // Per-request hard timeout for the like-bot GET. Keeps a hung upstream
 // from blocking the whole dispatch path.
 const LIKE_BOT_TIMEOUT_MS = 15000;
+// PUBG-bot is allowed more headroom — gamerspay.app's order endpoint
+// can take several seconds to deliver, especially for first-time SKUs.
+const PUBG_BOT_TIMEOUT_MS = 30000;
 
 /**
  * Fire a GET request to a like-bot URL and decide success/failure from the
@@ -81,6 +84,84 @@ async function fireLikeBot(
     return {
       ok: false,
       error_reason: `like-bot threw: ${String(msg).slice(0, 250)}`,
+      body: null,
+    };
+  }
+}
+
+/**
+ * Fire a POST request to the PUBG-bot URL with the X-API-Key header and
+ * a JSON body. The body shape (`{ game, sku, player_id, server? }`) is
+ * decided upstream by handlePubgBot — this function is transport-only.
+ *
+ * Returns ok=true whenever the upstream returns a 2xx, regardless of
+ * the parsed `success`/`status` fields. handlePubgBot reads those off
+ * the parsed body to decide the *order* outcome (delivered / pending
+ * review / cancel-and-refund). That split keeps the dispatch row's
+ * transport-level status honest while still letting an admin retry on
+ * recoverable upstream errors.
+ */
+async function firePubgBot(
+  url: string,
+  apiKey: string,
+  body: Record<string, any>,
+): Promise<{ ok: boolean; error_reason: string | null; body: any }> {
+  if (!url || !apiKey) {
+    return {
+      ok: false,
+      error_reason: "PUBG-bot URL or API key missing",
+      body: null,
+    };
+  }
+  let timeoutHandle: any;
+  try {
+    const requestPromise = fetch(url, {
+      method: "POST",
+      headers: {
+        "X-API-Key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body || {}),
+    });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(
+        () => reject(new Error(`timed out after ${PUBG_BOT_TIMEOUT_MS}ms`)),
+        PUBG_BOT_TIMEOUT_MS,
+      );
+    });
+    const response = (await Promise.race([
+      requestPromise,
+      timeoutPromise,
+    ])) as any;
+    clearTimeout(timeoutHandle);
+
+    let responseBody: any;
+    const contentType = response.headers?.get?.("content-type") || "";
+    try {
+      if (contentType.includes("application/json")) {
+        responseBody = await response.json();
+      } else {
+        responseBody = await response.text();
+      }
+    } catch {
+      responseBody = "(unparseable)";
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error_reason:
+          `pubg-bot HTTP ${response.status} ${response.statusText || ""}`.trim(),
+        body: responseBody,
+      };
+    }
+    return { ok: true, error_reason: null, body: responseBody };
+  } catch (e: any) {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    const msg = (e && (e.message || e.code || e.toString())) || "unknown error";
+    return {
+      ok: false,
+      error_reason: `pubg-bot threw: ${String(msg).slice(0, 250)}`,
       body: null,
     };
   }
@@ -325,6 +406,45 @@ export async function executeDispatch(
       typeof result.body === "string"
         ? result.body.slice(0, 500)
         : JSON.stringify(result.body || {}).slice(0, 500);
+    await dispatch.save();
+    return { ok: botUrl, error_reason: null };
+  }
+
+  // PUBG-bot: synchronous POST. The api key + json body were packed
+  // into `code` by handlePubgBot as `{ api_key, body }` so a retry can
+  // re-fire the original payload even if the package's bot_config has
+  // since drifted. The transport status here is just "did the HTTP
+  // call land?" — handlePubgBot decides the *order* outcome from the
+  // parsed body (completed / pending review / failed-and-refund).
+  if (botType === "pubg-bot") {
+    let envelope: any = {};
+    try {
+      envelope = JSON.parse(String(dispatch.code || ""));
+    } catch {
+      envelope = {};
+    }
+    const apiKey = String(envelope?.api_key || "").trim();
+    const reqBody =
+      envelope?.body && typeof envelope.body === "object" ? envelope.body : {};
+    const result = await firePubgBot(botUrl, apiKey, reqBody);
+    // Always stash the body so handlePubgBot can read status/order_id/
+    // code_plaintext off it. response_content is TEXT so the 2000-char
+    // ceiling is plenty for the documented payload shape including
+    // data.code_plaintext on risk_error_manual_charge.
+    if (result.body != null) {
+      (dispatch as any).response_content =
+        typeof result.body === "string"
+          ? result.body.slice(0, 2000)
+          : JSON.stringify(result.body || {}).slice(0, 2000);
+    }
+    if (!result.ok) {
+      dispatch.status = "failed";
+      dispatch.error_reason =
+        result.error_reason || "pubg-bot rejected the request";
+      await dispatch.save();
+      return { ok: false, error_reason: dispatch.error_reason };
+    }
+    dispatch.status = "success";
     await dispatch.save();
     return { ok: botUrl, error_reason: null };
   }
