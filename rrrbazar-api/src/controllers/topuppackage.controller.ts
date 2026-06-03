@@ -81,6 +81,35 @@ function pickBotConfigFor(
     }
     return { config: { key, server_name: server }, error: null };
   }
+  if (botType === "pubg-bot") {
+    // PUBG-bot needs the GamersPay X-API-Key plus the catalogue
+    // identifiers (game + sku) — the orders URL is hardcoded server-
+    // side. Without the validation+passthrough below, the controller
+    // would strip these and save bot_config as `{}`, leaving the
+    // package unable to dispatch.
+    const key = String(raw?.key || "").trim();
+    const game = String(raw?.game || "").trim();
+    const sku = String(raw?.sku || "").trim();
+    if (!key) {
+      return {
+        config: {},
+        error: 'PUBG-bot requires a "key" in bot_config',
+      };
+    }
+    if (!game) {
+      return {
+        config: {},
+        error: 'PUBG-bot requires a "game" in bot_config',
+      };
+    }
+    if (!sku) {
+      return {
+        config: {},
+        error: 'PUBG-bot requires a "sku" in bot_config',
+      };
+    }
+    return { config: { key, game, sku }, error: null };
+  }
   // Other types currently take no config.
   return { config: {}, error: null };
 }

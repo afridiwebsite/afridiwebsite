@@ -630,7 +630,11 @@ function AddPackage(props) {
                             </div>
                           </div>
                           <div className="form_grid">
-                            <div>
+                            {/* `sm:col-span-2` makes the SKU field span both
+                                grid columns so the dropdown is wide enough
+                                to read long item names like
+                                "PUBG Mobile 660 UC — $10". */}
+                            <div className="sm:col-span-2">
                               <label htmlFor="pubg_sku">SKU</label>
                               <select
                                 id="pubg_sku"
@@ -651,7 +655,9 @@ function AddPackage(props) {
                                 {pubgSkus.map((item) => (
                                   <option key={item.sku} value={item.sku}>
                                     {item.display || item.sku}
-                                  
+                                    {item.price != null
+                                      ? ` — $${item.price}`
+                                      : ""}
                                   </option>
                                 ))}
                               </select>
