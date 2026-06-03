@@ -80,7 +80,7 @@ function ReactOrdersTable({ columns, data, tableId }) {
                                             headerGroup.headers.map((column, i) => (
                                                 // Apply the header cell props
                                                 <th key={i} {...column.getHeaderProps(column.getSortByToggleProps())} {...column.getHeaderProps()} className="px-6 align-middle py-3.5 border-b border-gray-200 text-sm uppercase whitespace-nowrap text-left bg-white text-gray-900 font-bold select-none">
-                                                    <div className="flex items-center">
+                                                    <div className={`flex items-center ${column.className}`}>
                                                         {column.render('Header')}
                                                         <span className="block mt-[-4px]" >
                                                             {column.isSorted && <BiCaretUp size={20} className={`duration-150 ${column.isSortedDesc ? 'rotate-180' : ''}`} />}

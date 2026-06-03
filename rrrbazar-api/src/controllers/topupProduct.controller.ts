@@ -16,6 +16,9 @@ class TopupProductController {
         const reqPath = req.protocol + "://" + req.get("host");
 
         const data = await TopupProduct.findAll({
+            order: [
+                ["serial", "ASC"],
+            ],
             attributes: {
                 include: [
                     "logo",
@@ -61,14 +64,13 @@ class TopupProductController {
 
             // Pull every category with its products in one go. `through:
             // { attributes: [] }` strips the pivot row so the payload
-            // stays small. Products are sorted by id DESC inside the
-            // group so the newest ones float to the top — matches what
-            // admins expect when adding new products.
+            // stays small. Products are sorted by `serial` ASC inside the
+            // group.
             const categories = await Category.findAll({
                 where: { is_active: 1 },
                 order: [
                     ["serial", "ASC"],
-                    ["id", "ASC"],
+                    [{ model: TopupProduct, as: "topup_products" }, "serial", "ASC"],
                 ],
                 include: [
                     {
@@ -97,6 +99,9 @@ class TopupProductController {
             // Easier than a NOT-IN subquery: load every product, then
             // filter out the ones that appeared in any category above.
             const allProducts = await TopupProduct.findAll({
+                 order: [
+                    ["serial", "ASC"],
+                ],
                 attributes: {
                     include: [
                         "logo",

@@ -227,11 +227,6 @@ router.get('/users-for-send-sms', auth, adminController.getUsersForSendSms)
 router.post('/send-sms', auth, sendSmsSchema, adminController.sendSmsToUser)
 
 
-// admin wallet
-
-
-//
-
 router.get('/permission/sync', async (req: express.Request, res: express.Response) => {
     const routers = all_routes(router)
     for (const router of routers) {

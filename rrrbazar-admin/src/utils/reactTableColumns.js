@@ -818,6 +818,10 @@ export const productTableColumns = [
     accessor: "id",
   },
   {
+    Header: "Serial",
+    accessor: "serial",
+  },
+  {
     Header: "Name",
     accessor: "name",
   },

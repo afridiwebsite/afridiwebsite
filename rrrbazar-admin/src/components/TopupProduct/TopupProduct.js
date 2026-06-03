@@ -86,6 +86,7 @@ const ProductsUnderGroup = ({ group, onChange }) => {
     {
       id: "action",
       Header: "Action",
+      className: "justify-center",
       accessor: "id",
       Cell: (e) => (
         <ul className="flex space-x-2">
@@ -102,12 +103,7 @@ const ProductsUnderGroup = ({ group, onChange }) => {
           >
             Delete
           </button>
-          <Link
-            to={`/topup-package/add/${e.value}`}
-            className="cstm_btn_small"
-          >
-            Add package
-          </Link>
+         
         </ul>
       ),
     },
