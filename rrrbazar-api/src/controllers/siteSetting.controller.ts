@@ -1,89 +1,112 @@
-import Schema from '../models';
-import express from 'express';
-import responseUtils from '../utils/response.utils';
+import Schema from "../models";
+import express from "express";
+import responseUtils from "../utils/response.utils";
 
 const { SiteSetting } = Schema;
 
 async function getOrCreate() {
-    let settings = await SiteSetting.findOne();
-    if (!settings) {
-        settings = await SiteSetting.create({});
-    }
-    return settings;
+  let settings = await SiteSetting.findOne();
+  if (!settings) {
+    settings = await SiteSetting.create({});
+  }
+  return settings;
 }
 
 class SiteSettingController {
-    async get(req: express.Request, res: express.Response) {
-        const response = new responseUtils();
-        const settings = await getOrCreate();
-        const reqPath = req.protocol + '://' + req.get('host');
-        const json: any = settings.toJSON();
-        json.logo_full_url = json.logo ? `${reqPath}/images/${json.logo}` : '';
-        json.favicon_full_url = json.favicon ? `${reqPath}/images/${json.favicon}` : '';
-        json.wallet_pay_image_full_url = json.wallet_pay_image
-            ? `${reqPath}/images/${json.wallet_pay_image}`
-            : '';
-        response.data = json;
-        res.send(response.response);
-    }
+  async get(req: express.Request, res: express.Response) {
+    const response = new responseUtils();
+    const settings = await getOrCreate();
+    const protocol =
+      req.headers["x-forwarded-proto"]?.toString().split(",")[0] ||
+      req.protocol;
 
-    async update(req: express.Request, res: express.Response) {
-        const response = new responseUtils();
-        const {
-            site_name,
-            logo,
-            favicon,
-            primary_color,
-            secondary_color,
-            coin_to_money_rate,
-            day_1_reward,
-            day_2_reward,
-            day_3_reward,
-            day_4_reward,
-            day_5_reward,
-            day_6_reward,
-            day_7_reward,
-            spin_cost_coins,
-            spin_daily_limit,
-            support_email,
-            telegram_number,
-            telegram_support_number,
-            youtube_link,
-            wallet_pay_image,
-            min_convert_coins,
-        } = req.body;
+    const reqPath = `${protocol}://${req.get("host")}`;
+    const json: any = settings.toJSON();
+    json.logo_full_url = json.logo ? `${reqPath}/images/${json.logo}` : "";
+    json.favicon_full_url = json.favicon
+      ? `${reqPath}/images/${json.favicon}`
+      : "";
+    json.wallet_pay_image_full_url = json.wallet_pay_image
+      ? `${reqPath}/images/${json.wallet_pay_image}`
+      : "";
+    response.data = json;
+    res.send(response.response);
+  }
 
-        const settings = await getOrCreate();
+  async update(req: express.Request, res: express.Response) {
+    const response = new responseUtils();
+    const {
+      site_name,
+      logo,
+      favicon,
+      primary_color,
+      secondary_color,
+      coin_to_money_rate,
+      day_1_reward,
+      day_2_reward,
+      day_3_reward,
+      day_4_reward,
+      day_5_reward,
+      day_6_reward,
+      day_7_reward,
+      spin_cost_coins,
+      spin_daily_limit,
+      support_email,
+      telegram_number,
+      telegram_support_number,
+      youtube_link,
+      wallet_pay_image,
+      min_convert_coins,
+    } = req.body;
 
-        if (site_name !== undefined) settings.site_name = site_name;
-        if (logo !== undefined) settings.logo = logo;
-        if (favicon !== undefined) settings.favicon = favicon;
-        if (primary_color !== undefined) settings.primary_color = primary_color;
-        if (secondary_color !== undefined) settings.secondary_color = secondary_color;
-        if (coin_to_money_rate !== undefined) settings.coin_to_money_rate = coin_to_money_rate;
-        if (day_1_reward !== undefined) settings.day_1_reward = Number(day_1_reward) || 0;
-        if (day_2_reward !== undefined) settings.day_2_reward = Number(day_2_reward) || 0;
-        if (day_3_reward !== undefined) settings.day_3_reward = Number(day_3_reward) || 0;
-        if (day_4_reward !== undefined) settings.day_4_reward = Number(day_4_reward) || 0;
-        if (day_5_reward !== undefined) settings.day_5_reward = Number(day_5_reward) || 0;
-        if (day_6_reward !== undefined) settings.day_6_reward = Number(day_6_reward) || 0;
-        if (day_7_reward !== undefined) settings.day_7_reward = Number(day_7_reward) || 0;
-        if (spin_cost_coins !== undefined)  settings.spin_cost_coins  = Number(spin_cost_coins)  || 0;
-        if (spin_daily_limit !== undefined) settings.spin_daily_limit = Number(spin_daily_limit) || 0;
-        if (support_email !== undefined)    settings.support_email    = String(support_email || '').trim();
-        if (telegram_number !== undefined)  settings.telegram_number  = String(telegram_number || '').trim();
-        if (telegram_support_number !== undefined)
-            settings.telegram_support_number = String(telegram_support_number || '').trim();
-        if (youtube_link !== undefined)     settings.youtube_link     = String(youtube_link || '').trim();
-        if (wallet_pay_image !== undefined) settings.wallet_pay_image = String(wallet_pay_image || '').trim();
-        if (min_convert_coins !== undefined)
-            settings.min_convert_coins = Math.max(0, Number(min_convert_coins) || 0);
+    const settings = await getOrCreate();
 
-        await settings.save();
-        response.data = settings;
-        response.message = 'Settings updated';
-        res.send(response.response);
-    }
+    if (site_name !== undefined) settings.site_name = site_name;
+    if (logo !== undefined) settings.logo = logo;
+    if (favicon !== undefined) settings.favicon = favicon;
+    if (primary_color !== undefined) settings.primary_color = primary_color;
+    if (secondary_color !== undefined)
+      settings.secondary_color = secondary_color;
+    if (coin_to_money_rate !== undefined)
+      settings.coin_to_money_rate = coin_to_money_rate;
+    if (day_1_reward !== undefined)
+      settings.day_1_reward = Number(day_1_reward) || 0;
+    if (day_2_reward !== undefined)
+      settings.day_2_reward = Number(day_2_reward) || 0;
+    if (day_3_reward !== undefined)
+      settings.day_3_reward = Number(day_3_reward) || 0;
+    if (day_4_reward !== undefined)
+      settings.day_4_reward = Number(day_4_reward) || 0;
+    if (day_5_reward !== undefined)
+      settings.day_5_reward = Number(day_5_reward) || 0;
+    if (day_6_reward !== undefined)
+      settings.day_6_reward = Number(day_6_reward) || 0;
+    if (day_7_reward !== undefined)
+      settings.day_7_reward = Number(day_7_reward) || 0;
+    if (spin_cost_coins !== undefined)
+      settings.spin_cost_coins = Number(spin_cost_coins) || 0;
+    if (spin_daily_limit !== undefined)
+      settings.spin_daily_limit = Number(spin_daily_limit) || 0;
+    if (support_email !== undefined)
+      settings.support_email = String(support_email || "").trim();
+    if (telegram_number !== undefined)
+      settings.telegram_number = String(telegram_number || "").trim();
+    if (telegram_support_number !== undefined)
+      settings.telegram_support_number = String(
+        telegram_support_number || "",
+      ).trim();
+    if (youtube_link !== undefined)
+      settings.youtube_link = String(youtube_link || "").trim();
+    if (wallet_pay_image !== undefined)
+      settings.wallet_pay_image = String(wallet_pay_image || "").trim();
+    if (min_convert_coins !== undefined)
+      settings.min_convert_coins = Math.max(0, Number(min_convert_coins) || 0);
+
+    await settings.save();
+    response.data = settings;
+    response.message = "Settings updated";
+    res.send(response.response);
+  }
 }
 
 export default new SiteSettingController();
