@@ -32,19 +32,27 @@ function copy(value) {
   }
 }
 
-// Backend completion paths append a `<div class="order-reward-note">...</div>`
-// block to brief_note carrying the coin/cashback + reseller bonus the user
-// earned. We render it in its own block (always, even for voucher/UniPin
-// orders) so the customer never misses it, and strip it out of the rest of
-// brief_note so it doesn't double-render inside the existing freeform/UniPin
-// branches.
+// Backend completion paths append `<div class="order-reward-note">...</div>`
+// and/or `<div class="order-reseller-note">...</div>` blocks to brief_note.
+// We extract them into their own blocks so the customer sees them
+// clearly and they don't double-render in the generic Note section.
 function splitRewardNote(briefNote) {
-  const s = String(briefNote || "");
-  const match = s.match(/<div class="order-reward-note"[\s\S]*?<\/div>/);
-  if (!match) return { rewardHtml: "", rest: s };
+  let s = String(briefNote || "");
+
+  const rewardMatch = s.match(/<div class="order-reward-note"[\s\S]*?<\/div>/);
+  const rewardHtml = rewardMatch ? rewardMatch[0] : "";
+  if (rewardMatch) s = s.replace(rewardMatch[0], "");
+
+  const resellerMatch = s.match(
+    /<div class="order-reseller-note"[\s\S]*?<\/div>/,
+  );
+  const resellerHtml = resellerMatch ? resellerMatch[0] : "";
+  if (resellerMatch) s = s.replace(resellerMatch[0], "");
+
   return {
-    rewardHtml: match[0],
-    rest: s.replace(match[0], "").trim(),
+    rewardHtml,
+    resellerHtml,
+    rest: s.trim(),
   };
 }
 
@@ -122,9 +130,8 @@ function OrderPage() {
                 // branches operate on a clean brief_note (otherwise the
                 // reward HTML would either render twice or leak into the
                 // plain-text UniPin code display).
-                const { rewardHtml, rest: cleanedBrief } = splitRewardNote(
-                  order?.brief_note,
-                );
+                const { rewardHtml, resellerHtml, rest: cleanedBrief } =
+                  splitRewardNote(order?.brief_note);
                 const isUniPin =
                   cleanedBrief && cleanedBrief.substring(0, 6) === "UniPin";
                 const hasFreeformNote =
@@ -245,6 +252,13 @@ function OrderPage() {
                       {rewardHtml && (
                         <div className="order-reward-wrap mt-1">
                           {ReactHtmlParser(rewardHtml)}
+                        </div>
+                      )}
+
+                      {/* Reseller bonus block */}
+                      {resellerHtml && (
+                        <div className="order-reseller-wrap mt-1">
+                          {ReactHtmlParser(resellerHtml)}
                         </div>
                       )}
                     </div>

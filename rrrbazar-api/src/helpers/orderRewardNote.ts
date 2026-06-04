@@ -18,6 +18,7 @@ export interface RewardNoteOpts {
 }
 
 export const REWARD_NOTE_MARKER_CLASS = "order-reward-note";
+export const RESELLER_NOTE_MARKER_CLASS = "order-reseller-note";
 
 export function buildRewardNoteHtml(opts: RewardNoteOpts): string {
   const qty = Math.max(1, Number(opts.quantity || 1));
@@ -29,39 +30,39 @@ export function buildRewardNoteHtml(opts: RewardNoteOpts): string {
     const amt = Number(opts.cashbackAmount || 0) * qty;
     if (amt > 0) {
       primaryHtml =
-        `<div><strong>🎁 Cashback reward:</strong> ৳${amt.toFixed(2)}</div>`;
+        `<div class="${REWARD_NOTE_MARKER_CLASS}" ` +
+        `style="margin-top:8px; padding:8px 10px; border-left:3px solid #10b981; ` +
+        `background:#ecfdf5; border-radius:4px; font-size:13px; color:#065f46;">` +
+        `<strong>🎁 Cashback reward:</strong> ৳${amt.toFixed(2)}` +
+        `</div>`;
     }
   } else {
     const coins = Number(opts.coinValue || 0) * qty;
     if (coins > 0) {
-      primaryHtml = `<div><strong>🪙 Coin reward:</strong> +${coins} coins</div>`;
+      primaryHtml =
+        `<div class="${REWARD_NOTE_MARKER_CLASS}" ` +
+        `style="margin-top:8px; padding:8px 10px; border-left:3px solid #10b981; ` +
+        `background:#ecfdf5; border-radius:4px; font-size:13px; color:#065f46;">` +
+        `<strong>🪙 Coin reward:</strong> +${coins} coins` +
+        `</div>`;
     }
   }
 
   // Reseller bonus — independent of reward_type, only paid to resellers.
-  // Rendered as a visually distinct sub-block so the user sees both
-  // amounts separately rather than a single combined number.
   let resellerHtml = "";
   if (opts.isReseller) {
     const rc = Number(opts.resellerCashback || 0) * qty;
     if (rc > 0) {
       resellerHtml =
-        `<div style="margin-top:4px; padding-top:4px; border-top:1px dashed #a7f3d0;">` +
+        `<div class="${RESELLER_NOTE_MARKER_CLASS}" ` +
+        `style="margin-top:8px; padding:8px 10px; border-left:3px solid #6366f1; ` +
+        `background:#eef2ff; border-radius:4px; font-size:13px; color:#3730a3;">` +
         `<strong>💼 Reseller bonus:</strong> ৳${rc.toFixed(2)}` +
         `</div>`;
     }
   }
 
-  if (!primaryHtml && !resellerHtml) return "";
-
-  return (
-    `<div class="${REWARD_NOTE_MARKER_CLASS}" ` +
-    `style="margin-top:8px; padding:8px 10px; border-left:3px solid #10b981; ` +
-    `background:#ecfdf5; border-radius:4px; font-size:13px; color:#065f46;">` +
-    primaryHtml +
-    resellerHtml +
-    `</div>`
-  );
+  return primaryHtml + resellerHtml;
 }
 
 // Strip any existing reward-note div from a brief_note string before
@@ -70,13 +71,10 @@ export function buildRewardNoteHtml(opts: RewardNoteOpts): string {
 // marked the order completed).
 export function stripRewardNote(briefNote: string | null | undefined): string {
   const s = String(briefNote || "");
-  // Greedy-but-bounded match — same opening tag, closing div. The
-  // marker div is the last thing we ever append, so this captures the
-  // tail reliably.
-  return s.replace(
-    /<div class="order-reward-note"[\s\S]*?<\/div>\s*$/,
-    "",
-  );
+  return s
+    .replace(/<div class="order-reward-note"[\s\S]*?<\/div>/g, "")
+    .replace(/<div class="order-reseller-note"[\s\S]*?<\/div>/g, "")
+    .trim();
 }
 
 export default buildRewardNoteHtml;
