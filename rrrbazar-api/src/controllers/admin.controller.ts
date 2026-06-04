@@ -14,6 +14,13 @@ import {
   executeDispatch,
   MAX_DISPATCH_ATTEMPTS,
 } from '../helpers/dispatchBot';
+import {
+  checkPubgOrderStatusOnce,
+  getDispatchApiKey,
+  getDispatchUpstreamOrderId,
+  parsePubgBotBody,
+  processPubgResponse,
+} from '../helpers/topupOrderHandler';
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // import bcrypt from 'bcryptjs'
@@ -443,6 +450,11 @@ class AdminController {
         let stillFailed = 0;
         let skippedCapped = 0;
         let poolStillEmpty = 0;
+        // Set when any pubg-bot dispatch on this order was handled via
+        // processPubgResponse — skip the aggregate-based finalize below
+        // so we don't overwrite the carefully-crafted pubg brief_note +
+        // details.
+        let pubgFinalized = false;
 
         console.log('[retryBotDispatches] processing dispatches', {
           order_id,
@@ -659,6 +671,121 @@ class AdminController {
             });
           }
 
+          // PUBG-bot retry has a different shape than the legacy bots:
+          // before re-firing the POST we GET /orders/{upstream_id} to see
+          // if the provider has already resolved the order. If it has, we
+          // finalize via processPubgResponse and skip the POST entirely.
+          // Only if the upstream is still pending_review (or we don't have
+          // an upstream order_id captured) do we fall through to
+          // executeDispatch + processPubgResponse to fire a fresh POST.
+          const isPubgBot =
+            String((dispatch as any).bot_type || '').toLowerCase().trim() ===
+            'pubg-bot';
+
+          if (isPubgBot) {
+            const upstreamOrderId = getDispatchUpstreamOrderId(dispatch);
+            const apiKey = getDispatchApiKey(dispatch);
+            console.log('[retryBotDispatches] pubg-bot — preflight GET', {
+              dispatch_id: dispatch.id,
+              has_upstream_order_id: !!upstreamOrderId,
+              has_api_key: !!apiKey,
+            });
+
+            if (upstreamOrderId && apiKey) {
+              const checkResult = await checkPubgOrderStatusOnce(
+                upstreamOrderId,
+                apiKey,
+              );
+              const upstreamStatus = String(checkResult.parsed?.status || '')
+                .toLowerCase()
+                .trim();
+              const upstreamResolved =
+                checkResult.transportOk &&
+                !!upstreamStatus &&
+                upstreamStatus !== 'pending_review';
+
+              console.log('[retryBotDispatches] pubg-bot GET result', {
+                dispatch_id: dispatch.id,
+                transport_ok: checkResult.transportOk,
+                upstream_status: upstreamStatus || '(empty)',
+                upstream_resolved: upstreamResolved,
+              });
+
+              if (upstreamResolved) {
+                // Persist what we saw and bump the attempt counter so the
+                // cap still applies if this dispatch is retried again.
+                (dispatch as any).response_content = checkResult.respContent;
+                (dispatch as any).attempt_count =
+                  Number(dispatch.attempt_count || 0) + 1;
+                (dispatch as any).last_attempted_at = new Date();
+                await dispatch.save();
+
+                await processPubgResponse({
+                  order,
+                  topupPackage,
+                  dispatch,
+                  parsed: checkResult.parsed,
+                  respContent: checkResult.respContent,
+                  transportOk: checkResult.transportOk,
+                  errReason: checkResult.errReason,
+                });
+
+                // processPubgResponse owns the order finalization for
+                // pubg-bot — skip the aggregate-based finalize below by
+                // jumping straight to the next dispatch.
+                pubgFinalized = true;
+                sent += 1;
+                continue;
+              }
+              // Upstream still pending_review or transport blip — re-fire
+              // the POST below. The new response_content will overwrite
+              // whatever the GET captured, which is fine because
+              // processPubgResponse runs again after the POST.
+            }
+
+            // Fall through to executeDispatch — re-fires the original
+            // POST payload (envelope on dispatch.code). Then we parse
+            // the response and finalize via processPubgResponse so the
+            // order isn't left stuck on a partial transport update.
+            console.log(
+              '[retryBotDispatches] pubg-bot — firing POST via executeDispatch',
+              { dispatch_id: dispatch.id, order_id },
+            );
+
+            const { ok: pubgOk, error_reason: pubgErr } = await executeDispatch(
+              dispatch,
+              {
+                player_id: order.playerid || '',
+                uc: ucForCall,
+              },
+            );
+
+            const refreshedPubg =
+              (await BotDispatch.findByPk(dispatch.id)) || dispatch;
+            const respContentPubg = String(
+              (refreshedPubg as any)?.response_content ?? '',
+            );
+            const errReasonPubg = String(
+              (refreshedPubg as any)?.error_reason ?? pubgErr ?? '',
+            );
+            const parsedPubg = parsePubgBotBody(respContentPubg);
+
+            await processPubgResponse({
+              order,
+              topupPackage,
+              dispatch: refreshedPubg,
+              parsed: parsedPubg,
+              respContent: respContentPubg,
+              transportOk: !!pubgOk,
+              errReason: errReasonPubg,
+            });
+
+            pubgFinalized = true;
+            if (pubgOk) sent += 1;
+            else stillFailed += 1;
+            continue;
+          }
+
           console.log('[retryBotDispatches] calling executeDispatch', {
             dispatch_id: dispatch.id,
             order_id,
@@ -688,8 +815,13 @@ class AdminController {
         // also refresh the order.details HTML so the Details column
         // reflects the new state immediately (the bot callbacks will
         // re-render again later as they arrive).
+        //
+        // Skip this entirely when a pubg-bot dispatch was finalized via
+        // processPubgResponse — the aggregate would clobber the pubg
+        // brief_note/details and (for pending_review) map sent → "In
+        // Progress" which is the wrong customer-facing status.
         const agg = await aggregateOrderFromDispatches(order_id);
-        if (agg.status) {
+        if (agg.status && !pubgFinalized) {
           const previousStatus = order.status;
           order.status = agg.status;
           (order as any).details = buildOrderDetailsHtml(agg);
