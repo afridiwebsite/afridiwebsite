@@ -119,28 +119,53 @@ function TopupOrderPage() {
   const playerIdInput = dynamicInputs.find((i) => i.is_player_id === 1);
 
   // Verify-button state. Keyed by input id so we can disable/show results
-  // per-input independently.
-  const [verifyState, setVerifyState] = useState({}); // { [id]: { loading, data, error } }
+  // per-input independently. `value` is captured at verify time so we can
+  // detect post-verification edits (gamerspay checks become stale if the
+  // customer changes the ID after passing once).
+  const [verifyState, setVerifyState] = useState({}); // { [id]: { loading, data, error, value } }
   const runVerify = async (input, value) => {
-    if (!value) {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) {
       setVerifyState((p) => ({
         ...p,
         [input.id]: { error: "Enter a value first" },
       }));
       return;
     }
-    setVerifyState((p) => ({ ...p, [input.id]: { loading: true } }));
+    setVerifyState((p) => ({
+      ...p,
+      [input.id]: { loading: true, value: trimmed },
+    }));
     try {
-      const res = await verifyPlayerInput(input.id, value);
+      const res = await verifyPlayerInput(input.id, trimmed);
       const data = res?.data?.data || res?.data;
-      setVerifyState((p) => ({ ...p, [input.id]: { data } }));
+      setVerifyState((p) => ({
+        ...p,
+        [input.id]: { data, value: trimmed },
+      }));
     } catch (e) {
       const msg =
         e?.response?.data?.message ||
         e?.response?.data?.error ||
         "Verification failed";
-      setVerifyState((p) => ({ ...p, [input.id]: { error: msg } }));
+      setVerifyState((p) => ({
+        ...p,
+        [input.id]: { error: msg, value: trimmed },
+      }));
     }
+  };
+
+  // True iff the Player ID input requires the GamersPay validate call AND
+  // we don't currently have a passing result for the value the customer
+  // typed in. Drives the submit gate below and the inline hint on the
+  // verify button.
+  const isGamerspayVerified = (currentValue) => {
+    if (playerIdInput?.verify_type !== "gamerspay") return true;
+    const v = verifyState[playerIdInput.id];
+    if (!v || !v.data || v.error) return false;
+    return (
+      String(v.value || "").trim() === String(currentValue || "").trim()
+    );
   };
 
   // ReactHtmlParser keeps wrapper tags even for blank input, so strip tags
@@ -307,6 +332,29 @@ function TopupOrderPage() {
                         selectedpackage,
                         payment_mathod,
                       } = values;
+
+                      // GamersPay name-check is a hard gate. If the admin
+                      // configured this product to validate against the
+                      // GamersPay API and the customer hasn't passed it
+                      // (or edited the ID after passing), bail out before
+                      // we hit /packageorder. Inline error tells them to
+                      // press "Check Player ID".
+                      if (playerIdInput?.verify_type === "gamerspay") {
+                        if (!isGamerspayVerified(playerid)) {
+                          const stale =
+                            verifyState[playerIdInput.id]?.data &&
+                            String(
+                              verifyState[playerIdInput.id]?.value || "",
+                            ).trim() !== String(playerid || "").trim();
+                          setServerError(
+                            stale
+                              ? `Please re-check ${playerIdInput.title} — it changed after the last verification.`
+                              : `Please verify ${playerIdInput.title} first — this product requires a successful GamersPay name check before ordering.`,
+                          );
+                          scrollTopWindow();
+                          return;
+                        }
+                      }
 
                       // Info-only products (no packages) skip the Swal
                       // confirmation since there's no price to confirm.
@@ -950,14 +998,27 @@ function TopupOrderPage() {
                                               {vState.data &&
                                                 !vState.error &&
                                                 (() => {
+                                                  // GamersPay returns
+                                                  // { success, player_name }
+                                                  // while the dynamic flow
+                                                  // returns { player_info:
+                                                  // { nickname, level } }
+                                                  // or a flat { nickname,
+                                                  // level }. Prefer
+                                                  // player_name when
+                                                  // present, fall back to
+                                                  // nickname so both shapes
+                                                  // render the same.
                                                   const info =
                                                     vState.data.player_info ||
                                                     vState.data;
-                                                  const nickname =
+                                                  const playerName =
+                                                    vState.data.player_name ||
+                                                    info?.player_name ||
                                                     info?.nickname;
                                                   const level = info?.level;
                                                   if (
-                                                    !nickname &&
+                                                    !playerName &&
                                                     level == null
                                                   ) {
                                                     return (
@@ -968,13 +1029,13 @@ function TopupOrderPage() {
                                                   }
                                                   return (
                                                     <span className="topup-verify-result">
-                                                      {nickname && (
+                                                      {playerName && (
                                                         <span className="topup-verify-chip">
                                                           <span className="topup-verify-chip-label">
-                                                            Nickname
+                                                            Name
                                                           </span>
                                                           <strong>
-                                                            {nickname}
+                                                            {playerName}
                                                           </strong>
                                                         </span>
                                                       )}
@@ -1185,7 +1246,14 @@ function TopupOrderPage() {
                                   (Number(authUser?.wallet ?? 0) <= 0 &&
                                     selectedPaymentMethod != "auto_payment") ||
                                   (isNotEnoughMoney &&
-                                    selectedPaymentMethod != "auto_payment")
+                                    selectedPaymentMethod != "auto_payment") ||
+                                  // GamersPay gate — same rule as the
+                                  // onSubmit guard above so the button
+                                  // visually reflects what'll happen on
+                                  // click.
+                                  (playerIdInput?.verify_type ===
+                                    "gamerspay" &&
+                                    !isGamerspayVerified(values.playerid))
                                 }
                                 onClick={handleSubmit}
                                 type="submit"

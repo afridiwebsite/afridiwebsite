@@ -2528,20 +2528,55 @@ class AdminController {
       }
 
       // Normalize, drop empties (title is required), and tag is_player_id.
+      // The Player ID input now picks one of three verify backends via
+      // `verify_type`:
+      //   'none'      — no name check
+      //   'dynamic'   — admin-configured verify_url + {value} placeholder
+      //   'gamerspay' — POST to api.gamerspay.app/api/v1/validate with the
+      //                 chosen game + the customer-supplied playerid
+      // `verify_player_name` is still persisted (legacy readers expect it)
+      // and is derived as `verify_type !== 'none'`.
       const cleaned = rawInputs
         .map((it: any, idx: number) => {
           const title = String(it?.title || '').trim()
           if (!title) return null
           const playerIdMatch = isPlayerIdTitle(title)
-          const verify = playerIdMatch && it?.verify_player_name ? 1 : 0
+
+          // Resolve verify_type. Fall back to legacy boolean if missing
+          // (older admin clients still send only verify_player_name).
+          let verifyType = String(it?.verify_type || '').trim().toLowerCase()
+          if (!['none', 'dynamic', 'gamerspay'].includes(verifyType)) {
+            verifyType = it?.verify_player_name ? 'dynamic' : 'none'
+          }
+          // Only the Player ID input ever runs verification.
+          if (!playerIdMatch) verifyType = 'none'
+
+          const verify = verifyType !== 'none' ? 1 : 0
+          // Per-type field whitelist — anything not relevant to the chosen
+          // type is zeroed so a switch from dynamic→gamerspay (or back)
+          // doesn't leave stale config behind.
+          const verifyUrl =
+            verifyType === 'dynamic' ? String(it?.verify_url || '').trim() : ''
+          const verifyGame =
+            verifyType === 'gamerspay'
+              ? String(it?.verify_game || '').trim().toLowerCase()
+              : ''
+          const apiToken = verify ? String(it?.api_token || '').trim() : ''
+          const regionLock =
+            verifyType === 'dynamic'
+              ? String(it?.region_lock || '').trim().toUpperCase()
+              : ''
+
           return {
             topup_product_id: product_id,
             title: playerIdMatch ? PLAYER_ID_TITLE : title, // normalize casing
             is_player_id: playerIdMatch ? 1 : 0,
             verify_player_name: verify,
-            verify_url: verify ? String(it?.verify_url || '').trim() : '',
-            api_token: verify ? String(it?.api_token || '').trim() : '',
-            region_lock: verify ? String(it?.region_lock || '').trim().toUpperCase() : '',
+            verify_type: verifyType,
+            verify_url: verifyUrl,
+            verify_game: verifyGame,
+            api_token: apiToken,
+            region_lock: regionLock,
             serial: typeof it?.serial === 'number' ? it.serial : idx,
           }
         })

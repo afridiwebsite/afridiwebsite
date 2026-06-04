@@ -517,11 +517,17 @@ class UserController {
             required: false,
             // Don't leak the verify URL to the client — the verify endpoint
             // looks it up server-side by input id.
+            // The storefront needs verify_type so it can gate order submit
+            // on a successful GamersPay validation. verify_game is harmless
+            // (admin-set, not customer data) and saves the client one round
+            // trip. API tokens and region_lock stay server-side.
             attributes: [
               "id",
               "title",
               "is_player_id",
               "verify_player_name",
+              "verify_type",
+              "verify_game",
               "serial",
             ],
           },
@@ -566,14 +572,124 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
+      console.log(input_id,'dd')
+
       const input = await TopupProductInput.findByPk(input_id);
-      if (!input) {
+      if (!input ) {
         response.message = "Input not found";
         response.status = 400;
         response.success = false;
         return res.status(400).send(response.response);
       }
-      if (!input.verify_player_name || !input.verify_url) {
+
+      // Resolve verify backend. Legacy rows that never wrote verify_type
+      // are treated as 'dynamic' when verify_player_name is on.
+      const verifyType = (() => {
+        const vt = String((input as any).verify_type || "").trim().toLowerCase();
+        if (vt === "gamerspay" || vt === "dynamic" || vt === "none") return vt;
+        return input.verify_player_name ? "dynamic" : "none";
+      })();
+      if (verifyType === "none") {
+        response.message = "Verification is not configured for this input";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+
+      // Lazy require axios so we don't pull it into the top of the file just
+      // for this branch.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const axios = require("axios");
+
+      console.log('type', verifyType)
+      
+      // Strip axios's generic "Request failed with status code N" and
+      // network-error messages so the storefront never displays them.
+      // Anything that's already a real upstream message passes through.
+      const sanitizeVerifyError = (raw: any, fallback: string): string => {
+        const s = String(raw || "").trim();
+        if (!s) return fallback;
+        if (/^request failed with status code/i.test(s)) return fallback;
+        if (/^network error$/i.test(s))
+          return "Could not reach the verification service. Please try again in a moment.";
+        if (/timeout/i.test(s) && /\bms\b|\bseconds?\b/i.test(s))
+          return "Verification timed out. Please try again.";
+        return s;
+      };
+
+      if (verifyType === "gamerspay") {
+        // GamersPay validate API. URL is hardcoded — admin only supplies
+        // the API key (api_token) and the game key (verify_game). Body
+        // shape per the spec:
+        //   success: { success: true, player_name: "...", message: null }
+        //   failure: { success: false, message: "...", ... }
+        const game = String((input as any).verify_game || "").trim();
+        if (!game) {
+          response.message =
+            "This product is not set up for verification yet. Please contact support.";
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+        if (!input.api_token) {
+          response.message =
+            "This product is not set up for verification yet. Please contact support.";
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+        try {
+          const upstream = await axios.post(
+            "https://api.gamerspay.app/api/v1/validate",
+            { game, player_id: value },
+            {
+              timeout: 8000,
+              headers: { "X-API-Key": input.api_token },
+            },
+          );
+          const body = upstream.data;
+          // Treat the documented shape literally — explicit success:false
+          // (and variants) is a hard failure. Anything ambiguous falls
+          // through to success.
+          const explicitFailure =
+            body?.success === false ||
+            body?.valid === false ||
+            String(body?.status || "").toLowerCase() === "error" ||
+            String(body?.status || "").toLowerCase() === "failed";
+          if (explicitFailure) {
+            response.message = sanitizeVerifyError(
+              body?.message || body?.error,
+              "We could not verify this Player ID. Please double-check it and try again.",
+            );
+            response.status = 400;
+            response.success = false;
+            return res.status(400).send(response.response);
+          }
+          response.data = body;
+          return res.send(response.data);
+        } catch (err: any) {
+          // Prefer the upstream body's own message (already friendly per
+          // the spec); fall back to a generic friendly default. Never
+          // surface err.message — axios sets that to
+          // "Request failed with status code 4xx" which is meaningless
+          // to a buyer.
+          const upstreamBody = err?.response?.data;
+          const rawMsg =
+            upstreamBody?.message ||
+            upstreamBody?.error ||
+            (typeof upstreamBody === "string" ? upstreamBody : null);
+          response.message = sanitizeVerifyError(
+            rawMsg,
+            "We could not verify this Player ID. Please double-check it and try again.",
+          );
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+      }
+
+      // verifyType === 'dynamic' (the existing per-product verify_url path).
+      if (!input.verify_url) {
         response.message = "Verification is not configured for this input";
         response.status = 400;
         response.success = false;
@@ -592,10 +708,6 @@ class UserController {
       const encoded = encodeURIComponent(value);
       const url = input.verify_url.replace(/\{value\}/g, encoded);
 
-      // Lazy require axios so we don't pull it into the top of the file just
-      // for this one branch.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const axios = require("axios");
       const headers: Record<string, string> = {};
       if (input.api_token) {
         headers.Authorization = `Bearer ${input.api_token}`;

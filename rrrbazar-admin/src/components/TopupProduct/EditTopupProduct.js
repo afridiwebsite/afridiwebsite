@@ -54,14 +54,33 @@ function EditTopupProduct(props) {
   const PLAYER_ID_TITLE = "Player ID";
   const isPlayerIdTitle = (t) =>
     String(t || "").trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
+  // See AddTopupProduct for verify_type semantics. verify_player_name is
+  // still sent (derived) so older readers keep working.
   const newInputRow = () => ({
     _key: Math.random().toString(36).slice(2),
     title: "",
-    verify_player_name: false,
+    verify_type: "none",
     verify_url: "",
+    verify_game: "",
     api_token: "",
     region_lock: "",
   });
+
+  // Same set as AddTopupProduct / AddPackage's PUBG-bot game dropdown.
+  const GAMERSPAY_GAMES = [
+    "pubg",
+    "ff_mena",
+    "ff_cis",
+    "ff_sg",
+    "ff_eu",
+    "ff_bd",
+    "ff_pk",
+    "ff_latam",
+    "ff_vn",
+    "ff_tw",
+    "ff_br",
+    "ff_id",
+  ];
 
   // Same region options as AddTopupProduct.
   const REGION_OPTIONS = [
@@ -86,18 +105,30 @@ function EditTopupProduct(props) {
   const [productInputs, setProductInputs] = useState([]);
 
   // Load existing inputs once the product data arrives. Sorted by serial.
+  // Legacy rows that don't carry verify_type yet are coerced to 'dynamic'
+  // when verify_player_name is on (preserves current behavior) and 'none'
+  // otherwise.
   useEffect(() => {
     if (data && Array.isArray(data.inputs)) {
       const rows = [...data.inputs]
         .sort((a, b) => (a.serial || 0) - (b.serial || 0))
-        .map((it) => ({
-          _key: `srv-${it.id}`,
-          title: it.title || "",
-          verify_player_name: !!it.verify_player_name,
-          verify_url: it.verify_url || "",
-          api_token: it.api_token || "",
-          region_lock: it.region_lock || "",
-        }));
+        .map((it) => {
+          const explicit = String(it.verify_type || "").trim().toLowerCase();
+          const verifyType = ["none", "dynamic", "gamerspay"].includes(explicit)
+            ? explicit
+            : it.verify_player_name
+              ? "dynamic"
+              : "none";
+          return {
+            _key: `srv-${it.id}`,
+            title: it.title || "",
+            verify_type: verifyType,
+            verify_url: it.verify_url || "",
+            verify_game: it.verify_game || "",
+            api_token: it.api_token || "",
+            region_lock: it.region_lock || "",
+          };
+        });
       setProductInputs(rows);
     }
   }, [data]);
@@ -182,28 +213,40 @@ function EditTopupProduct(props) {
       return;
     }
 
-    // Verify URL must contain the {value} placeholder — that's where the
-    // dynamic player ID gets injected. Without it the request would send
-    // an empty/static URL to upstream.
-    const missingTagRow = productInputs.find(
+    // Per-type validation mirrors AddTopupProduct.
+    const dynamicMissingTag = productInputs.find(
       (it) =>
-        it.verify_player_name &&
+        it.verify_type === "dynamic" &&
         String(it.verify_url || "").trim() &&
         !String(it.verify_url).includes("{value}"),
     );
-    if (missingTagRow) {
+    if (dynamicMissingTag) {
       toast.error(
-        `Verify URL for "${missingTagRow.title}" must include the {value} tag — that's where the entered ID is inserted.`,
+        `Verify URL for "${dynamicMissingTag.title}" must include the {value} tag — that's where the entered ID is inserted.`,
         toastDefault,
       );
       return;
     }
-    const emptyVerifyUrl = productInputs.find(
-      (it) => it.verify_player_name && !String(it.verify_url || "").trim(),
+    const dynamicEmptyUrl = productInputs.find(
+      (it) =>
+        it.verify_type === "dynamic" && !String(it.verify_url || "").trim(),
     );
-    if (emptyVerifyUrl) {
+    if (dynamicEmptyUrl) {
       toast.error(
-        `Verify URL is required for "${emptyVerifyUrl.title}" — turn off "Verify player name" if you don't want verification.`,
+        `Verify URL is required for "${dynamicEmptyUrl.title}" — switch back to "No name check" if you don't want verification.`,
+        toastDefault,
+      );
+      return;
+    }
+    const gamerspayMissing = productInputs.find(
+      (it) =>
+        it.verify_type === "gamerspay" &&
+        (!String(it.verify_game || "").trim() ||
+          !String(it.api_token || "").trim()),
+    );
+    if (gamerspayMissing) {
+      toast.error(
+        `GamersPay verify on "${gamerspayMissing.title}" needs both a Game and an API key.`,
         toastDefault,
       );
       return;
@@ -249,8 +292,11 @@ function EditTopupProduct(props) {
             {
               inputs: productInputs.map((it, idx) => ({
                 title: it.title,
-                verify_player_name: it.verify_player_name ? 1 : 0,
+                verify_type: it.verify_type || "none",
+                verify_player_name:
+                  it.verify_type && it.verify_type !== "none" ? 1 : 0,
                 verify_url: it.verify_url || "",
+                verify_game: it.verify_game || "",
                 api_token: it.api_token || "",
                 region_lock: it.region_lock || "",
                 serial: idx,
@@ -516,20 +562,28 @@ function EditTopupProduct(props) {
                               Player ID input — gate them on the title match. */}
                           {reserved && (
                             <div className="mt-2">
-                              <label className="py-1 inline-flex items-center cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  className="mr-2"
-                                  checked={!!row.verify_player_name}
-                                  onChange={(e) =>
-                                    updateInputAt(idx, {
-                                      verify_player_name: e.target.checked,
-                                    })
-                                  }
-                                />
-                                <span className="text-sm">Check player name</span>
+                              <label className="text-xs text-gray-600 block mb-1">
+                                Player name check
                               </label>
-                              {row.verify_player_name && (
+                              <select
+                                className="form_input"
+                                value={row.verify_type || "none"}
+                                onChange={(e) =>
+                                  updateInputAt(idx, {
+                                    verify_type: e.target.value,
+                                  })
+                                }
+                              >
+                                <option value="none">No name check</option>
+                                <option value="dynamic">
+                                  Check player name dynamic
+                                </option>
+                                <option value="gamerspay">
+                                  Gamers pay name check
+                                </option>
+                              </select>
+
+                              {row.verify_type === "dynamic" && (
                                 <div className="mt-2">
                                   <div className="mb-2 text-xs bg-blue-50 border border-blue-200 rounded p-2">
                                     <strong className="text-blue-800">
@@ -572,7 +626,8 @@ function EditTopupProduct(props) {
                                   <label className="text-xs text-gray-600 block mb-1 mt-2">
                                     API Token{" "}
                                     <span className="text-gray-400">
-                                      (sent as <code>Authorization: Bearer &lt;token&gt;</code>)
+                                      (sent as{" "}
+                                      <code>Authorization: Bearer &lt;token&gt;</code>)
                                     </span>
                                   </label>
                                   <input
@@ -608,6 +663,63 @@ function EditTopupProduct(props) {
                                       </option>
                                     ))}
                                   </select>
+                                </div>
+                              )}
+
+                              {row.verify_type === "gamerspay" && (
+                                <div className="mt-2">
+                                  <div className="mb-2 text-xs bg-emerald-50 border border-emerald-200 rounded p-2 text-emerald-900">
+                                    Calls{" "}
+                                    <code className="bg-white px-1 rounded border border-emerald-200">
+                                      POST api.gamerspay.app/api/v1/validate
+                                    </code>{" "}
+                                    with{" "}
+                                    <code className="bg-white px-1 rounded border border-emerald-200">
+                                      {"{ game, playerid }"}
+                                    </code>{" "}
+                                    and your API key in the{" "}
+                                    <code className="bg-white px-1 rounded border border-emerald-200">
+                                      X-API-Key
+                                    </code>{" "}
+                                    header. If the API can't validate the
+                                    player the storefront blocks the order.
+                                  </div>
+                                  <label className="text-xs text-gray-600 block mb-1">
+                                    Game
+                                  </label>
+                                  <select
+                                    className="form_input"
+                                    value={row.verify_game || ""}
+                                    onChange={(e) =>
+                                      updateInputAt(idx, {
+                                        verify_game: e.target.value,
+                                      })
+                                    }
+                                  >
+                                    <option value="">— Select game —</option>
+                                    {GAMERSPAY_GAMES.map((g) => (
+                                      <option key={g} value={g}>
+                                        {g}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <label className="text-xs text-gray-600 block mb-1 mt-2">
+                                    API key{" "}
+                                    <span className="text-gray-400">
+                                      (sent as <code>X-API-Key</code>)
+                                    </span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="form_input"
+                                    placeholder="GamersPay X-API-Key value"
+                                    value={row.api_token}
+                                    onChange={(e) =>
+                                      updateInputAt(idx, {
+                                        api_token: e.target.value,
+                                      })
+                                    }
+                                  />
                                 </div>
                               )}
                             </div>

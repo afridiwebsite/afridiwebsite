@@ -12,6 +12,18 @@ export default (sequelize: Sequelize) => {
         public verify_url!: string;
         public api_token!: string;
         public region_lock!: string;
+        // Verification backend for the Player ID input.
+        //   'none'     — no name check at all
+        //   'dynamic'  — admin-configured verify_url with a {value} placeholder
+        //                (the existing flow — GET request, region_lock honoured)
+        //   'gamerspay'— POST to api.gamerspay.app/api/v1/validate with
+        //                X-API-Key header + { game, playerid } body. The game
+        //                key lives in verify_game; api_token holds the API key.
+        // verify_player_name is kept as a 1/0 derived flag so older readers
+        // ("is verify configured?") keep working — it's 1 whenever
+        // verify_type !== 'none'.
+        public verify_type!: string;
+        public verify_game!: string;
         public serial!: number;
 
         static associate({ TopupProduct }: typeof Schema) {
@@ -53,6 +65,16 @@ export default (sequelize: Sequelize) => {
         },
         region_lock: {
             type: DataTypes.STRING(16),
+            allowNull: true,
+            defaultValue: '',
+        },
+        verify_type: {
+            type: DataTypes.STRING(16),
+            allowNull: true,
+            defaultValue: 'none',
+        },
+        verify_game: {
+            type: DataTypes.STRING(32),
             allowNull: true,
             defaultValue: '',
         },
