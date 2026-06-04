@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useHistory, withRouter } from "react-router-dom";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import {
   FaIdBadge,
   FaWallet,
@@ -113,6 +114,27 @@ function EditUser(props) {
       );
     }
   }, [data?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleResellerChange = (e) => {
+    const val = e.target.checked;
+    if (val) {
+      Swal.fire({
+        title: "Promote to Reseller?",
+        text: "This user will earn per-package Reseller cashback on every completed order.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, promote!",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setIsReseller(true);
+        }
+      });
+    } else {
+      setIsReseller(false);
+    }
+  };
 
   const editPaymentMethodHandler = (e) => {
     e.preventDefault();
@@ -272,7 +294,7 @@ function EditUser(props) {
                           type="checkbox"
                           className="form-checkbox"
                           checked={isReseller}
-                          onChange={(e) => setIsReseller(e.target.checked)}
+                          onChange={handleResellerChange}
                         />
                         <span className="ml-2">Reseller</span>
                       </label>
