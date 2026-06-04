@@ -103,6 +103,14 @@ export default function HeaderStats() {
                   statIconColor="bg-orange-500"
                   loading={loading}
                 />
+                <CardStats
+                  statSubtitle="Cashback Today"
+                  statTitle={`${Number(stats?.todaysCashback || 0).toFixed(2)} BDT`}
+                  statDescripiron={`This Month: ${Number(stats?.monthlyCashback || 0).toFixed(2)} BDT`}
+                  statIconName="fas fa-gift"
+                  statIconColor="bg-pink-500"
+                  loading={loading}
+                />
               </div>
             ) : (
               <ul className="text-center py-4" >

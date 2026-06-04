@@ -1860,6 +1860,33 @@ class AdminController {
 
       const totalCoinsAcrossUsers = await User.sum('coins')
 
+      // Cashback paid out — helpers/orderCashbackSync.ts writes Transaction
+      // rows with `purpose = 'Cashback #<order_id>'` for the package money
+      // reward and `'Reseller cashback #<order_id>'` for the reseller bonus.
+      // Refunds are stored as `'Cashback refund #...'` / `'Reseller cashback
+      // refund #...'`, so a LIKE on the non-refund prefixes captures gross
+      // paid amounts without manual exclusion clauses.
+      const cashbackPurposeWhere = {
+        [Op.or]: [
+          { purpose: { [Op.like]: 'Cashback #%' } },
+          { purpose: { [Op.like]: 'Reseller cashback #%' } },
+        ],
+      } as const;
+      const todaysCashback = await Transaction.sum('amount', {
+        where: {
+          ...cashbackPurposeWhere,
+          status: 'completed',
+          created_at: { [Op.gte]: TODAY_START, [Op.lte]: NOW },
+        } as any,
+      });
+      const monthlyCashback = await Transaction.sum('amount', {
+        where: {
+          ...cashbackPurposeWhere,
+          status: 'completed',
+          created_at: { [Op.gte]: MONTH_START, [Op.lte]: NOW },
+        } as any,
+      });
+
       const settings = await SiteSetting.findOne()
       const rate = settings?.coin_to_money_rate || 0
 
@@ -1891,6 +1918,8 @@ class AdminController {
         monthlyConvertedMoney: Math.abs(Number((monthlyConvertedCoins || 0) * rate)),
         totalCoinsAcrossUsers: Number(totalCoinsAcrossUsers || 0),
         totalCoinsMoney: Number((totalCoinsAcrossUsers || 0) * rate),
+        todaysCashback: Number(todaysCashback || 0),
+        monthlyCashback: Number(monthlyCashback || 0),
       }
 
       res.send(response.getResponse())
