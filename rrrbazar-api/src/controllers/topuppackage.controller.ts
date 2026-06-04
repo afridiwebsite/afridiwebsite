@@ -241,8 +241,13 @@ class TopupPackageController {
         logo,
         coin_value: normCoinValue,
         description: description || "",
-        order_once:
-          Number(order_once) === 2 ? 2 : Number(order_once) === 1 ? 1 : 0,
+        // Re-order limit modes:
+        //   0 = none, 1/2 = Player-scoped (forever/daily),
+        //   3/4 = User-scoped (forever/daily). Anything else collapses to
+        //   0 so a malformed payload can't store an unsupported mode.
+        order_once: [1, 2, 3, 4].includes(Number(order_once))
+          ? Number(order_once)
+          : 0,
         bot_url: String(bot_url || "").trim(),
         // Legacy flags stay in sync with bot_type so any downstream
         // consumer that still reads them keeps working.
@@ -356,8 +361,10 @@ class TopupPackageController {
         topupPackage.description = description;
       }
       if (order_once !== undefined) {
-        topupPackage.order_once =
-          Number(order_once) === 2 ? 2 : Number(order_once) === 1 ? 1 : 0;
+        // See createTopupPackage above for mode meanings (0–4).
+        topupPackage.order_once = [1, 2, 3, 4].includes(Number(order_once))
+          ? Number(order_once)
+          : 0;
       }
       if (bot_url !== undefined) {
         topupPackage.bot_url = String(bot_url || "").trim();

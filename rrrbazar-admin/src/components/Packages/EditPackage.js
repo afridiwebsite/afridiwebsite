@@ -31,13 +31,19 @@ function EditPackage(props) {
   const auto_delivery = useRef(null);
   const allow_quantity = useRef(null);
 
-  // Re-order limit: 0 = none, 1 = once forever per player ID, 2 = once/day
-  // per player ID. Hydrated from the saved package below.
+  // Re-order limit:
+  //   0 = none
+  //   1 = once forever per Player ID
+  //   2 = once/day per Player ID
+  //   3 = once forever per User account
+  //   4 = once/day per User account
+  // Hydrated from the saved package below; unknown values fall back to 0
+  // so a future-added mode never selects a no-longer-valid radio here.
   const [orderLimit, setOrderLimit] = useState(0);
   useEffect(() => {
     if (data?.order_once == null) return;
     const v = Number(data.order_once);
-    setOrderLimit(v === 2 ? 2 : v === 1 ? 1 : 0);
+    setOrderLimit([0, 1, 2, 3, 4].includes(v) ? v : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
@@ -601,6 +607,8 @@ function EditPackage(props) {
                           { value: 0, label: "None" },
                           { value: 1, label: "Order once per player" },
                           { value: 2, label: "Order once a day per player" },
+                          { value: 3, label: "Order once per user" },
+                          { value: 4, label: "Order once a day per user" },
                         ].map((opt) => (
                           <label
                             key={opt.value}
@@ -618,8 +626,10 @@ function EditPackage(props) {
                         ))}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        Scoped by Player ID. No effect on products that don't
-                        have a Player ID input.
+                        Modes 1 & 2 are scoped by Player ID (no effect on
+                        products without a Player ID input). Modes 3 & 4 are
+                        scoped by user account and apply regardless of
+                        whether the product asks for a Player ID.
                       </p>
                     </div>
                   </div>

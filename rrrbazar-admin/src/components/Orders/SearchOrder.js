@@ -150,8 +150,7 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
                 {/* Row 3 — date range. Both inputs are optional and a Clear
                     button next to them wipes the range in one click. */}
                 <div className="flex w-full items-center gap-2 md:gap-3 justify-end flex-wrap">
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-600 whitespace-nowrap">From</label>
+                    <div className="flex items-center gap-2 flex-1">
                         <input
                             type="date"
                             className="form_input mb-0"
@@ -160,8 +159,11 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
                             onChange={(e) => setStartDate(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-600 whitespace-nowrap">To</label>
+
+                    --
+
+                    <div className="flex items-center gap-2 flex-1">
+                       
                         <input
                             type="date"
                             className="form_input mb-0"

@@ -634,9 +634,16 @@ class UserController {
   // re-ordering. The client uses this to disable already-claimed packs on
   // /topup/:id without leaking other users' history.
   //
-  // Two modes:
-  //   order_once = 1 → any prior order by this user blocks forever
-  //   order_once = 2 → only orders in the last 24 h block (daily cooldown)
+  // Four modes:
+  //   order_once = 1 → any prior order by this user (matched on playerid)
+  //                    blocks forever                  — Player-scoped
+  //   order_once = 2 → only orders in the current day  — Player-scoped daily
+  //   order_once = 3 → any prior order by this user blocks forever — User-scoped
+  //   order_once = 4 → only orders in the current day                — User-scoped daily
+  //
+  // For modes 1 & 2 we still scope by user_id when listing — exposing
+  // other users' player-id activity here would leak history. The frontend
+  // only needs to know what THIS user can no longer order.
   myOrderedOncePackages = async (
     req: express.Request,
     res: express.Response,
@@ -645,7 +652,7 @@ class UserController {
     try {
       const user_id = req.user.id;
       const limitedPacks = await TopupPackage.findAll({
-        where: { order_once: { [Op.in]: [1, 2] } },
+        where: { order_once: { [Op.in]: [1, 2, 3, 4] } },
         attributes: ["id", "order_once"],
         raw: true,
       });
@@ -653,18 +660,21 @@ class UserController {
         response.data = { ordered_package_ids: [] };
         return res.send(response.response);
       }
-      const onceIds = (limitedPacks as any[])
-        .filter((p) => Number(p.order_once) === 1)
+      // Bucket per mode. Modes 1 & 3 share "forever" semantics; 2 & 4 share
+      // "today only" — the only axis that matters for the query is the
+      // time window, since we always filter by user_id.
+      const foreverIds = (limitedPacks as any[])
+        .filter((p) => Number(p.order_once) === 1 || Number(p.order_once) === 3)
         .map((p) => p.id);
       const dailyIds = (limitedPacks as any[])
-        .filter((p) => Number(p.order_once) === 2)
+        .filter((p) => Number(p.order_once) === 2 || Number(p.order_once) === 4)
         .map((p) => p.id);
 
       const blocked = new Set<number>();
 
-      if (onceIds.length > 0) {
+      if (foreverIds.length > 0) {
         const orders = await Order.findAll({
-          where: { user_id, topuppackage_id: { [Op.in]: onceIds } },
+          where: { user_id, topuppackage_id: { [Op.in]: foreverIds } },
           attributes: ["topuppackage_id"],
           raw: true,
         });
@@ -941,10 +951,14 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      // Enforce per-player-ID re-order limit. Mode 1 = forever; mode 2 =
-      // 24-h cooldown. Only meaningful when the product has a Player ID
-      // input configured — without one we have no key to scope "used"
-      // against, so the limit has no effect.
+      // Enforce per-package re-order limit. Four modes:
+      //   1 = once forever per Player ID  (needs Player ID input)
+      //   2 = once/day per Player ID      (needs Player ID input)
+      //   3 = once forever per user account
+      //   4 = once/day per user account
+      // Modes 1 & 2 silently no-op when the product has no Player ID input
+      // (nothing to scope against). Modes 3 & 4 always apply since every
+      // request carries a user_id.
       const orderOnceMode = Number((topupPackage as any).order_once);
       if (orderOnceMode === 1 || orderOnceMode === 2) {
         const playerIdInputCount = await TopupProductInput.count({
@@ -974,6 +988,30 @@ class UserController {
                 : "এই প্লেয়ার আইডি থেকে ইতোমধ্যে প্যাকেজটি নেওয়া হয়েছে — প্রতি প্লেয়ার আইডিতে শুধুমাত্র একবার নেওয়া যাবে।";
             return res.status(400).send(response.response);
           }
+        }
+      } else if (orderOnceMode === 3 || orderOnceMode === 4) {
+        // User-scoped: count this user's prior orders of this package.
+        // No Player ID dependency — applies even on products that don't
+        // ask for one (vouchers, info-only products, etc.).
+        const where: any = {
+          user_id,
+          topuppackage_id,
+        };
+        if (orderOnceMode === 4) {
+          // Same calendar-day reset as mode 2 — unblocks at local midnight.
+          const startOfToday = new Date();
+          startOfToday.setHours(0, 0, 0, 0);
+          where.created_at = {
+            [Op.gte]: startOfToday,
+          };
+        }
+        const previous = await Order.count({ where });
+        if (previous > 0) {
+          response.message =
+            orderOnceMode === 4
+              ? "আপনি আজ ইতোমধ্যে এই প্যাকেজটি নিয়েছেন — মধ্যরাতের পরে আবার চেষ্টা করুন।"
+              : "আপনি ইতোমধ্যে এই প্যাকেজটি নিয়েছেন — প্রতি অ্যাকাউন্ট থেকে শুধুমাত্র একবার নেওয়া যাবে।";
+          return res.status(400).send(response.response);
         }
       }
       // const topupPaymentMethods = await PaymentMethod.query().where("is_active", 1).fetch()

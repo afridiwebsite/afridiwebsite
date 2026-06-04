@@ -563,35 +563,40 @@ function TopupOrderPage() {
                                         <GiTwoCoins /> +{selectedCoin} coins
                                       </span>
                                     )}
-                                    <div className='flex flex-col gap-2'>
-                                      {selectedCashback > 0 && (
-                                        <span
-                                          className="topup-pack-header-coin"
-                                          style={{
-                                            background: "#10b9811a",
-                                            color: "#047857",
-                                            borderColor: "#10b98166",
-                                          }}
-                                        >
-                                          ৳ {selectedCashback.toFixed(2)}{" "}
-                                          cashback
-                                        </span>
-                                      )}
-                                      {selectedResellerCashback > 0 && (
-                                        <span
-                                          className="topup-pack-header-coin"
-                                          style={{
-                                            background: "#ec48991a",
-                                            color: "#9d174d",
-                                            borderColor: "#ec489966",
-                                          }}
-                                        >
-                                          ৳{" "}
-                                          {selectedResellerCashback.toFixed(2)}{" "}
-                                          reseller cashback
-                                        </span>
-                                      )}
-                                    </div>
+                                    {selectedCashback > 0 ||
+                                      (selectedResellerCashback > 0 && (
+                                        <div className="flex flex-col gap-2">
+                                          {selectedCashback > 0 && (
+                                            <span
+                                              className="topup-pack-header-coin"
+                                              style={{
+                                                background: "#10b9811a",
+                                                color: "#047857",
+                                                borderColor: "#10b98166",
+                                              }}
+                                            >
+                                              ৳ {selectedCashback.toFixed(2)}{" "}
+                                              cashback
+                                            </span>
+                                          )}
+                                          {selectedResellerCashback > 0 && (
+                                            <span
+                                              className="topup-pack-header-coin"
+                                              style={{
+                                                background: "#ec48991a",
+                                                color: "#9d174d",
+                                                borderColor: "#ec489966",
+                                              }}
+                                            >
+                                              ৳{" "}
+                                              {selectedResellerCashback.toFixed(
+                                                2,
+                                              )}{" "}
+                                              reseller cashback
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
                                   </div>
 
                                   <div className="order_box_body">
@@ -621,20 +626,37 @@ function TopupOrderPage() {
                                         const outOfStock =
                                           parseInt(pack?.in_stock) === 0 ||
                                           trackedEmpty;
-                                        // order_once only applies when the
-                                        // product has a Player ID input —
-                                        // otherwise we can't scope "used"
-                                        // to a player, so there's no impact.
-                                        // Both order_once = 1 (forever) and
-                                        // = 2 (daily cooldown) feed into the
-                                        // backend's blocked-ids list. We only
-                                        // need to know the mode to vary the
-                                        // "claimed" label below.
+                                        // order_once modes:
+                                        //   1 = once forever  / Player ID-scoped
+                                        //   2 = once a day    / Player ID-scoped
+                                        //   3 = once forever  / user-scoped
+                                        //   4 = once a day    / user-scoped
+                                        // Modes 1 & 2 need a Player ID input
+                                        // on the product to be meaningful (no
+                                        // playerid → can't scope). Modes 3 &
+                                        // 4 are scoped by user account and
+                                        // apply regardless of input shape.
+                                        // The backend's blocked-ids list
+                                        // already encodes the right answer
+                                        // per mode, so this gate is just to
+                                        // avoid showing "claimed" on packs
+                                        // whose mode is moot for this product.
                                         const reorderMode =
                                           Number(pack?.order_once) || 0;
+                                        const isPlayerScopedMode =
+                                          reorderMode === 1 ||
+                                          reorderMode === 2;
+                                        const isUserScopedMode =
+                                          reorderMode === 3 ||
+                                          reorderMode === 4;
+                                        const isDailyMode =
+                                          reorderMode === 2 ||
+                                          reorderMode === 4;
                                         const alreadyOrdered =
                                           reorderMode > 0 &&
-                                          !!playerIdInput &&
+                                          ((isPlayerScopedMode &&
+                                            !!playerIdInput) ||
+                                            isUserScopedMode) &&
                                           orderedOnceIds.has(Number(pack?.id));
                                         const isDisabled =
                                           outOfStock || alreadyOrdered;
@@ -687,7 +709,7 @@ function TopupOrderPage() {
                                               {!outOfStock &&
                                                 alreadyOrdered && (
                                                   <span className="topup-pack-card-stock topup-pack-card-stock--claimed">
-                                                    {reorderMode === 2
+                                                    {isDailyMode
                                                       ? "Try again tomorrow"
                                                       : "Already claimed"}
                                                   </span>

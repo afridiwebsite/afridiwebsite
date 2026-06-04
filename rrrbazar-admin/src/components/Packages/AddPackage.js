@@ -510,6 +510,8 @@ function AddPackage(props) {
                           { value: 0, label: "None" },
                           { value: 1, label: "Order once per player" },
                           { value: 2, label: "Order once a day per player" },
+                          { value: 3, label: "Order once per user" },
+                          { value: 4, label: "Order once a day per user" },
                         ].map((opt) => (
                           <label
                             key={opt.value}
@@ -527,8 +529,10 @@ function AddPackage(props) {
                         ))}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        Scoped by Player ID. No effect on products that don't
-                        have a Player ID input.
+                        Modes 1 & 2 are scoped by Player ID (no effect on
+                        products without a Player ID input). Modes 3 & 4 are
+                        scoped by user account and apply regardless of
+                        whether the product asks for a Player ID.
                       </p>
                     </div>
                   </div>
