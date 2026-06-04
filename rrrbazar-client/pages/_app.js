@@ -56,6 +56,8 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   const [authUser, setAuthUser] = useState(user);
   const [accessToken, setAccessToken] = useState(access_token);
   const [isAuth, setIsAuth] = useState(authUser && accessToken ? true : false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
   // Seed siteSettings from the SSR-resolved value so the favicon `<link>`
   // tags ship in the initial HTML. Most browsers lock onto whatever
   // favicon URL was present at first paint and ignore later mutations to
@@ -66,6 +68,31 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   // Sync user profile on mount to ensure wallet balance and other data is
   // fresh, even after a refresh.
   useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/sw.js").then(
+          function (registration) {
+            console.log(
+              "Service Worker registration successful with scope: ",
+              registration.scope
+            );
+          },
+          function (err) {
+            console.log("Service Worker registration failed: ", err);
+          }
+        );
+      });
+    }
+
     if (isAuth && accessToken) {
       getUserProfile()
         .then((res) => {
@@ -161,6 +188,15 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     setAuthUser(userObj);
   };
 
+  const installPWA = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+    }
+  };
+
   const glovalContextData = {
     authUser,
     accessToken,
@@ -170,6 +206,8 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     updateAuthUserInfo,
     siteSettings,
     setSiteSettings,
+    deferredPrompt,
+    installPWA,
   };
 
   const isDisabledHeader = Component?.disabledHeader;

@@ -179,28 +179,32 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
                   transform={`translate(${labelPos.x} ${labelPos.y}) rotate(${midAngle - 90})`}
                   style={{ pointerEvents: 'none' }}
                 >
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="#ffffff"
-                    fontSize={fontSize}
-                    fontWeight="900"
-                    // paint-order=stroke draws the stroke UNDER the
-                    // fill, so the dark outline acts as a contrast halo
-                    // and the white fill stays crisp. Combined with the
-                    // shadow this keeps labels readable on every slice
-                    // color.
-                    stroke="rgba(15, 23, 42, 0.55)"
-                    strokeWidth={Math.max(2, fontSize / 6)}
-                    paintOrder="stroke"
-                    strokeLinejoin="round"
-                    style={{
-                      letterSpacing: '0.5px',
-                      textShadow: '0 2px 4px rgba(0, 0, 0, 0.45)',
-                    }}
+                  <foreignObject
+                    x={-80}
+                    y={-fontSize * 1.5}
+                    width={160}
+                    height={fontSize * 3.5}
                   >
-                    {truncateLabel(reward.label, maxChars)}
-                  </text>
+                    <div
+                      xmlns="http://www.w3.org/1999/xhtml"
+                      style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: `${fontSize}px`,
+                        fontWeight: '900',
+                        color: '#fff',
+                        lineHeight: '1.1',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                        overflow: 'hidden',
+                        padding: '0 4px',
+                      }}
+                    >
+                      {ReactHtmlParser(reward.label)}
+                    </div>
+                  </foreignObject>
                 </g>
               </g>
             );
@@ -345,7 +349,7 @@ function SpinPage() {
         }
         setSpinning(false);
         setLastWin(data?.reward);
-        toast.success(res?.data?.message || "Spin complete");
+        toast.success(<div>{ReactHtmlParser(res?.data?.message || "Spin complete")}</div>);
         await load(false); // Only reload history, keep balance from response
       }, 4200);
     } catch (e) {
@@ -621,7 +625,7 @@ function SpinPage() {
                         <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {h.amount > 0 ? '+' : ''}{h.amount}
                         </td>
-                        <td className="text-gray-500">{h.note}</td>
+                        <td className="text-gray-500">{ReactHtmlParser(String(h.note || ""))}</td>
                       </tr>
                     ))}
                   </tbody>

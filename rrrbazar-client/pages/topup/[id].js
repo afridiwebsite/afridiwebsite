@@ -611,8 +611,8 @@ function TopupOrderPage() {
                                         <GiTwoCoins /> +{selectedCoin} coins
                                       </span>
                                     )}
-                                    {selectedCashback > 0 ||
-                                      (selectedResellerCashback > 0 && (
+                                    {(selectedCashback > 0 ||
+                                      selectedResellerCashback > 0) && (
                                         <div className="flex flex-col gap-2">
                                           {selectedCashback > 0 && (
                                             <span
@@ -644,7 +644,7 @@ function TopupOrderPage() {
                                             </span>
                                           )}
                                         </div>
-                                      ))}
+                                      )}
                                   </div>
 
                                   <div className="order_box_body">

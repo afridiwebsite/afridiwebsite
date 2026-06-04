@@ -9,7 +9,7 @@
 import { useRouter } from 'next/dist/client/router';
 import { useContext, useEffect } from 'react';
 import Link from 'next/link';
-import { FaPlayCircle } from 'react-icons/fa';
+import { FaDownload, FaPlayCircle } from 'react-icons/fa';
 import Avatar from '../components/Avatar';
 import Button from '../components/Button';
 import routes from '../config/routes';
@@ -18,7 +18,7 @@ import navlinks from '../config/navlinks';
 import { globalContext } from '../pages/_app';
 
 function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
-  const { isAuth, signOut, authUser } = useContext(globalContext);
+  const { isAuth, signOut, authUser, deferredPrompt, installPWA } = useContext(globalContext);
   const router = useRouter();
 
   // Close Sidebar
@@ -137,6 +137,21 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
                   <span className="font-bold text-sm tracking-wide">Tutorials</span>
                 </a>
               </Link>
+
+              {deferredPrompt && (
+                <a
+                  onClick={() => {
+                    closeSidebarForcely();
+                    installPWA();
+                  }}
+                  className="mobile-sidebar-box mobile-sidebar-box--rose cursor-pointer"
+                >
+                  <div className="mobile-sidebar-icon-wrap">
+                    <FaDownload size={20} />
+                  </div>
+                  <span className="font-bold text-sm tracking-wide">Install App</span>
+                </a>
+              )}
             </div>
           </div>
         </div>

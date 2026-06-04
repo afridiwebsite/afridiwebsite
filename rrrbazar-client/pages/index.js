@@ -14,7 +14,7 @@ import { hasData, imgPath } from "../helpers/helpers";
 
 function SectionTitle({ children }) {
   return (
-    <h3 className="home-section-title font-bold text-sm md:text-2xl !mb-2">
+    <h3 className="home-section-title font-bold text-lg md:text-2xl !mb-2">
       {/* <span className="home-section-title-bar" aria-hidden="true" /> */}
       <span>{children}</span>
       {/* <span className="home-section-title-bar" aria-hidden="true" /> */}

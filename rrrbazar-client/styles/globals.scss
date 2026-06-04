@@ -1514,43 +1514,34 @@ body {
 
 .game-card-link {
   display: block;
-  /* Transparent border so the gradient border can show */
-  border-bottom: 3px solid var(--theme-primary, #2563eb);
-
-  /* Two layered backgrounds:
-     1. White card fill
-     2. Gradient painted into the border area
-  */
-  background:
-    linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(
-        135deg,
-        var(--theme-primary, #2563eb) 0%,
-        var(--theme-secondary, #4d67d8) 100%
-      )
-      border-box;
-
+  padding-bottom: 10px;
   border-radius: 14px;
   overflow: hidden;
   position: relative;
-
   transition:
     transform 0.25s ease,
     border-color 0.2s ease,
     box-shadow 0.25s ease;
 }
-.game-card-gradient-bottom {
+
+.game-card-link::after {
+  content: "";
   position: absolute;
-  bottom: 0;
   left: 0;
   right: 0;
+  bottom: 0;
+
+  height: 14px; /* match radius */
   background: linear-gradient(
     90deg,
-    var(--theme-primary, #2563eb) 0%,
-    var(--theme-secondary, #4d67d8) 100%
+    var(--theme-primary, #2563eb),
+    var(--theme-secondary, #4d67d8)
   );
-  opacity: 0.9;
+
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
 }
+
 .game-card:hover .game-card-link {
   transform: translateY(-3px);
   border-color: rgba(0, 0, 0, 0.06);
@@ -4319,7 +4310,7 @@ body {
   background: #fff;
   border: 1px solid #eef2f7;
   border-radius: 18px;
-  padding: 28px 22px 22px;
+  padding: 46px 22px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4377,7 +4368,7 @@ body {
 // it tracks the high-energy state.
 .spin-pointer {
   position: absolute;
-  top: -18px;
+  top: -32px;
   left: 50%;
   width: 44px;
   height: auto;

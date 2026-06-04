@@ -157,7 +157,10 @@ function Game({ game }) {
       : null;
 
   const inner = (
-    <div className="game-card-link hover:cursor-pointer">
+      <div className="game-card-link hover:cursor-pointer">
+
+      <div className="absolute w-[100%] h-[20px] bottom-[3px] bg-white z-[50] rounded-2xl left-0 right-0 m-auto"></div>
+
       <div className="game-card-image-wrap">
         <img src={imgPath(logo)} className="game-card-image" alt={name} />
       </div>
