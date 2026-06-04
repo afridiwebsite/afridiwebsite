@@ -188,6 +188,7 @@ router.post('/user/delete/:id', auth, userController.deleteUser)
 
 // Topup Package apis ----START----
 router.get('/topup-packages', auth, topuppackageController.getTopupPackages) // Get all topup packages
+router.get('/topup-packages-grouped', auth, topuppackageController.getPackagesGroupedByCategory) // Get packages grouped by category -> product
 router.get('/topup-packages/:id', auth, topuppackageController.getTopupPackagesByProductId) // Get topup packages by product id -> :id = product id
 router.get('/topup-package/:id', auth, topuppackageController.getTopupPackageById) // get topup package by id
 router.post('/topup-package/add', auth, topupPackageSchema, topuppackageController.createTopupPackage)

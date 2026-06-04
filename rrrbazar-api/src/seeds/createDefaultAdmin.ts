@@ -110,6 +110,8 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     // Admin Products page — accordion view grouped by Category, plus an
     // Uncategorized bucket for products with no category pinned.
     { path: '/topup-products-by-category', method: 'GET' },
+    // Admin Packages page — three-layer accordion (Category > Product > Packages)
+    { path: '/topup-packages-grouped', method: 'GET' },
 ];
 
 // Walk an Express 4 OR Express 5 router/app stack and pull out

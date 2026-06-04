@@ -620,6 +620,87 @@ class TopupPackageController {
       return res.status(400).send(response.response);
     }
   }
+
+  async getPackagesGroupedByCategory(
+    req: express.Request,
+    res: express.Response,
+  ) {
+    const response = new responseUtils();
+
+    try {
+      const { Category, TopupProduct, TopupPackage } = Schema;
+
+      const categories = await Category.findAll({
+        include: [
+          {
+            model: TopupProduct,
+            as: "topup_products",
+            include: [
+              {
+                model: TopupPackage,
+                as: "packages",
+                attributes: ["id", "name", "price", "bprice", "in_stock", "serial"],
+              },
+            ],
+          },
+        ],
+        order: [
+          ["serial", "ASC"],
+          [{ model: TopupProduct, as: "topup_products" }, "serial", "ASC"],
+          [
+            { model: TopupProduct, as: "topup_products" },
+            { model: TopupPackage, as: "packages" },
+            "serial",
+            "ASC",
+          ],
+        ],
+      });
+
+      // Products with no categories
+      const uncategorizedProducts = await TopupProduct.findAll({
+        include: [
+          {
+            model: Category,
+            as: "categories",
+            required: false,
+          },
+          {
+            model: TopupPackage,
+            as: "packages",
+            attributes: ["id", "name", "price", "bprice", "in_stock", "serial"],
+          },
+        ],
+        where: Sequelize.literal("`categories`.`id` IS NULL"),
+        order: [
+          ["serial", "ASC"],
+          [{ model: TopupPackage, as: "packages" }, "serial", "ASC"],
+        ],
+      });
+
+      const formattedCategories = categories.map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        products: cat.topup_products || [],
+      }));
+
+      if (uncategorizedProducts.length > 0) {
+        formattedCategories.push({
+          id: 0,
+          name: "Uncategorized",
+          products: uncategorizedProducts,
+        });
+      }
+
+      response.data = formattedCategories;
+      res.send(response.response);
+    } catch (error: any) {
+      console.log(error);
+      response.message = error?.message || "Internal Error! Try again";
+      response.status = 400;
+      response.success = false;
+      return res.status(400).send(response.response);
+    }
+  }
 }
 
 /******************************************************************************

@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
 import { BsChevronUp } from 'react-icons/bs'
 
-function PackagesAccordion({ children, title }) {
+function PackagesAccordion({ children, title, className = "" }) {
     const [toggleAccordion, setToggleAccordion] = useState(false)
     return (
         <>
             {/* Accordion --Start-- */}
-            <div className="mb-4" >
+            <div className={`mb-4 ${className}`} >
                 <div className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 px-3.5 cursor-pointer select-none" onClick={() => setToggleAccordion(!toggleAccordion)}>
                     <div className="flex-grow py-2">
                         <h5 className="h_5">{title}</h5>

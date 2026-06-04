@@ -77,9 +77,14 @@ export default (sequelize: Sequelize) => {
         public cashback_amount!: string;
         public reseller_cashback!: string;
 
-        static associate({ StoreUnipin }: typeof Schema) {
+        static associate({ StoreUnipin, TopupProduct }: typeof Schema) {
             this.hasMany(StoreUnipin, {
                 foreignKey: "package_id",
+                constraints: false,
+            });
+            this.belongsTo(TopupProduct, {
+                foreignKey: "product_id",
+                as: "product",
                 constraints: false,
             });
         }

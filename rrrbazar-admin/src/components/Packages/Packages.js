@@ -10,7 +10,7 @@ import { toast } from 'react-toastify'
 import axiosInstance from '../../common/axios'
 
 function Packages() {
-    const [products, loadingProducts, errorProducts] = useGet(`admin/topup-products`)
+    const [groupedData, loading, error] = useGet(`admin/topup-packages-grouped`)
 
     return (
         <section className="relative container_admin" >
@@ -23,13 +23,23 @@ function Packages() {
                 <div className="md:px-6 my-10 md:max-w-[1000px] min-h-[200px] md:mx-auto" >
                     <div className="rounded relative overflow-hidden">
                         <div>
-                            <UiHandler data={products} loading={loadingProducts} error={errorProducts} />
+                            <UiHandler data={groupedData} loading={loading} error={error} />
                             {
-                                hasData(products, loadingProducts) && (
+                                hasData(groupedData, loading) && (
                                     <>
-                                        {products?.map((product, i) => (
-                                            <PackagesAccordion title={product?.name} key={i}>
-                                                <PackagesUnderProduct product={product} />
+                                        {groupedData?.map((category, i) => (
+                                            <PackagesAccordion title={category?.name || 'Uncategorized'} key={i}>
+                                                <div className="space-y-4">
+                                                    {category.products?.map((product, j) => (
+                                                        <PackagesAccordion 
+                                                            title={product?.name} 
+                                                            key={j}
+                                                            className="ml-4 border-l-2 border-gray-100"
+                                                        >
+                                                            <PackagesUnderProduct product={product} />
+                                                        </PackagesAccordion>
+                                                    ))}
+                                                </div>
                                             </PackagesAccordion>
                                         ))}
                                     </>

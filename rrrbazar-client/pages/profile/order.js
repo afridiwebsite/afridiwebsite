@@ -151,10 +151,14 @@ function OrderPage() {
                         </span>{" "}
                         {order?.amount}
                       </p>
-                      <p className="_subtitle1">
-                        <span className="font-semibold mr-1.5">Player Id:</span>{" "}
-                        {order?.playerid}
-                      </p>
+                      {order?.playerid && (
+                        <p className="_subtitle1">
+                          <span className="font-semibold mr-1.5">
+                            Player Id:
+                          </span>{" "}
+                          {order?.playerid}
+                        </p>
+                      )}
                       <p className="_subtitle1">
                         <span className="font-semibold mr-1.5">
                           Package Name:

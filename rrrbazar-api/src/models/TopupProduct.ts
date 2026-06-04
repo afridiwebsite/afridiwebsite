@@ -24,7 +24,7 @@ export default (sequelize: Sequelize) => {
         public is_voucher!: number;
         public redeem_link!: string;
 
-        static associate({ Category, ProductCategory, TopupProductInput }: typeof Schema) {
+        static associate({ Category, ProductCategory, TopupProductInput, TopupPackage }: typeof Schema) {
             this.belongsToMany(Category, {
                 through: ProductCategory,
                 foreignKey: 'topup_product_id',
@@ -35,6 +35,11 @@ export default (sequelize: Sequelize) => {
             this.hasMany(TopupProductInput, {
                 foreignKey: 'topup_product_id',
                 as: 'inputs',
+                constraints: false,
+            });
+            this.hasMany(TopupPackage, {
+                foreignKey: 'product_id',
+                as: 'packages',
                 constraints: false,
             });
         }
