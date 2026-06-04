@@ -16,6 +16,7 @@ import Schema from "../models";
 import { createAndSendDispatch } from "./dispatchBot";
 import syncOrderCoinsForStatus from "./orderCoinSync";
 import syncOrderCashbackForStatus from "./orderCashbackSync";
+import buildRewardNoteHtml from "./orderRewardNote";
 
 const {
   BotDispatch,
@@ -233,10 +234,23 @@ export async function handleVoucherProduct(opts: {
   }
 
   order.status = "completed";
-  order.brief_note =
+  const voucherBaseNote =
     emitted.length === 1
       ? `Voucher: ${emitted[0].data}`
       : `Vouchers (${emitted.length}) delivered`;
+  // Append the reward block to the existing voucher-label brief_note so
+  // the storefront can show both the voucher info AND the reward earned.
+  // Multiplier = quantity so bulk voucher orders pay per-unit.
+  const voucherRewardHtml = buildRewardNoteHtml({
+    rewardType: (topupPackage as any).reward_type,
+    coinValue: (topupPackage as any).coin_value,
+    cashbackAmount: (topupPackage as any).cashback_amount,
+    resellerCashback: (topupPackage as any).reseller_cashback,
+    isReseller:
+      String((user as any).user_type || "").toLowerCase() === "reseller",
+    quantity,
+  });
+  order.brief_note = voucherBaseNote + voucherRewardHtml;
   (order as any).details =
     `<strong>Allocated Vouchers:</strong><ul style="text-align:left; margin-top:8px; list-style-type:disc; padding-left:20px;">${emitted.map((v) => `<li>${v.data}</li>`).join("")}</ul>`;
   await order.save();
@@ -596,11 +610,23 @@ async function handleLikeBot(opts: {
     // the cleanest way to show the per-order summary the customer
     // cares about (who got the likes, before/after counts). The
     // nickname comes straight from the upstream so it's HTML-escaped.
+    // Reward block is appended so the customer sees the bonus earned
+    // alongside the like summary.
+    const likeUser = await User.findByPk((order as any).user_id);
+    const likeRewardHtml = buildRewardNoteHtml({
+      rewardType: (topupPackage as any).reward_type,
+      coinValue: (topupPackage as any).coin_value,
+      cashbackAmount: (topupPackage as any).cashback_amount,
+      resellerCashback: (topupPackage as any).reseller_cashback,
+      isReseller:
+        String((likeUser as any)?.user_type || "").toLowerCase() === "reseller",
+    });
     order.brief_note =
       `Name : ${escapeHtml(nickname || "Unknown")}<br/>` +
       `Before Like : ${likesBefore}<br/>` +
       `Added Like : ${likesGiven}<br/>` +
-      `Total Like : ${likesAfter}`;
+      `Total Like : ${likesAfter}` +
+      likeRewardHtml;
     (order as any).details =
       `<span style='color:#059669;'><strong>Like-bot delivered successfully.</strong></span>` +
       `<ul style='text-align:left; margin-top:6px; list-style-type:disc; padding-left:20px;'>` +
@@ -846,19 +872,34 @@ async function handlePubgBot(opts: {
     const playerLine = apiPlayerName
       ? `Name : ${escapeHtml(apiPlayerName)}<br/>`
       : "";
+    // Reward block appended to whichever brief_note shape we pick below
+    // so the customer sees their bonus regardless of the success
+    // sub-branch (delivered / manual / risk).
+    const pubgUser = await User.findByPk((order as any).user_id);
+    const pubgRewardHtml = buildRewardNoteHtml({
+      rewardType: (topupPackage as any).reward_type,
+      coinValue: (topupPackage as any).coin_value,
+      cashbackAmount: (topupPackage as any).cashback_amount,
+      resellerCashback: (topupPackage as any).reseller_cashback,
+      isReseller:
+        String((pubgUser as any)?.user_type || "").toLowerCase() === "reseller",
+    });
     if (isManualCharge && manualCode) {
       order.brief_note =
         playerLine +
         `Manual Redemption Code : ${escapeHtml(manualCode)}<br/>` +
-        `Redeem at the official PUBG redemption center.`;
+        `Redeem at the official PUBG redemption center.` +
+        pubgRewardHtml;
     } else if (isErrorRisk) {
       order.brief_note =
         playerLine +
-        `Note : ${escapeHtml(apiMessage || "Provider flagged this order for manual review — code delivered.")}`;
+        `Note : ${escapeHtml(apiMessage || "Provider flagged this order for manual review — code delivered.")}` +
+        pubgRewardHtml;
     } else {
       order.brief_note =
         playerLine +
-        `Order ID : ${escapeHtml(apiOrderId || String(order.id))}`;
+        `Order ID : ${escapeHtml(apiOrderId || String(order.id))}` +
+        pubgRewardHtml;
     }
     (order as any).details =
       `<span style='color:#059669;'><strong>PUBG-bot delivered successfully.</strong></span>` +

@@ -32,6 +32,22 @@ function copy(value) {
   }
 }
 
+// Backend completion paths append a `<div class="order-reward-note">...</div>`
+// block to brief_note carrying the coin/cashback + reseller bonus the user
+// earned. We render it in its own block (always, even for voucher/UniPin
+// orders) so the customer never misses it, and strip it out of the rest of
+// brief_note so it doesn't double-render inside the existing freeform/UniPin
+// branches.
+function splitRewardNote(briefNote) {
+  const s = String(briefNote || "");
+  const match = s.match(/<div class="order-reward-note"[\s\S]*?<\/div>/);
+  if (!match) return { rewardHtml: "", rest: s };
+  return {
+    rewardHtml: match[0],
+    rest: s.replace(match[0], "").trim(),
+  };
+}
+
 // Map an order's status to a `.order-note--*` modifier class so the
 // freeform note matches the Badge color (Badge.js owns the palette):
 //   completed/success/delivered     → success (green)
@@ -102,11 +118,17 @@ function OrderPage() {
                     .trim() === "completed";
                 const redeemLink = product?.redeem_link || "";
                 const showRedeemBtn = isCompleted && !!redeemLink;
+                // Pull the reward block out FIRST so the UniPin/freeform
+                // branches operate on a clean brief_note (otherwise the
+                // reward HTML would either render twice or leak into the
+                // plain-text UniPin code display).
+                const { rewardHtml, rest: cleanedBrief } = splitRewardNote(
+                  order?.brief_note,
+                );
                 const isUniPin =
-                  order?.brief_note &&
-                  order.brief_note.substring(0, 6) === "UniPin";
+                  cleanedBrief && cleanedBrief.substring(0, 6) === "UniPin";
                 const hasFreeformNote =
-                  order?.brief_note && !isUniPin && !hasVouchers;
+                  cleanedBrief && !isUniPin && !hasVouchers;
 
                 return (
                   <div
@@ -188,11 +210,12 @@ function OrderPage() {
                       {isUniPin && (
                         <p className="_subtitle1">
                           <span className="font-semibold mr-1.5">Voucher:</span>{" "}
-                          {order.brief_note.substring(8)}
+                          {cleanedBrief.substring(8)}
                         </p>
                       )}
+                 
 
-                      {hasFreeformNote && (
+                      {hasFreeformNote&& cleanedBrief!=='' && (
                         <div
                           className={`order-note ${noteModifierClass(
                             order?.status,
@@ -204,9 +227,20 @@ function OrderPage() {
                           <div className="order-note-body">
                             <div className="order-note-label">Note</div>
                             <div className="order-note-html">
-                              {ReactHtmlParser(order.brief_note)}
+                            
+                              {ReactHtmlParser(cleanedBrief)}
                             </div>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Reward block — always rendered when present, even
+                          for voucher / UniPin orders that hide brief_note
+                          otherwise. The HTML is admin-controlled and built
+                          on the server (see helpers/orderRewardNote.ts). */}
+                      {rewardHtml && (
+                        <div className="order-reward-wrap mt-1">
+                          {ReactHtmlParser(rewardHtml)}
                         </div>
                       )}
                     </div>

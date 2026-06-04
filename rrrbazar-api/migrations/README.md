@@ -12,6 +12,7 @@ mean you can safely run them again.
 | `004_daily_streak_system.sql` | Adds `users.claim_streak` plus seven `day_N_reward` columns on `site_settings` for the 7-day daily-login bonus. |
 | `005_spin_system.sql` | Adds `spin_rewards` and `spin_results` tables, `site_settings.spin_cost_coins` / `spin_daily_limit` columns, and seeds six default wheel rewards. |
 | `006_add_allow_quantity.sql` | Adds `topuppackages.allow_quantity` — per-package opt-in for the quantity stepper on /topup/:id (voucher-type products only). |
+| `007_widen_brief_note.sql` | Widens `orders.brief_note` from VARCHAR(255) to TEXT. Required after the reward-block HTML started getting appended to brief_note — Bengali cancel copy + the reward block pushed the combined string past 255 bytes, triggering `ER_DATA_TOO_LONG` writes. |
 
 ## Apply
 
@@ -21,6 +22,7 @@ mysql -u <user> -p <database> < migrations/001_add_categories_coins_settings.sql
 mysql -u <user> -p <database> < migrations/002_create_mysql_functions.sql
 mysql -u <user> -p <database> < migrations/003_move_coin_value_to_packages.sql
 mysql -u <user> -p <database> < migrations/006_add_allow_quantity.sql
+mysql -u <user> -p <database> < migrations/007_widen_brief_note.sql
 ```
 
 Or from a GUI (Workbench / DBeaver) — paste the file contents and run.

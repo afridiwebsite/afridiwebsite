@@ -90,7 +90,11 @@ export default (sequelize: Sequelize) => {
             defaultValue: '',
         },
         brief_note: {
-            type: DataTypes.STRING,
+            // TEXT (not STRING/VARCHAR(255)) because brief_note now carries
+            // the appended reward-block HTML from helpers/orderRewardNote.ts
+            // on top of whatever the existing flow already wrote. See
+            // migrations/007_widen_brief_note.sql.
+            type: DataTypes.TEXT,
             allowNull: true,
             defaultValue: '',
         },

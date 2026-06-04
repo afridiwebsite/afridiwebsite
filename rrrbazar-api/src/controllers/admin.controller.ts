@@ -7,6 +7,7 @@ import { sequelize } from '../models/Schemas';
 import responseUtils from '../utils/response.utils';
 import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
 import syncOrderCashbackForStatus from '../helpers/orderCashbackSync';
+import buildRewardNoteHtml, { stripRewardNote } from '../helpers/orderRewardNote';
 import {
   aggregateOrderFromDispatches,
   buildOrderDetailsHtml,
@@ -258,8 +259,43 @@ class AdminController {
 
     const previousStatus = order.status;
     order.status = statusToUpdate;
-    order.brief_note = orderNote;
+    // Strip any prior reward block off the admin's typed note so a
+    // stale reward from a previous completion doesn't get embedded
+    // inside their text. The fresh block (if any) is appended below.
+    order.brief_note = stripRewardNote(orderNote);
     order.completed_by = completedById;
+
+    // When the admin marks an order completed, append the reward HTML
+    // so the storefront's /profile/order shows the bonus alongside
+    // their typed note. Mirrors what the bot-callback path does in
+    // user.controller.ts checkOrder. Failures are logged but never
+    // block the status update.
+    if (statusToUpdate === 'completed') {
+      try {
+        const [pkg, rewardUser] = await Promise.all([
+          TopupPackage.findByPk((order as any).topuppackage_id),
+          User.findByPk((order as any).user_id),
+        ]);
+        const rewardHtml = buildRewardNoteHtml({
+          rewardType: (pkg as any)?.reward_type,
+          coinValue: (pkg as any)?.coin_value,
+          cashbackAmount: (pkg as any)?.cashback_amount,
+          resellerCashback: (pkg as any)?.reseller_cashback,
+          isReseller:
+            String((rewardUser as any)?.user_type || '').toLowerCase() ===
+            'reseller',
+        });
+        if (rewardHtml) {
+          order.brief_note = String(order.brief_note || '') + rewardHtml;
+        }
+      } catch (e) {
+        console.error('[admin.updateOrderStatus] reward note build failed', {
+          order_id: order.id,
+          err: (e as any)?.message || e,
+        });
+      }
+    }
+
     await order.save()
 
     // Sync coin rewards on terminal transitions. Award on first move to

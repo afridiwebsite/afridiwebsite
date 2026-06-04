@@ -9,6 +9,9 @@ import fastPay from "../helpers/fastpay";
 import playerName from "../helpers/playername";
 import syncOrderCoinsForStatus from "../helpers/orderCoinSync";
 import syncOrderCashbackForStatus from "../helpers/orderCashbackSync";
+import buildRewardNoteHtml, {
+  stripRewardNote,
+} from "../helpers/orderRewardNote";
 import {
   aggregateOrderFromDispatches,
   buildOrderDetailsHtml,
@@ -1213,6 +1216,22 @@ class UserController {
         // Cashback (money reward + reseller cashback) follows the same
         // gate. Multiplier defaults to 1 — UniPin path is single-unit.
         await syncOrderCashbackForStatus(order, "completed");
+
+        // Surface the reward to the user on /profile/order. Append (don't
+        // overwrite) — brief_note already carries the "UniPin: <code>"
+        // prefix that the storefront uses to render the redeem block.
+        const rewardHtml = buildRewardNoteHtml({
+          rewardType: (topupPackage as any).reward_type,
+          coinValue: (topupPackage as any).coin_value,
+          cashbackAmount: (topupPackage as any).cashback_amount,
+          resellerCashback: (topupPackage as any).reseller_cashback,
+          isReseller:
+            String((user as any).user_type || "").toLowerCase() === "reseller",
+        });
+        if (rewardHtml) {
+          order.brief_note = stripRewardNote(order.brief_note) + rewardHtml;
+          await order.save();
+        }
       }
 
       // Voucher-pool products: pull `quantity` codes from the package's
@@ -1417,7 +1436,36 @@ class UserController {
       // surfaces the per-dispatch failures (built by the helper) so the
       // admin can read each reason without opening any other view.
       if (mystatus === "completed") {
-        order.brief_note = "";
+        // brief_note used to be cleared on completion. Now it carries the
+        // reward block so the storefront's order list can render the
+        // coin/cashback + reseller bonus the user just earned. Fetch the
+        // package + user inline (cheap — one PK lookup each) so we don't
+        // need to thread them through from the caller.
+        try {
+          const [pkg, rewardUser] = await Promise.all([
+            TopupPackage.findByPk((order as any).topuppackage_id),
+            User.findByPk((order as any).user_id),
+          ]);
+          const rewardHtml = buildRewardNoteHtml({
+            rewardType: (pkg as any)?.reward_type,
+            coinValue: (pkg as any)?.coin_value,
+            cashbackAmount: (pkg as any)?.cashback_amount,
+            resellerCashback: (pkg as any)?.reseller_cashback,
+            isReseller:
+              String((rewardUser as any)?.user_type || "").toLowerCase() ===
+              "reseller",
+          });
+          // checkOrder is the deferred path — no UniPin/voucher prefix to
+          // preserve here, so the reward block stands alone (or empty if
+          // the package has no reward configured).
+          order.brief_note = rewardHtml;
+        } catch (e) {
+          console.error("[checkOrder] reward note build failed", {
+            order_id: (order as any).id,
+            err: (e as any)?.message || e,
+          });
+          order.brief_note = "";
+        }
         (order as any).details =
           agg.status === null
             ? safeContent
