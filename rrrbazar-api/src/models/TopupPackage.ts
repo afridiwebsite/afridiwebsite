@@ -76,6 +76,11 @@ export default (sequelize: Sequelize) => {
         public reward_type!: string;
         public cashback_amount!: string;
         public reseller_cashback!: string;
+        // When `has_custom_inputs = 1`, the storefront uses this package's
+        // own dynamic input rows (topup_package_inputs) for the order form's
+        // Account Info section instead of the product-level inputs. Lets a
+        // single product carry packages with different field shapes.
+        public has_custom_inputs!: number;
 
         static associate({ StoreUnipin, TopupProduct }: typeof Schema) {
             this.hasMany(StoreUnipin, {
@@ -237,6 +242,11 @@ export default (sequelize: Sequelize) => {
         },
         reseller_cashback: {
             type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            defaultValue: 0,
+        },
+        has_custom_inputs: {
+            type: DataTypes.TINYINT,
             allowNull: true,
             defaultValue: 0,
         },

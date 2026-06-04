@@ -51,6 +51,12 @@ export const verifyPlayerInput = async (inputId, value) =>
   api.get(
     `/verify-player-input/${inputId}?value=${encodeURIComponent(value || '')}`,
   );
+// Same shape as verifyPlayerInput but the input id resolves to a package-level
+// input row (the per-package override path).
+export const verifyPackageInput = async (inputId, value) =>
+  api.get(
+    `/verify-package-input/${inputId}?value=${encodeURIComponent(value || '')}`,
+  );
 export const getTopupPackage = async (id) => api.get(`/topuppackage/${id}`);
 export const getMyOrderedOncePackages = async () =>
   api.get('/my-ordered-once-packages');

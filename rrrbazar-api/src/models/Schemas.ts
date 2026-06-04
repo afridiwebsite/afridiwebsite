@@ -18,6 +18,7 @@ import TopupPackagePermission from './TopupPackagePermission'
 import TopupPaymentMethod from './TopupPaymentMethod'
 import TopupProduct from './TopupProduct'
 import TopupProductInput from './TopupProductInput'
+import TopupPackageInput from './TopupPackageInput'
 import Tournament from './Tournament'
 import TournamentPlayer from './TournamentPlayer'
 import TournamentPrize from './TournamentPrize'
@@ -64,6 +65,7 @@ export const Schema = {
   Banner: Banner(sequelize),
   TopupProduct: TopupProduct(sequelize),
   TopupProductInput: TopupProductInput(sequelize),
+  TopupPackageInput: TopupPackageInput(sequelize),
   AdminAuth: AdminAuth(sequelize),
   AuthModule: AuthModule(sequelize),
   Transaction: Transaction(sequelize),

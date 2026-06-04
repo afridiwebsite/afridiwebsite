@@ -38,6 +38,7 @@ const {
   PaymentMethod,
   TopupProduct,
   TopupProductInput,
+  TopupPackageInput,
   WithdrawEarnWallet,
   EarnWallet,
   StoreUnipin,
@@ -2740,6 +2741,123 @@ class AdminController {
       res.send(response.response)
     } catch (error) {
       console.log(error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  // GET /admin/topup-package/:id/inputs
+  // Returns the package-level dynamic input rows (sans api_token, which is
+  // never sent client-side). Mirrors how TopupProduct.inputs is exposed.
+  getPackageInputs = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const package_id = Number((req.params.id as any))
+      const inputs = await TopupPackageInput.findAll({
+        where: { topup_package_id: package_id },
+        order: [['serial', 'ASC']],
+        attributes: [
+          'id',
+          'title',
+          'is_player_id',
+          'verify_player_name',
+          'verify_type',
+          'verify_url',
+          'verify_game',
+          'region_lock',
+          'api_token',
+          'serial',
+        ],
+        raw: true,
+      })
+      response.data = inputs
+      res.send(response.response)
+    } catch (error) {
+      console.log('getPackageInputs error', error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  // POST /admin/topup-package/:id/inputs
+  // Replace the dynamic input definitions for a single package. Same shape
+  // and validation rules as assignProductInputs — the admin form posts the
+  // full desired list, this destroys old rows and inserts new ones. Unlike
+  // the product flow there's no isactivefortopup side-effect here; the
+  // package-level override is gated by `has_custom_inputs` on the package
+  // row itself.
+  assignPackageInputs = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const package_id = Number((req.params.id as any))
+      const rawInputs: any[] = Array.isArray(req.body.inputs) ? req.body.inputs : []
+
+      const pack = await TopupPackage.findByPk(package_id)
+      if (!pack) {
+        response.message = 'TopupPackage not found'
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+
+      const cleaned = rawInputs
+        .map((it: any, idx: number) => {
+          const title = String(it?.title || '').trim()
+          if (!title) return null
+          const playerIdMatch = isPlayerIdTitle(title)
+
+          let verifyType = String(it?.verify_type || '').trim().toLowerCase()
+          if (!['none', 'dynamic', 'gamerspay'].includes(verifyType)) {
+            verifyType = it?.verify_player_name ? 'dynamic' : 'none'
+          }
+          // Only the Player ID input ever runs verification — matches the
+          // product-level rule so admins don't get a different mental model
+          // between product and package configs.
+          if (!playerIdMatch) verifyType = 'none'
+
+          const verify = verifyType !== 'none' ? 1 : 0
+          const verifyUrl =
+            verifyType === 'dynamic' ? String(it?.verify_url || '').trim() : ''
+          const verifyGame =
+            verifyType === 'gamerspay'
+              ? String(it?.verify_game || '').trim().toLowerCase()
+              : ''
+          const apiToken = verify ? String(it?.api_token || '').trim() : ''
+          const regionLock =
+            verifyType === 'dynamic'
+              ? String(it?.region_lock || '').trim().toUpperCase()
+              : ''
+
+          return {
+            topup_package_id: package_id,
+            title: playerIdMatch ? PLAYER_ID_TITLE : title,
+            is_player_id: playerIdMatch ? 1 : 0,
+            verify_player_name: verify,
+            verify_type: verifyType,
+            verify_url: verifyUrl,
+            verify_game: verifyGame,
+            api_token: apiToken,
+            region_lock: regionLock,
+            serial: typeof it?.serial === 'number' ? it.serial : idx,
+          }
+        })
+        .filter(Boolean) as any[]
+
+      const playerIdCount = cleaned.filter((it) => it.is_player_id === 1).length
+      if (playerIdCount > 1) {
+        response.message = `Only one input can use the reserved title "${PLAYER_ID_TITLE}"`
+        response.status = 400
+        response.success = false
+        return res.status(400).send(response.response)
+      }
+
+      await TopupPackageInput.destroy({ where: { topup_package_id: package_id } })
+      if (cleaned.length) {
+        await TopupPackageInput.bulkCreate(cleaned)
+      }
+
+      response.data = { count: cleaned.length }
+      res.send(response.response)
+    } catch (error) {
+      console.log('assignPackageInputs error', error)
       res.status(400).send(response.internalError)
     }
   }

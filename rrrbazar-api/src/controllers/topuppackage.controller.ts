@@ -178,6 +178,7 @@ class TopupPackageController {
       reward_type,
       cashback_amount,
       reseller_cashback,
+      has_custom_inputs,
     } = req.body;
 
     try {
@@ -264,6 +265,7 @@ class TopupPackageController {
         reward_type: normRewardType,
         cashback_amount: normCashback,
         reseller_cashback: normResellerCashback,
+        has_custom_inputs: has_custom_inputs == 1 ? 1 : 0,
       });
 
       response.message = "Created successfully";
@@ -306,6 +308,7 @@ class TopupPackageController {
       reward_type,
       cashback_amount,
       reseller_cashback,
+      has_custom_inputs,
     } = req.body;
 
     try {
@@ -462,6 +465,11 @@ class TopupPackageController {
         return res.status(400).send(response.response);
       }
       topupPackage.bot_config = JSON.stringify(pickedConfig);
+
+      if (has_custom_inputs !== undefined) {
+        (topupPackage as any).has_custom_inputs =
+          has_custom_inputs == 1 ? 1 : 0;
+      }
 
       await topupPackage.save();
 

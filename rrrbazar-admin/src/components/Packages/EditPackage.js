@@ -260,6 +260,102 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
+  // Per-package dynamic inputs override. Same UI/UX as AddPackage; hydrated
+  // from the package's has_custom_inputs flag + the /inputs sub-endpoint
+  // (fetched separately so unmodified packages don't pay the cost).
+  const PLAYER_ID_TITLE = "Player ID";
+  const isPlayerIdTitle = (t) =>
+    String(t || "").trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
+  const newInputRow = () => ({
+    _key: Math.random().toString(36).slice(2),
+    title: "",
+    verify_type: "none",
+    verify_url: "",
+    verify_game: "",
+    api_token: "",
+    region_lock: "",
+  });
+  const GAMERSPAY_GAMES = [
+    "pubg",
+    "ff_mena",
+    "ff_cis",
+    "ff_sg",
+    "ff_eu",
+    "ff_bd",
+    "ff_pk",
+    "ff_latam",
+    "ff_vn",
+    "ff_tw",
+    "ff_br",
+    "ff_id",
+  ];
+  const REGION_OPTIONS = [
+    { value: "", label: "— No region lock —" },
+    { value: "IND", label: "IND — India" },
+    { value: "BD", label: "BD — Bangladesh" },
+    { value: "PK", label: "PK — Pakistan" },
+    { value: "ID", label: "ID — Indonesia" },
+    { value: "BR", label: "BR — Brazil" },
+    { value: "SG", label: "SG — Singapore" },
+    { value: "MY", label: "MY — Malaysia" },
+    { value: "TH", label: "TH — Thailand" },
+    { value: "VN", label: "VN — Vietnam" },
+    { value: "PH", label: "PH — Philippines" },
+    { value: "TW", label: "TW — Taiwan" },
+    { value: "ME", label: "ME — Middle East" },
+    { value: "EU", label: "EU — Europe" },
+    { value: "NA", label: "NA — North America" },
+    { value: "SA", label: "SA — South America" },
+    { value: "CIS", label: "CIS — CIS" },
+  ];
+  const [hasCustomInputs, setHasCustomInputs] = useState(false);
+  const [packageInputs, setPackageInputs] = useState([]);
+  const updatePkgInputAt = (idx, patch) =>
+    setPackageInputs((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
+    );
+  const addPkgInputRow = () =>
+    setPackageInputs((prev) => [...prev, newInputRow()]);
+  const removePkgInputAt = (idx) =>
+    setPackageInputs((prev) => prev.filter((_, i) => i !== idx));
+
+  useEffect(() => {
+    if (!data) return;
+    setHasCustomInputs(Number(data.has_custom_inputs) === 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.id]);
+
+  // Fetch the saved input rows once the package id is known. We always
+  // fetch — even when has_custom_inputs is off — so toggling the checkbox
+  // re-surfaces a previous configuration without an extra round trip.
+  useEffect(() => {
+    if (!packageId) return;
+    let cancelled = false;
+    axiosInstance
+      .get(`/admin/topup-package/${packageId}/inputs`)
+      .then((res) => {
+        if (cancelled) return;
+        const rows = Array.isArray(res?.data?.data) ? res.data.data : [];
+        setPackageInputs(
+          rows.map((r) => ({
+            _key: Math.random().toString(36).slice(2),
+            title: r.title || "",
+            verify_type: r.verify_type || "none",
+            verify_url: r.verify_url || "",
+            verify_game: r.verify_game || "",
+            api_token: r.api_token || "",
+            region_lock: r.region_lock || "",
+          })),
+        );
+      })
+      .catch(() => {
+        /* no inputs saved yet — leave list empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [packageId]);
+
   const editPackageHandler = (e) => {
     e.preventDefault();
     if (botType === "shell-bot") {
@@ -297,6 +393,58 @@ function EditPackage(props) {
       }
       if (!String(pubgSku || "").trim()) {
         toast.error("PUBG-bot requires a SKU", toastDefault);
+        return;
+      }
+    }
+    // Per-package input validation — mirrors AddPackage.
+    if (hasCustomInputs) {
+      const playerIdRows = packageInputs.filter((it) => isPlayerIdTitle(it.title));
+      if (playerIdRows.length > 1) {
+        toast.error(
+          `Only one input can use the reserved title "${PLAYER_ID_TITLE}".`,
+          toastDefault,
+        );
+        return;
+      }
+      if (packageInputs.some((it) => !String(it.title || "").trim())) {
+        toast.error("Every dynamic input needs a title.", toastDefault);
+        return;
+      }
+      const dynamicMissingTag = packageInputs.find(
+        (it) =>
+          it.verify_type === "dynamic" &&
+          String(it.verify_url || "").trim() &&
+          !String(it.verify_url).includes("{value}"),
+      );
+      if (dynamicMissingTag) {
+        toast.error(
+          `Verify URL for "${dynamicMissingTag.title}" must include the {value} tag.`,
+          toastDefault,
+        );
+        return;
+      }
+      const dynamicEmptyUrl = packageInputs.find(
+        (it) =>
+          it.verify_type === "dynamic" && !String(it.verify_url || "").trim(),
+      );
+      if (dynamicEmptyUrl) {
+        toast.error(
+          `Verify URL is required for "${dynamicEmptyUrl.title}".`,
+          toastDefault,
+        );
+        return;
+      }
+      const gamerspayMissing = packageInputs.find(
+        (it) =>
+          it.verify_type === "gamerspay" &&
+          (!String(it.verify_game || "").trim() ||
+            !String(it.api_token || "").trim()),
+      );
+      if (gamerspayMissing) {
+        toast.error(
+          `GamersPay verify on "${gamerspayMissing.title}" needs both a Game and an API key.`,
+          toastDefault,
+        );
         return;
       }
     }
@@ -349,6 +497,7 @@ function EditPackage(props) {
                   sku: String(pubgSku || "").trim(),
                 }
               : {},
+        has_custom_inputs: hasCustomInputs ? 1 : 0,
       })
       .then(async () => {
         // Replace voucher-map rows. Only uc-bot uses voucher mappings;
@@ -361,6 +510,31 @@ function EditPackage(props) {
                 botType === "uc-bot"
                   ? mappings.map((m) => m.voucher_package_id)
                   : [],
+            },
+          );
+        } catch (e) {
+          /* package update already saved; ignore */
+        }
+
+        // Replace per-package dynamic inputs. Push an empty list when the
+        // override is off so stale rows from a previous save are cleared.
+        try {
+          await axiosInstance.post(
+            `/admin/topup-package/${packageId}/inputs`,
+            {
+              inputs: hasCustomInputs
+                ? packageInputs.map((it, idx) => ({
+                    title: it.title,
+                    verify_type: it.verify_type || "none",
+                    verify_player_name:
+                      it.verify_type && it.verify_type !== "none" ? 1 : 0,
+                    verify_url: it.verify_url || "",
+                    verify_game: it.verify_game || "",
+                    api_token: it.api_token || "",
+                    region_lock: it.region_lock || "",
+                    serial: idx,
+                  }))
+                : [],
             },
           );
         } catch (e) {
@@ -981,6 +1155,221 @@ function EditPackage(props) {
                       )}
                     </div>
                   </div>
+
+                  {/* Custom inputs override --- Start --- */}
+                  <div className="my-4 p-3 border border-indigo-100 bg-indigo-50 rounded">
+                    <label className="inline-flex items-center cursor-pointer select-none font-semibold text-indigo-900">
+                      <input
+                        type="checkbox"
+                        className="form-checkbox mr-2"
+                        checked={hasCustomInputs}
+                        onChange={(e) => setHasCustomInputs(e.target.checked)}
+                      />
+                      Override product inputs for this package
+                    </label>
+                    <p className="text-xs text-indigo-800 mt-1">
+                      When on, the storefront shows the inputs defined below
+                      (instead of the product-level inputs) once a customer
+                      picks this package on the topup page.
+                    </p>
+
+                    {hasCustomInputs && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="font-semibold">Order form inputs</label>
+                          <button
+                            type="button"
+                            onClick={addPkgInputRow}
+                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                          >
+                            + Add input
+                          </button>
+                        </div>
+                        <div className="mb-2 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded p-2">
+                          <strong>Reserved keyword:</strong> "{PLAYER_ID_TITLE}". Using
+                          it as a title enables verification options below. Only
+                          one input per package may use it.
+                        </div>
+                        {packageInputs.length === 0 && (
+                          <p className="text-sm text-gray-500 italic">
+                            No inputs yet. Click "Add input" to define one.
+                          </p>
+                        )}
+                        {packageInputs.map((row, idx) => {
+                          const reserved = isPlayerIdTitle(row.title);
+                          return (
+                            <div
+                              key={row._key}
+                              className="border border-gray-200 rounded p-3 mb-2 bg-white"
+                            >
+                              <div className="form_grid items-end">
+                                <div>
+                                  <label className="text-xs text-gray-600 block mb-1">
+                                    Title
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="form_input"
+                                    placeholder='e.g. "Player ID", "Server", "Username"'
+                                    value={row.title}
+                                    onChange={(e) =>
+                                      updatePkgInputAt(idx, { title: e.target.value })
+                                    }
+                                  />
+                                  {reserved && (
+                                    <p className="text-[11px] text-amber-700 mt-1">
+                                      Reserved title — verify options below apply.
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex items-end justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => removePkgInputAt(idx)}
+                                    className="px-3 py-2 bg-red-100 text-red-700 rounded text-sm"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+
+                              {reserved && (
+                                <div className="mt-2">
+                                  <label className="text-xs text-gray-600 block mb-1">
+                                    Player name check
+                                  </label>
+                                  <select
+                                    className="form_input"
+                                    value={row.verify_type || "none"}
+                                    onChange={(e) =>
+                                      updatePkgInputAt(idx, {
+                                        verify_type: e.target.value,
+                                      })
+                                    }
+                                  >
+                                    <option value="none">No name check</option>
+                                    <option value="dynamic">
+                                      Check player name dynamic
+                                    </option>
+                                    <option value="gamerspay">
+                                      Gamers pay name check
+                                    </option>
+                                  </select>
+
+                                  {row.verify_type === "dynamic" && (
+                                    <div className="mt-2">
+                                      <div className="mb-2 text-xs bg-blue-50 border border-blue-200 rounded p-2">
+                                        <strong className="text-blue-800">
+                                          Required tag:
+                                        </strong>{" "}
+                                        the Verify URL <em>must</em> include{" "}
+                                        <code className="bg-white px-1 rounded border border-blue-200 text-blue-700">
+                                          &#123;value&#125;
+                                        </code>{" "}
+                                        where the entered ID should go.
+                                      </div>
+                                      <label className="text-xs text-gray-600 block mb-1">
+                                        Verify URL
+                                      </label>
+                                      <input
+                                        type="text"
+                                        className="form_input"
+                                        placeholder="https://example.com/nickname?uid={value}"
+                                        value={row.verify_url}
+                                        onChange={(e) =>
+                                          updatePkgInputAt(idx, {
+                                            verify_url: e.target.value,
+                                          })
+                                        }
+                                      />
+                                      <label className="text-xs text-gray-600 block mb-1 mt-2">
+                                        API Token{" "}
+                                        <span className="text-gray-400">
+                                          (sent as{" "}
+                                          <code>Authorization: Bearer &lt;token&gt;</code>)
+                                        </span>
+                                      </label>
+                                      <input
+                                        type="text"
+                                        className="form_input"
+                                        placeholder="Optional bearer token for upstream API"
+                                        value={row.api_token}
+                                        onChange={(e) =>
+                                          updatePkgInputAt(idx, {
+                                            api_token: e.target.value,
+                                          })
+                                        }
+                                      />
+                                      <label className="text-xs text-gray-600 block mb-1 mt-2">
+                                        Region Lock
+                                      </label>
+                                      <select
+                                        className="form_input"
+                                        value={row.region_lock}
+                                        onChange={(e) =>
+                                          updatePkgInputAt(idx, {
+                                            region_lock: e.target.value,
+                                          })
+                                        }
+                                      >
+                                        {REGION_OPTIONS.map((opt) => (
+                                          <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+
+                                  {row.verify_type === "gamerspay" && (
+                                    <div className="mt-2">
+                                      <label className="text-xs text-gray-600 block mb-1">
+                                        Game
+                                      </label>
+                                      <select
+                                        className="form_input"
+                                        value={row.verify_game || ""}
+                                        onChange={(e) =>
+                                          updatePkgInputAt(idx, {
+                                            verify_game: e.target.value,
+                                          })
+                                        }
+                                      >
+                                        <option value="">— Select game —</option>
+                                        {GAMERSPAY_GAMES.map((g) => (
+                                          <option key={g} value={g}>
+                                            {g}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <label className="text-xs text-gray-600 block mb-1 mt-2">
+                                        API key{" "}
+                                        <span className="text-gray-400">
+                                          (sent as <code>X-API-Key</code>)
+                                        </span>
+                                      </label>
+                                      <input
+                                        type="text"
+                                        className="form_input"
+                                        placeholder="GamersPay X-API-Key value"
+                                        value={row.api_token}
+                                        onChange={(e) =>
+                                          updatePkgInputAt(idx, {
+                                            api_token: e.target.value,
+                                          })
+                                        }
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  {/* Custom inputs override --- End --- */}
 
                   <div className="my-4">
                     <label className="block mb-2 font-semibold">

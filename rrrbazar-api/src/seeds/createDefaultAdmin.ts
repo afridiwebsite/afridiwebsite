@@ -71,6 +71,11 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     // Topup product dynamic inputs (admin defines the order form per product)
     { path: '/topup-product/:id/inputs',     method: 'POST' },
     { path: '/topup-product/:id/categories', method: 'POST' },
+    // Topup package dynamic inputs (per-package overrides — checkbox in
+    // Add/Edit Package; storefront swaps these in for the product inputs
+    // when has_custom_inputs = 1).
+    { path: '/topup-package/:id/inputs',     method: 'GET'  },
+    { path: '/topup-package/:id/inputs',     method: 'POST' },
     // Category CRUD
     { path: '/categories',          method: 'GET'  },
     { path: '/category/:id',        method: 'GET'  },

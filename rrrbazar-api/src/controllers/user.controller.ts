@@ -29,6 +29,7 @@ const {
   Admin,
   TopupProduct,
   TopupProductInput,
+  TopupPackageInput,
   Product,
   TopupPackage,
   PaymentMethod,
@@ -546,8 +547,49 @@ class UserController {
         },
         order: [["serial", "ASC"]],
       });
+
+      // Attach per-package input overrides for any package that opted in
+      // via `has_custom_inputs`. Same attribute whitelist as the product
+      // inputs — verify_url, api_token, and region_lock stay server-side.
+      const customInputPackageIds = (packages as any[])
+        .filter((p) => Number(p.has_custom_inputs) === 1)
+        .map((p) => p.id);
+      let inputsByPackage: Record<number, any[]> = {};
+      if (customInputPackageIds.length > 0) {
+        const rows = await TopupPackageInput.findAll({
+          where: { topup_package_id: customInputPackageIds },
+          order: [["serial", "ASC"]],
+          attributes: [
+            "id",
+            "topup_package_id",
+            "title",
+            "is_player_id",
+            "verify_player_name",
+            "verify_type",
+            "verify_game",
+            "serial",
+          ],
+          raw: true,
+        });
+        for (const r of rows as any[]) {
+          const key = Number(r.topup_package_id);
+          if (!inputsByPackage[key]) inputsByPackage[key] = [];
+          inputsByPackage[key].push(r);
+        }
+      }
+      const packagesWithInputs = (packages as any[]).map((p) => {
+        const plain = typeof p.toJSON === "function" ? p.toJSON() : p;
+        return {
+          ...plain,
+          inputs:
+            Number(plain.has_custom_inputs) === 1
+              ? inputsByPackage[Number(plain.id)] || []
+              : [],
+        };
+      });
+
       // response.data = { ...product, topuppackage: packages }
-      response.data = { product, packages };
+      response.data = { product, packages: packagesWithInputs };
       res.send(response.response);
     } catch (error) {
       console.log(error);
@@ -555,189 +597,195 @@ class UserController {
     }
   };
 
-  // Verify a player ID against the admin-configured verify_url for a given
-  // input. The verify_url may contain a "{value}" placeholder; if it's
-  // missing we just append the value. Response is whatever the upstream
-  // service returns (proxied so the client doesn't see the URL or hit CORS).
-  verifyPlayerInput = async (req: express.Request, res: express.Response) => {
+  // Shared verification core. Takes a normalized input row (works for both
+  // TopupProductInput and TopupPackageInput because they share columns) and
+  // a value, and runs whichever verify backend is configured. Writes the
+  // result directly onto `res` so callers don't have to plumb the response
+  // shape themselves.
+  private runVerifyForInput = async (
+    input: any,
+    value: string,
+    res: express.Response,
+  ) => {
     const response = new responseUtils();
-    try {
-      const input_id = req.params.input_id as any;
-      const value = String(req.query.value || "").trim();
 
-      if (!value) {
-        response.message = "Missing value";
+    // Resolve verify backend. Legacy rows that never wrote verify_type
+    // are treated as 'dynamic' when verify_player_name is on.
+    const verifyType = (() => {
+      const vt = String(input?.verify_type || "").trim().toLowerCase();
+      if (vt === "gamerspay" || vt === "dynamic" || vt === "none") return vt;
+      return input?.verify_player_name ? "dynamic" : "none";
+    })();
+    if (verifyType === "none") {
+      response.message = "Verification is not configured for this input";
+      response.status = 400;
+      response.success = false;
+      return res.status(400).send(response.response);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const axios = require("axios");
+
+    const sanitizeVerifyError = (raw: any, fallback: string): string => {
+      const s = String(raw || "").trim();
+      if (!s) return fallback;
+      if (/^request failed with status code/i.test(s)) return fallback;
+      if (/^network error$/i.test(s))
+        return "Could not reach the verification service. Please try again in a moment.";
+      if (/timeout/i.test(s) && /\bms\b|\bseconds?\b/i.test(s))
+        return "Verification timed out. Please try again.";
+      return s;
+    };
+
+    if (verifyType === "gamerspay") {
+      const game = String(input?.verify_game || "").trim();
+      if (!game) {
+        response.message =
+          "This product is not set up for verification yet. Please contact support.";
         response.status = 400;
         response.success = false;
         return res.status(400).send(response.response);
       }
-
-      console.log(input_id,'dd')
-
-      const input = await TopupProductInput.findByPk(input_id);
-      if (!input ) {
-        response.message = "Input not found";
+      if (!input.api_token) {
+        response.message =
+          "This product is not set up for verification yet. Please contact support.";
         response.status = 400;
         response.success = false;
         return res.status(400).send(response.response);
       }
-
-      // Resolve verify backend. Legacy rows that never wrote verify_type
-      // are treated as 'dynamic' when verify_player_name is on.
-      const verifyType = (() => {
-        const vt = String((input as any).verify_type || "").trim().toLowerCase();
-        if (vt === "gamerspay" || vt === "dynamic" || vt === "none") return vt;
-        return input.verify_player_name ? "dynamic" : "none";
-      })();
-      if (verifyType === "none") {
-        response.message = "Verification is not configured for this input";
-        response.status = 400;
-        response.success = false;
-        return res.status(400).send(response.response);
-      }
-
-      // Lazy require axios so we don't pull it into the top of the file just
-      // for this branch.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const axios = require("axios");
-
-      console.log('type', verifyType)
-      
-      // Strip axios's generic "Request failed with status code N" and
-      // network-error messages so the storefront never displays them.
-      // Anything that's already a real upstream message passes through.
-      const sanitizeVerifyError = (raw: any, fallback: string): string => {
-        const s = String(raw || "").trim();
-        if (!s) return fallback;
-        if (/^request failed with status code/i.test(s)) return fallback;
-        if (/^network error$/i.test(s))
-          return "Could not reach the verification service. Please try again in a moment.";
-        if (/timeout/i.test(s) && /\bms\b|\bseconds?\b/i.test(s))
-          return "Verification timed out. Please try again.";
-        return s;
-      };
-
-      if (verifyType === "gamerspay") {
-        // GamersPay validate API. URL is hardcoded — admin only supplies
-        // the API key (api_token) and the game key (verify_game). Body
-        // shape per the spec:
-        //   success: { success: true, player_name: "...", message: null }
-        //   failure: { success: false, message: "...", ... }
-        const game = String((input as any).verify_game || "").trim();
-        if (!game) {
-          response.message =
-            "This product is not set up for verification yet. Please contact support.";
-          response.status = 400;
-          response.success = false;
-          return res.status(400).send(response.response);
-        }
-        if (!input.api_token) {
-          response.message =
-            "This product is not set up for verification yet. Please contact support.";
-          response.status = 400;
-          response.success = false;
-          return res.status(400).send(response.response);
-        }
-        try {
-          const upstream = await axios.post(
-            "https://api.gamerspay.app/api/v1/validate",
-            { game, player_id: value },
-            {
-              timeout: 8000,
-              headers: { "X-API-Key": input.api_token },
-            },
-          );
-          const body = upstream.data;
-          // Treat the documented shape literally — explicit success:false
-          // (and variants) is a hard failure. Anything ambiguous falls
-          // through to success.
-          const explicitFailure =
-            body?.success === false ||
-            body?.valid === false ||
-            String(body?.status || "").toLowerCase() === "error" ||
-            String(body?.status || "").toLowerCase() === "failed";
-          if (explicitFailure) {
-            response.message = sanitizeVerifyError(
-              body?.message || body?.error,
-              "We could not verify this Player ID. Please double-check it and try again.",
-            );
-            response.status = 400;
-            response.success = false;
-            return res.status(400).send(response.response);
-          }
-          response.data = body;
-          return res.send(response.data);
-        } catch (err: any) {
-          // Prefer the upstream body's own message (already friendly per
-          // the spec); fall back to a generic friendly default. Never
-          // surface err.message — axios sets that to
-          // "Request failed with status code 4xx" which is meaningless
-          // to a buyer.
-          const upstreamBody = err?.response?.data;
-          const rawMsg =
-            upstreamBody?.message ||
-            upstreamBody?.error ||
-            (typeof upstreamBody === "string" ? upstreamBody : null);
+      try {
+        const upstream = await axios.post(
+          "https://api.gamerspay.app/api/v1/validate",
+          { game, player_id: value },
+          {
+            timeout: 8000,
+            headers: { "X-API-Key": input.api_token },
+          },
+        );
+        const body = upstream.data;
+        const explicitFailure =
+          body?.success === false ||
+          body?.valid === false ||
+          String(body?.status || "").toLowerCase() === "error" ||
+          String(body?.status || "").toLowerCase() === "failed";
+        if (explicitFailure) {
           response.message = sanitizeVerifyError(
-            rawMsg,
+            body?.message || body?.error,
             "We could not verify this Player ID. Please double-check it and try again.",
           );
           response.status = 400;
           response.success = false;
           return res.status(400).send(response.response);
         }
-      }
-
-      // verifyType === 'dynamic' (the existing per-product verify_url path).
-      if (!input.verify_url) {
-        response.message = "Verification is not configured for this input";
+        response.data = body;
+        return res.send(response.data);
+      } catch (err: any) {
+        const upstreamBody = err?.response?.data;
+        const rawMsg =
+          upstreamBody?.message ||
+          upstreamBody?.error ||
+          (typeof upstreamBody === "string" ? upstreamBody : null);
+        response.message = sanitizeVerifyError(
+          rawMsg,
+          "We could not verify this Player ID. Please double-check it and try again.",
+        );
         response.status = 400;
         response.success = false;
         return res.status(400).send(response.response);
       }
+    }
 
-      // The admin form enforces this, but double-check server-side: the URL
-      // is meaningless without a place to inject the entered ID.
-      if (!input.verify_url.includes("{value}")) {
-        response.message =
-          "Verify URL is misconfigured — missing {value} tag. Ask the admin to fix the product.";
+    // verifyType === 'dynamic'
+    if (!input.verify_url) {
+      response.message = "Verification is not configured for this input";
+      response.status = 400;
+      response.success = false;
+      return res.status(400).send(response.response);
+    }
+    if (!input.verify_url.includes("{value}")) {
+      response.message =
+        "Verify URL is misconfigured — missing {value} tag. Ask the admin to fix the product.";
+      response.status = 400;
+      response.success = false;
+      return res.status(400).send(response.response);
+    }
+    const encoded = encodeURIComponent(value);
+    const url = input.verify_url.replace(/\{value\}/g, encoded);
+
+    const headers: Record<string, string> = {};
+    if (input.api_token) {
+      headers.Authorization = `Bearer ${input.api_token}`;
+    }
+    const upstream = await axios.get(url, { timeout: 8000, headers });
+    const body = upstream.data;
+
+    if (input.region_lock) {
+      const expected = String(input.region_lock).trim().toUpperCase();
+      const actual = String(body?.player_info?.region ?? body?.region ?? "")
+        .trim()
+        .toUpperCase();
+      if (!actual || actual !== expected) {
+        response.message = actual
+          ? `Region mismatch — this product is only available for ${expected} accounts (got ${actual}).`
+          : `Region check failed — upstream response did not include a region (required: ${expected}).`;
         response.status = 400;
         response.success = false;
         return res.status(400).send(response.response);
       }
-      const encoded = encodeURIComponent(value);
-      const url = input.verify_url.replace(/\{value\}/g, encoded);
+    }
 
-      const headers: Record<string, string> = {};
-      if (input.api_token) {
-        headers.Authorization = `Bearer ${input.api_token}`;
+    response.data = body;
+    return res.send(response.data);
+  };
+
+  // Verify against a product-level input row.
+  verifyPlayerInput = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const input_id = req.params.input_id as any;
+      const value = String(req.query.value || "").trim();
+      if (!value) {
+        response.message = "Missing value";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
       }
-      const upstream = await axios.get(url, { timeout: 8000, headers });
-      const body = upstream.data;
-
-      // Region lock: if admin pinned a region for this input, the upstream
-      // response is only considered valid when its region matches. Even a
-      // successful upstream hit is rejected on mismatch (account is real, but
-      // not eligible for this product).
-      if (input.region_lock) {
-        const expected = String(input.region_lock).trim().toUpperCase();
-        const actual = String(body?.player_info?.region ?? body?.region ?? "")
-          .trim()
-          .toUpperCase();
-        if (!actual || actual !== expected) {
-          response.message = actual
-            ? `Region mismatch — this product is only available for ${expected} accounts (got ${actual}).`
-            : `Region check failed — upstream response did not include a region (required: ${expected}).`;
-          response.status = 400;
-          response.success = false;
-          return res.status(400).send(response.response);
-        }
+      const input = await TopupProductInput.findByPk(input_id);
+      if (!input) {
+        response.message = "Input not found";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
       }
-
-      response.data = body;
-      return res.send(response.data);
+      return await this.runVerifyForInput(input, value, res);
     } catch (error) {
       console.log("verifyPlayerInput error", (error as any)?.message || error);
+      res.status(400).send(response.internalError);
+    }
+  };
+
+  // Verify against a package-level input row (the override path).
+  verifyPackageInput = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils();
+    try {
+      const input_id = req.params.input_id as any;
+      const value = String(req.query.value || "").trim();
+      if (!value) {
+        response.message = "Missing value";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      const input = await TopupPackageInput.findByPk(input_id);
+      if (!input) {
+        response.message = "Input not found";
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      return await this.runVerifyForInput(input, value, res);
+    } catch (error) {
+      console.log("verifyPackageInput error", (error as any)?.message || error);
       res.status(400).send(response.internalError);
     }
   };

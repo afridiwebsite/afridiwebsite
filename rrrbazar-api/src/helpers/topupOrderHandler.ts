@@ -560,9 +560,7 @@ async function handleLikeBot(opts: {
   // the dispatch row so we surface the freshest values in details/logs
   // (createAndSendDispatch returns the pre-save instance).
   const refreshed = await BotDispatch.findByPk(dispatch.id);
-  const respContent = String(
-    (refreshed as any)?.response_content ?? "",
-  );
+  const respContent = String((refreshed as any)?.response_content ?? "");
   const errReason = String(
     (refreshed as any)?.error_reason ?? error_reason ?? "",
   );
@@ -906,6 +904,8 @@ export async function processPubgResponse(opts: {
     .toLowerCase()
     .trim();
 
+  console.log(parsed, "parsed rsposne");
+
   const isDelivered = transportOk && apiSuccess && apiStatus === "completed";
   const isManualCharge =
     transportOk && apiStatus === "risk_error_manual_charge";
@@ -1006,10 +1006,7 @@ async function finalizePubgSuccess(opts: {
       `Note : ${escapeHtml(apiMessage || "Provider flagged this order for manual review — code delivered.")}` +
       pubgRewardHtml;
   } else {
-    order.brief_note =
-      playerLine +
-      `Order ID : ${escapeHtml(apiOrderId || String(order.id))}` +
-      pubgRewardHtml;
+    order.brief_note = playerLine + pubgRewardHtml;
   }
   (order as any).details =
     `<span style='color:#059669;'><strong>PUBG-bot delivered successfully.</strong></span>` +
@@ -1360,14 +1357,11 @@ async function pollPubgOrderOnce(
   // Anything other than `sent` means somebody already resolved it (admin
   // retry, manual fix, another poll race). Stop.
   if ((dispatch as any).status !== "sent") {
-    console.log(
-      "[pollPubgOrder] dispatch no longer 'sent' — stopping",
-      {
-        dispatchId,
-        attempt,
-        status: (dispatch as any).status,
-      },
-    );
+    console.log("[pollPubgOrder] dispatch no longer 'sent' — stopping", {
+      dispatchId,
+      attempt,
+      status: (dispatch as any).status,
+    });
     return;
   }
 
@@ -1420,10 +1414,10 @@ async function pollPubgOrderOnce(
   if (stillPending) {
     const nextAttempt = attempt + 1;
     if (nextAttempt >= PUBG_POLL_MAX_ATTEMPTS) {
-      console.warn(
-        "[pollPubgOrder] cap reached — marking dispatch failed",
-        { dispatchId, attempts: nextAttempt },
-      );
+      console.warn("[pollPubgOrder] cap reached — marking dispatch failed", {
+        dispatchId,
+        attempts: nextAttempt,
+      });
       (dispatch as any).status = "failed";
       (dispatch as any).error_reason =
         `Polling cap reached (${PUBG_POLL_MAX_ATTEMPTS} × ${PUBG_POLL_INTERVAL_MS / 1000}s) — upstream still pending_review. Admin retry will GET status again.`;

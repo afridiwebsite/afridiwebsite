@@ -17,6 +17,7 @@ import api, {
   getUserProfile,
   getProductOrders,
   verifyPlayerInput,
+  verifyPackageInput,
   getMyOrderedOncePackages,
 } from "../../api/api";
 import ActivityIndicator from "../../components/ActivityIndicator";
@@ -109,14 +110,32 @@ function TopupOrderPage() {
   const productInfo = productData?.product;
   const packages = productData?.packages;
 
-  // Admin-defined dynamic inputs (title + optional verify config). When the
-  // product has any, they replace the legacy hardcoded Player-ID branch in
-  // the order form.
-  const dynamicInputs = Array.isArray(productInfo?.inputs)
-    ? [...productInfo.inputs].sort((a, b) => (a.serial || 0) - (b.serial || 0))
+  // When the admin enables "Override product inputs" on a package, the
+  // selected package's own inputs swap in for the product-level set. We
+  // need it reactive to package selection, so this depends on
+  // `selectedPackage` (which is the index of the picked package).
+  const selectedPackageObj =
+    typeof selectedPackage === "number" && Array.isArray(packages)
+      ? packages[selectedPackage]
+      : null;
+  const useCustomPackageInputs =
+    !!selectedPackageObj &&
+    Number(selectedPackageObj.has_custom_inputs) === 1 &&
+    Array.isArray(selectedPackageObj.inputs) &&
+    selectedPackageObj.inputs.length > 0;
+  const dynamicInputsSource = useCustomPackageInputs
+    ? selectedPackageObj.inputs
+    : productInfo?.inputs;
+  const dynamicInputs = Array.isArray(dynamicInputsSource)
+    ? [...dynamicInputsSource].sort((a, b) => (a.serial || 0) - (b.serial || 0))
     : [];
   const hasDynamicInputs = dynamicInputs.length > 0;
   const playerIdInput = dynamicInputs.find((i) => i.is_player_id === 1);
+  // Route verify lookups to the right backend based on which scope the
+  // current input set came from.
+  const verifyInputApi = useCustomPackageInputs
+    ? verifyPackageInput
+    : verifyPlayerInput;
 
   // Verify-button state. Keyed by input id so we can disable/show results
   // per-input independently. `value` is captured at verify time so we can
@@ -137,7 +156,7 @@ function TopupOrderPage() {
       [input.id]: { loading: true, value: trimmed },
     }));
     try {
-      const res = await verifyPlayerInput(input.id, trimmed);
+      const res = await verifyInputApi(input.id, trimmed);
       const data = res?.data?.data || res?.data;
       setVerifyState((p) => ({
         ...p,

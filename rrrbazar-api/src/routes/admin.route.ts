@@ -142,6 +142,11 @@ router.post('/topup-product/:id/categories', auth, categoryController.assignProd
 router.post('/topup-product/:id/inputs', auth, adminController.assignProductInputs)
 // Topup product dynamic inputs ----END----
 
+// Topup package dynamic inputs (per-package overrides) ----START----
+router.get('/topup-package/:id/inputs', auth, adminController.getPackageInputs)
+router.post('/topup-package/:id/inputs', auth, adminController.assignPackageInputs)
+// Topup package dynamic inputs ----END----
+
 // Site settings apis ----START----
 router.get('/site-settings', auth, siteSettingController.get)
 router.post('/site-settings/update', auth, siteSettingController.update)
