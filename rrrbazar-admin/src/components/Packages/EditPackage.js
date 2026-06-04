@@ -265,7 +265,9 @@ function EditPackage(props) {
   // (fetched separately so unmodified packages don't pay the cost).
   const PLAYER_ID_TITLE = "Player ID";
   const isPlayerIdTitle = (t) =>
-    String(t || "").trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
+    String(t || "")
+      .trim()
+      .toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
   const newInputRow = () => ({
     _key: Math.random().toString(36).slice(2),
     title: "",
@@ -398,7 +400,9 @@ function EditPackage(props) {
     }
     // Per-package input validation — mirrors AddPackage.
     if (hasCustomInputs) {
-      const playerIdRows = packageInputs.filter((it) => isPlayerIdTitle(it.title));
+      const playerIdRows = packageInputs.filter((it) =>
+        isPlayerIdTitle(it.title),
+      );
       if (playerIdRows.length > 1) {
         toast.error(
           `Only one input can use the reserved title "${PLAYER_ID_TITLE}".`,
@@ -462,9 +466,7 @@ function EditPackage(props) {
         // doesn't keep paying out after the admin switches to money.
         reward_type: rewardType,
         coin_value:
-          rewardType === "coin"
-            ? Number(coin_value.current?.value || 0)
-            : 0,
+          rewardType === "coin" ? Number(coin_value.current?.value || 0) : 0,
         cashback_amount:
           rewardType === "money" ? Number(cashbackAmount) || 0 : 0,
         reseller_cashback: Number(resellerCashback) || 0,
@@ -519,24 +521,21 @@ function EditPackage(props) {
         // Replace per-package dynamic inputs. Push an empty list when the
         // override is off so stale rows from a previous save are cleared.
         try {
-          await axiosInstance.post(
-            `/admin/topup-package/${packageId}/inputs`,
-            {
-              inputs: hasCustomInputs
-                ? packageInputs.map((it, idx) => ({
-                    title: it.title,
-                    verify_type: it.verify_type || "none",
-                    verify_player_name:
-                      it.verify_type && it.verify_type !== "none" ? 1 : 0,
-                    verify_url: it.verify_url || "",
-                    verify_game: it.verify_game || "",
-                    api_token: it.api_token || "",
-                    region_lock: it.region_lock || "",
-                    serial: idx,
-                  }))
-                : [],
-            },
-          );
+          await axiosInstance.post(`/admin/topup-package/${packageId}/inputs`, {
+            inputs: hasCustomInputs
+              ? packageInputs.map((it, idx) => ({
+                  title: it.title,
+                  verify_type: it.verify_type || "none",
+                  verify_player_name:
+                    it.verify_type && it.verify_type !== "none" ? 1 : 0,
+                  verify_url: it.verify_url || "",
+                  verify_game: it.verify_game || "",
+                  api_token: it.api_token || "",
+                  region_lock: it.region_lock || "",
+                  serial: idx,
+                }))
+              : [],
+          });
         } catch (e) {
           /* package update already saved; ignore */
         }
@@ -802,8 +801,8 @@ function EditPackage(props) {
                       <p className="text-xs text-gray-500 mt-1">
                         Modes 1 & 2 are scoped by Player ID (no effect on
                         products without a Player ID input). Modes 3 & 4 are
-                        scoped by user account and apply regardless of
-                        whether the product asks for a Player ID.
+                        scoped by user account and apply regardless of whether
+                        the product asks for a Player ID.
                       </p>
                     </div>
                   </div>
@@ -852,18 +851,10 @@ function EditPackage(props) {
                         onChange={(e) => setBotType(e.target.value)}
                       >
                         <option value="none">None — manual fulfilment</option>
-                        <option value="uc-bot">
-                          UC-bot (voucher pool auto-delivery)
-                        </option>
-                        <option value="shell-bot">
-                          Shell-bot (per-tag shell dispatch)
-                        </option>
-                        <option value="like-bot">
-                          Like-bot (Free Fire likes)
-                        </option>
-                        <option value="pubg-bot">
-                          PUBG-bot (GamersPay UC/diamonds)
-                        </option>
+                        <option value="uc-bot">UC-bot</option>
+                        <option value="shell-bot">Shell-bot</option>
+                        <option value="like-bot">Like-bot</option>
+                        <option value="pubg-bot">GamersPay</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
                         Pick how the order should be dispatched on placement.
@@ -1176,7 +1167,9 @@ function EditPackage(props) {
                     {hasCustomInputs && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between mb-2">
-                          <label className="font-semibold">Order form inputs</label>
+                          <label className="font-semibold">
+                            Order form inputs
+                          </label>
                           <button
                             type="button"
                             onClick={addPkgInputRow}
@@ -1186,9 +1179,9 @@ function EditPackage(props) {
                           </button>
                         </div>
                         <div className="mb-2 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded p-2">
-                          <strong>Reserved keyword:</strong> "{PLAYER_ID_TITLE}". Using
-                          it as a title enables verification options below. Only
-                          one input per package may use it.
+                          <strong>Reserved keyword:</strong> "{PLAYER_ID_TITLE}
+                          ". Using it as a title enables verification options
+                          below. Only one input per package may use it.
                         </div>
                         {packageInputs.length === 0 && (
                           <p className="text-sm text-gray-500 italic">
@@ -1213,12 +1206,15 @@ function EditPackage(props) {
                                     placeholder='e.g. "Player ID", "Server", "Username"'
                                     value={row.title}
                                     onChange={(e) =>
-                                      updatePkgInputAt(idx, { title: e.target.value })
+                                      updatePkgInputAt(idx, {
+                                        title: e.target.value,
+                                      })
                                     }
                                   />
                                   {reserved && (
                                     <p className="text-[11px] text-amber-700 mt-1">
-                                      Reserved title — verify options below apply.
+                                      Reserved title — verify options below
+                                      apply.
                                     </p>
                                   )}
                                 </div>
@@ -1286,7 +1282,10 @@ function EditPackage(props) {
                                         API Token{" "}
                                         <span className="text-gray-400">
                                           (sent as{" "}
-                                          <code>Authorization: Bearer &lt;token&gt;</code>)
+                                          <code>
+                                            Authorization: Bearer &lt;token&gt;
+                                          </code>
+                                          )
                                         </span>
                                       </label>
                                       <input
@@ -1313,7 +1312,10 @@ function EditPackage(props) {
                                         }
                                       >
                                         {REGION_OPTIONS.map((opt) => (
-                                          <option key={opt.value} value={opt.value}>
+                                          <option
+                                            key={opt.value}
+                                            value={opt.value}
+                                          >
                                             {opt.label}
                                           </option>
                                         ))}
@@ -1335,7 +1337,9 @@ function EditPackage(props) {
                                           })
                                         }
                                       >
-                                        <option value="">— Select game —</option>
+                                        <option value="">
+                                          — Select game —
+                                        </option>
                                         {GAMERSPAY_GAMES.map((g) => (
                                           <option key={g} value={g}>
                                             {g}

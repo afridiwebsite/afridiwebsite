@@ -721,16 +721,16 @@ function AddPackage(props) {
                       >
                         <option value="none">None — manual fulfilment</option>
                         <option value="uc-bot">
-                          UC-bot (voucher pool auto-delivery)
+                          UC-bot 
                         </option>
                         <option value="shell-bot">
-                          Shell-bot (per-tag shell dispatch)
+                          Shell-bot 
                         </option>
                         <option value="like-bot">
-                          Like-bot (Free Fire likes)
+                          Like-bot 
                         </option>
                         <option value="pubg-bot">
-                          PUBG-bot (GamersPay UC/diamonds)
+                          GamersPay
                         </option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
