@@ -122,6 +122,11 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-play-circle",
     },
     {
+      text: "Spin Rewards",
+      path: "/spin-rewards",
+      icon: "fas fa-gift",
+    },
+    {
       text: "Site Settings",
       path: "/site-settings",
       icon: "fas fa-cog",

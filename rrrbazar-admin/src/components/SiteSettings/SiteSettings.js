@@ -28,10 +28,6 @@ function SiteSettings() {
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
     const [savedLogo, setSavedLogo] = useState('')
 
-    const [faviconFile, setFaviconFile] = useState(null)
-    const { path: uploadedFavicon, uploading: faviconUploading } = useUpload(faviconFile)
-    const [savedFavicon, setSavedFavicon] = useState('')
-
     // Image shown on the "Wallet Pay" tile of the topup payment picker.
     // Uploaded through the same hook the logo uses; the saved filename comes
     // back through site settings on refresh.
@@ -51,7 +47,6 @@ function SiteSettings() {
     useEffect(() => {
         if (data) {
             setSavedLogo(data.logo || '')
-            setSavedFavicon(data.favicon || '')
             setSavedWalletPay(data.wallet_pay_image || '')
             setSavedWalletPayFullUrl(data.wallet_pay_image_full_url || '')
             setColors({
@@ -67,12 +62,11 @@ function SiteSettings() {
 
     const submit = (e) => {
         e.preventDefault()
-        if (uploading || faviconUploading || walletPayUploading) return
+        if (uploading || walletPayUploading) return
         setBusy(true)
         const payload = {
             site_name: site_name.current.value,
             logo: uploadedLogo || savedLogo,
-            favicon: uploadedFavicon || savedFavicon,
             primary_color: colors.primary,
             secondary_color: colors.secondary,
             coin_to_money_rate: parseFloat(coin_to_money_rate.current.value || 0),
@@ -129,21 +123,6 @@ function SiteSettings() {
                                             <img
                                                 alt="logo preview"
                                                 src={data.logo_full_url || ''}
-                                                style={{ maxHeight: 60, marginTop: 8 }}
-                                            />
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label>Favicon (uploaded image)</label>
-                                        <input
-                                            type="file"
-                                            className="form_input"
-                                            onChange={(e) => setFaviconFile(e.target.files[0])}
-                                        />
-                                        {(uploadedFavicon || data.favicon) && (
-                                            <img
-                                                alt="favicon preview"
-                                                src={data.favicon_full_url || ''}
                                                 style={{ maxHeight: 60, marginTop: 8 }}
                                             />
                                         )}
@@ -281,13 +260,6 @@ function SiteSettings() {
                                 </div>
 
                                 <h4 className="font-bold mt-6 mb-2">Spin wheel</h4>
-                                <p className="text-sm text-gray-500 mb-3">
-                                    Global spin settings. The wheel segments
-                                    themselves are managed at{' '}
-                                    <a href="/spin-rewards" className="text-blue-600 underline">
-                                        Spin Rewards
-                                    </a>.
-                                </p>
                                 <div className="form_grid">
                                     <div>
                                         <label>Cost per spin (coins)</label>
