@@ -15,8 +15,19 @@ function Categories() {
     const emoji = useRef(null)
     const serial = useRef(null)
     const is_active = useRef(null)
+    const [limitProduct, setLimitProduct] = useState(false)
+    const product_limit = useRef(null)
 
     const refreshList = () => setRefresh((p) => !p)
+
+    const resetForm = () => {
+        setEditing(null)
+        setLimitProduct(false)
+        if (name.current) name.current.value = ''
+        if (emoji.current) emoji.current.value = ''
+        if (serial.current) serial.current.value = 0
+        if (is_active.current) is_active.current.checked = true
+    }
 
     const submit = (e) => {
         e.preventDefault()
@@ -26,6 +37,8 @@ function Categories() {
             emoji: emoji.current.value,
             serial: Number(serial.current.value || 0),
             is_active: is_active.current.checked ? 1 : 0,
+            limit_product: limitProduct ? 1 : 0,
+            product_limit: limitProduct ? Number(product_limit.current.value || 0) : 0,
         }
         const req = editing
             ? axiosInstance.post(`/admin/category/update/${editing.id}`, payload)
@@ -33,11 +46,7 @@ function Categories() {
         req
             .then(() => {
                 toast.success(editing ? 'Category updated' : 'Category created', toastDefault)
-                setEditing(null)
-                name.current.value = ''
-                emoji.current.value = ''
-                serial.current.value = ''
-                is_active.current.checked = true
+                resetForm()
                 refreshList()
             })
             .catch((err) => toast.error(getErrors(err, false, true), toastDefault))
@@ -46,11 +55,13 @@ function Categories() {
 
     const startEdit = (c) => {
         setEditing(c)
+        setLimitProduct(c.limit_product === 1)
         setTimeout(() => {
             if (name.current) name.current.value = c.name || ''
             if (emoji.current) emoji.current.value = c.emoji || ''
             if (serial.current) serial.current.value = c.serial || 0
             if (is_active.current) is_active.current.checked = c.is_active === 1
+            if (product_limit.current) product_limit.current.value = c.product_limit || 0
         }, 0)
     }
 
@@ -96,22 +107,39 @@ function Categories() {
                                 Active
                             </label>
                         </div>
+                        <div className="mb-3">
+                            <label className="cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={limitProduct}
+                                    onChange={(e) => setLimitProduct(e.target.checked)}
+                                    className="mr-2"
+                                />
+                                Limit products on Home
+                            </label>
+                        </div>
+                        {limitProduct && (
+                            <div className="mb-3 animate-fade-in">
+                                <label>Max products to show</label>
+                                <input
+                                    ref={product_limit}
+                                    type="number"
+                                    required
+                                    min={1}
+                                    className="form_input"
+                                    placeholder="e.g. 6"
+                                />
+                                <small className="text-gray-500">
+                                    Extra products will be hidden behind a "Show More" button.
+                                </small>
+                            </div>
+                        )}
                         <div className="flex gap-2">
                             <button type="submit" disabled={busy} className="cstm_btn flex-1">
                                 {editing ? 'Update' : 'Create'}
                             </button>
                             {editing && (
-                                <button
-                                    type="button"
-                                    className="cstm_btn !bg-gray-500"
-                                    onClick={() => {
-                                        setEditing(null)
-                                        if (name.current) name.current.value = ''
-                                        if (emoji.current) emoji.current.value = ''
-                                        if (serial.current) serial.current.value = 0
-                                        if (is_active.current) is_active.current.checked = true
-                                    }}
-                                >
+                                <button type="button" className="cstm_btn !bg-gray-500" onClick={resetForm}>
                                     Cancel
                                 </button>
                             )}

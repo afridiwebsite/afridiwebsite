@@ -39,7 +39,7 @@ class CategoryController {
 
     async createCategory(req: express.Request, res: express.Response) {
         const response = new responseUtils();
-        const { name, emoji, serial, is_active } = req.body;
+        const { name, emoji, serial, is_active, limit_product, product_limit } = req.body;
         const slug = slugify(name);
 
         const exists = await Category.findOne({ where: { slug } });
@@ -50,7 +50,15 @@ class CategoryController {
             return res.status(400).send(response.response);
         }
 
-        const data = await Category.create({ name, slug, emoji, serial, is_active });
+        const data = await Category.create({
+            name,
+            slug,
+            emoji,
+            serial,
+            is_active,
+            limit_product: limit_product ? 1 : 0,
+            product_limit: Number(product_limit || 0),
+        });
         response.data = data;
         res.send(response.response);
     }
@@ -58,7 +66,7 @@ class CategoryController {
     async updateCategory(req: express.Request, res: express.Response) {
         const response = new responseUtils();
         const id = (req.params.id as any);
-        const { name, emoji, serial, is_active } = req.body;
+        const { name, emoji, serial, is_active, limit_product, product_limit } = req.body;
         const cat = await Category.findByPk(id);
         if (!cat) {
             response.status = 400;
@@ -71,6 +79,8 @@ class CategoryController {
         cat.emoji = emoji;
         cat.serial = serial;
         cat.is_active = is_active;
+        (cat as any).limit_product = limit_product ? 1 : 0;
+        (cat as any).product_limit = Number(product_limit || 0);
         await cat.save();
         response.data = cat;
         res.send(response.response);

@@ -22,14 +22,22 @@ function SectionTitle({ children }) {
   );
 }
 
-function CategorySection({ title, products }) {
+function CategorySection({ title, products, limit_product, product_limit }) {
   if (!products || products.length === 0) return null;
+
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const shouldLimit =
+    limit_product === 1 && product_limit > 0 && products.length > product_limit;
+  const displayProducts =
+    shouldLimit && !isExpanded ? products.slice(0, product_limit) : products;
+
   return (
     <section className="container mb-8 mt-8 animate-fade-in">
       <div className="">
         <SectionTitle>{title}</SectionTitle>
         <div className="grid grid-cols-3 xs:grid-cols-3 md:grid-cols-6 gap-2 md:gap-8">
-          {products.map((p, i) => (
+          {displayProducts.map((p, i) => (
             <div
               key={p.id || i}
               style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
@@ -39,6 +47,29 @@ function CategorySection({ title, products }) {
             </div>
           ))}
         </div>
+        {shouldLimit && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="px-8 py-2.5 bg-gradient-to-br from-primary-500 to-secondary-500 hover:bg-primary-600 text-white rounded-full text-sm font-bold transition-all shadow-[0_4px_15px_rgba(0,65,194,0.25)] hover:shadow-[0_6px_20px_rgba(0,65,194,0.35)] active:scale-95 flex items-center gap-2"
+            >
+              <span>{isExpanded ? "Show Less" : "Show More"}</span>
+              <svg
+                className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -168,6 +199,36 @@ function Home({
   useEffect(() => {
     const closed = JSON.parse(localStorage.getItem("closed_notices") || "[]");
     setClosedNoticeIds(closed);
+  }, []);
+
+  useEffect(() => {
+    const savedPosition = localStorage.getItem("home_scroll_pos");
+    if (savedPosition) {
+      // Small delay to ensure the content is fully rendered before scrolling
+      const timer = setTimeout(() => {
+        window.scrollTo({
+          top: parseInt(savedPosition, 10),
+          behavior: "instant",
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
+    let timeoutId;
+    const handleScroll = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        localStorage.setItem("home_scroll_pos", window.scrollY.toString());
+      }, 250);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleCloseNotice = (ids) => {
@@ -300,6 +361,8 @@ function Home({
             key={cat.id}
             title={cat.name}
             products={cat.products}
+            limit_product={cat.limit_product}
+            product_limit={cat.product_limit}
           />
         ))}
 

@@ -44,6 +44,14 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.INTEGER,
             defaultValue: 1
         },
+        limit_product: {
+            type: DataTypes.TINYINT,
+            defaultValue: 0
+        },
+        product_limit: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0
+        },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,
