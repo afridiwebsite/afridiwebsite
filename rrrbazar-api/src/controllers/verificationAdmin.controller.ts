@@ -3,7 +3,7 @@ import Schema from "../models";
 import responseUtils from "../utils/response.utils";
 import { STEP_DEFINITIONS } from "./verification.controller";
 
-const { VerificationSubmission, User } = Schema;
+const { VerificationSubmission, User, SiteSetting } = Schema;
 
 // Admin-facing endpoints for the user-verification module. Two
 // responsibilities:
@@ -73,6 +73,36 @@ class VerificationAdminController {
       (submission as any).reviewed_at = new Date();
       await submission.save();
 
+      // Step 1 sync: when the admin approves step 1, push the verified
+      // phone number into User.phone so the rest of the app (checkout,
+      // notifications, admin user list) sees it without having to join
+      // the verification table. Same direction the spec implies — the
+      // phone is "locked" once verified, so it should be the canonical
+      // value on the user row too.
+      if (
+        status === "verified" &&
+        Number((submission as any).step) === 1
+      ) {
+        try {
+          const data: any = (submission as any).data || {};
+          const phone = String(data.phone || "").trim();
+          if (phone) {
+            const user = await User.findByPk((submission as any).user_id);
+            if (user && user.phone !== phone) {
+              user.phone = phone;
+              await user.save();
+            }
+          }
+        } catch (e) {
+          // Failure to sync the User row shouldn't block the review;
+          // log it for follow-up and continue.
+          console.error("[verificationAdmin.review] phone sync failed", {
+            submission_id: (submission as any).id,
+            err: (e as any)?.message || e,
+          });
+        }
+      }
+
       response.data = submission;
       response.message =
         status === "verified" ? "Submission verified." : "Submission rejected.";
@@ -116,7 +146,6 @@ class VerificationAdminController {
 // when the verification module is on and step 4 isn't verified. Lives
 // here so the gate is colocated with the rest of the verification logic.
 export async function canPromoteToReseller(user_id: number): Promise<boolean> {
-  const { SiteSetting } = Schema;
   const settings = await SiteSetting.findOne();
   if (!settings || Number((settings as any).verification_enabled) !== 1) {
     // Module off — no extra gate, current admin behavior wins.

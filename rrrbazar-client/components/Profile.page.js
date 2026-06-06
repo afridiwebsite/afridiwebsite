@@ -47,14 +47,15 @@ function ProfilePage() {
   }, [data, updateAuthUserInfo]);
 
   // Verification snapshot — fetches per-step status + counts in one shot.
-  // Used to render the tag system below; failures are silent (the section
-  // just hides) so a broken module doesn't break the whole profile page.
-  const { data: verificationResp } = useQuery(
+  // `reactQueryConfig.select` already unwraps res.data.data, so `data` is
+  // the inner payload (`{ enabled, steps, submissions, counts, ... }`).
+  // Failures are silent (the section just hides) so a broken module
+  // doesn't break the whole profile page.
+  const { data: verification } = useQuery(
     'verification-me',
     getMyVerification,
     { ...reactQueryConfig, retry: false },
   );
-  const verification = verificationResp?.data?.data;
   const verificationEnabled = !!verification?.enabled;
 
   const {
@@ -164,7 +165,22 @@ function ProfilePage() {
             </div>
 
             <div className="text-center md:text-left">
-              <h4 className="_h4 text-white drop-shadow">{username}</h4>
+              <h4 className="_h4 text-white drop-shadow flex items-center justify-center md:justify-start gap-2">
+                {username}
+                {/* "Verified" badge — only after all 4 verification steps
+                    are admin-approved. Spec: "the user will see a
+                    verified tag only after all the steps are verified."
+                    Hidden when the module is off so non-verified sites
+                    don't show an empty signal. */}
+                {verificationEnabled && verification?.all_verified && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[11px] font-semibold backdrop-blur-sm"
+                    title="All 4 verification steps approved"
+                  >
+                    ✓ Verified
+                  </span>
+                )}
+              </h4>
               <p className="text-white/85 _subtitle2">{email}</p>
               {/* <button
                 onClick={() => router.push(routes.settings.name)}

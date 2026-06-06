@@ -524,7 +524,9 @@ function VerificationPage() {
         reactQueryConfig,
     );
 
-    const payload = data?.data?.data;
+    // reactQueryConfig.select already unwraps res.data.data, so `data`
+    // IS the inner payload (`{ enabled, steps, submissions, counts, ... }`).
+    const payload = data;
     const enabled = !!payload?.enabled;
     const steps = payload?.steps || [];
     const submissions = payload?.submissions || {};
