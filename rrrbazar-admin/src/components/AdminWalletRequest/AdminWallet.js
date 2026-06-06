@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import ReactTable from '../ReactTables/ReactTable';
 import Pagination from '../ReactTables/Pagination';
 import ListPerPage from '../ReactTables/ListPerPage';
-import { adminTransactionsTableColumns, transactionsTableColumns } from '../../utils/reactTableColumns';
+import { adminTransactionsTableColumns } from '../../utils/reactTableColumns';
 import { formatAddWalletTableData, getErrors, hasData, toastDefault } from '../../utils/handler.utils';
 import useGet from '../../hooks/useGet';
 import UiHandler from '../UiHandler';
@@ -28,28 +28,23 @@ function AdminWallet() {
 
     useEffect(() => {
         setUrlToFetch(`admin/admin-transaction?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
-    }, [currentPage, listPerPage])
+    }, [currentPage, listPerPage, searchWalletInput])
+
+    const clearSearchHandler = useCallback(() => {
+        setSearchWalletInput('')
+        setCurrentPage(1)
+        setUrlToFetch(`admin/admin-transaction?page=1&limit=${listPerPage}&q=`)
+    }, [listPerPage])
 
     useEffect(() => {
         if (!searchWalletInput) clearSearchHandler()
-    }, [searchWalletInput])
+    }, [searchWalletInput, clearSearchHandler])
 
     const searchWalletHandler = (e) => {
         setCurrentPage(1)
         e.preventDefault();
         if (!searchWalletInput) return false
-        const totalLength = searchWalletInput.length;
-        if (totalLength >= 8) {
-            setUrlToFetch(`admin/admin-transaction?q=${searchWalletInput}&page=${currentPage}&limit=${listPerPage}`)
-        } else {
-            setUrlToFetch(`admin/admin-transaction?q=${searchWalletInput}&page=${currentPage}&limit=${listPerPage}`)
-        }
-    }
-
-    const clearSearchHandler = () => {
-        setSearchWalletInput('')
-        setCurrentPage(1)
-        setUrlToFetch(`admin/admin-transaction?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
+        setUrlToFetch(`admin/admin-transaction?q=${searchWalletInput}&page=1&limit=${listPerPage}`)
     }
 
     const openChangeStatusModal = async (transaction_id) => {

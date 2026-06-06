@@ -452,16 +452,12 @@ function TopupOrderPage() {
                                 ? "IDCODE"
                                 : securitycode,
                               payment_mathod: payment_mathod || "pay",
-                              // Quantity is honoured only when both the
-                              // product (master switch) and the selected
-                              // package have `allow_quantity` on. Other
-                              // packages always submit 1. The server
-                              // re-checks both flags as a safety net.
+                              // Quantity is honoured per-package: the selected
+                              // package must have `allow_quantity = 1`.
+                              // Server re-checks the same flag as a
+                              // safety net.
                               quantity:
-                              ((productInfo?.allow_quantity == 1 &&
-                                      values.selectedpackage) ||
-                                     (values.selectedpackage && values.selectedpackage.allow_quantity ==
-                                        1))
+                                values.selectedpackage?.allow_quantity == 1
                                   ? Math.max(1, Number(values.quantity) || 1)
                                   : 1,
                             })
@@ -561,15 +557,11 @@ function TopupOrderPage() {
                       const isPaymentError = errors["payment_mathod"];
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
-                      // Both flags must be on to honour the input:
-                      // the product master switch (admin-set on the
-                      // product form) AND the per-package switch.
-                      // Anything else implicitly uses quantity 1.
+                      // Quantity-enabled packages are gated by the
+                      // per-package `allow_quantity` flag. Anything else
+                      // uses quantity 1 implicitly.
                       const orderQuantity =
-                      ((productInfo?.allow_quantity == 1 &&
-                                      values.selectedpackage) ||
-                                     (values.selectedpackage && values.selectedpackage.allow_quantity ==
-                                        1))
+                        values.selectedpackage?.allow_quantity == 1
                           ? Math.max(1, Number(values.quantity) || 1)
                           : 1;
                       const totalCost =
@@ -757,6 +749,16 @@ function TopupOrderPage() {
                                         const packCoin = Number(
                                           pack?.coin_value || 0,
                                         );
+                                        // Quantity-enabled packages are
+                                        // bought "N units of X" — the
+                                        // per-card price is meaningless
+                                        // because the real total is the
+                                        // unit price × quantity input
+                                        // shown below. Hide it on the
+                                        // card, center+bold the name so
+                                        // it doesn't look unbalanced.
+                                        const isQuantityPack =
+                                          Number(pack?.allow_quantity) === 1;
                                         return (
                                           <div
                                             key={index}
@@ -767,6 +769,10 @@ function TopupOrderPage() {
                                             } ${
                                               isPackageIdError && !isSelected
                                                 ? "is-error"
+                                                : ""
+                                            } ${
+                                              isQuantityPack
+                                                ? "is-quantity"
                                                 : ""
                                             }`}
                                             style={{
@@ -825,11 +831,21 @@ function TopupOrderPage() {
                                               ) : (
                                                 <></>
                                               )}
-                                              {/* Single bottom row: name + price
-                                              side by side. A small rounded
-                                              check sits next to the name
-                                              while the package is selected. */}
-                                              <span className="topup-pack-card-row">
+                                              {/* Bottom row. Default layout
+                                              has name on the left + price
+                                              on the right. Quantity-enabled
+                                              packages drop the price and
+                                              center the (bolder) name —
+                                              the real per-order cost is
+                                              the qty input × unit price
+                                              below. */}
+                                              <span
+                                                className={`topup-pack-card-row ${
+                                                  isQuantityPack
+                                                    ? "is-quantity-row"
+                                                    : ""
+                                                }`}
+                                              >
                                                 <span className="topup-pack-card-name-wrap">
                                                   {isSelected && (
                                                     <span
@@ -842,9 +858,11 @@ function TopupOrderPage() {
                                                   )}
                                                   <span>{pack?.name}</span>
                                                 </span>
-                                                <span className="topup-pack-card-price">
-                                                  ৳ {pack?.price}
-                                                </span>
+                                                {!isQuantityPack && (
+                                                  <span className="topup-pack-card-price">
+                                                    ৳ {pack?.price}
+                                                  </span>
+                                                )}
                                               </span>
                                             </button>
                                           </div>
@@ -872,81 +890,65 @@ function TopupOrderPage() {
                                         quantity tracking for the package so
                                         non-tracked packages stay unchanged. */}
 
-                                    {/* Quantity stepper — both the product
-                                        master switch AND the per-package
-                                        switch must be on. The label is
-                                        re-skinned per product via
-                                        `quantity_prefix` (e.g. "Dollars");
-                                        blank ⇒ default "Quantity". */}
-                                    {((productInfo?.allow_quantity == 1 &&
-                                      values.selectedpackage) ||
-                                     (values.selectedpackage && values.selectedpackage.allow_quantity ==
-                                        1)) && (
-                                        <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
-                                          <label className="text-sm font-semibold text-gray-700">
-                                            {String(
-                                              productInfo?.quantity_prefix || "",
-                                            ).trim() || "Quantity"}
-                                          </label>
-                                          <div className="inline-flex items-center border border-gray-300 rounded overflow-hidden">
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setFieldValue(
-                                                  "quantity",
-                                                  Math.max(
-                                                    1,
-                                                    (Number(values.quantity) ||
-                                                      1) - 1,
-                                                  ),
-                                                )
-                                              }
-                                              className="px-3 py-1 text-lg font-bold bg-gray-50 hover:bg-gray-100"
-                                              aria-label="Decrease quantity"
-                                            >
-                                              −
-                                            </button>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              value={values.quantity || 1}
-                                              onChange={(e) =>
-                                                setFieldValue(
-                                                  "quantity",
-                                                  Math.max(
-                                                    1,
-                                                    parseInt(
-                                                      e.target.value || "1",
-                                                      10,
-                                                    ),
-                                                  ),
-                                                )
-                                              }
-                                              className="w-14 text-center py-1 border-0 focus:outline-none"
-                                            />
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setFieldValue(
-                                                  "quantity",
-                                                  (Number(values.quantity) ||
-                                                    1) + 1,
-                                                )
-                                              }
-                                              className="px-3 py-1 text-lg font-bold bg-gray-50 hover:bg-gray-100"
-                                              aria-label="Increase quantity"
-                                            >
-                                              +
-                                            </button>
-                                          </div>
-                                          <span className="text-sm text-gray-600">
-                                            Total:{" "}
-                                            <strong className="text-gray-900">
-                                              ৳ {totalCost.toFixed(2)}
-                                            </strong>
-                                          </span>
-                                        </div>
-                                      )}
+                                    {/* Quantity input — only when the
+                                        SELECTED package has
+                                        `allow_quantity = 1`. The legend
+                                        is re-skinned per product via
+                                        `quantity_prefix` (e.g.
+                                        "Dollars"); blank ⇒ default
+                                        "Quantity". Plain number input —
+                                        no +/− buttons. */}
+                                    {values.selectedpackage?.allow_quantity ==
+                                      1 && (
+                                      <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
+                                        <label
+                                          htmlFor="topup-quantity"
+                                          className="text-sm font-semibold text-gray-700"
+                                        >
+                                          {String(
+                                            productInfo?.quantity_prefix || "",
+                                          ).trim() || "Quantity"}
+                                        </label>
+                                        <input
+                                          id="topup-quantity"
+                                          type="number"
+                                          min="1"
+                                          inputMode="numeric"
+                                          value={values.quantity || 1}
+                                          onChange={(e) => {
+                                            // Allow temporarily-empty input
+                                            // while the user is typing —
+                                            // submit clamps to ≥ 1.
+                                            const raw = e.target.value;
+                                            if (raw === "") {
+                                              setFieldValue("quantity", "");
+                                              return;
+                                            }
+                                            setFieldValue(
+                                              "quantity",
+                                              Math.max(
+                                                1,
+                                                parseInt(raw, 10) || 1,
+                                              ),
+                                            );
+                                          }}
+                                          onBlur={(e) => {
+                                            // Snap back to ≥ 1 if the
+                                            // input ended blank.
+                                            if (!e.target.value) {
+                                              setFieldValue("quantity", 1);
+                                            }
+                                          }}
+                                          className="w-24 border border-gray-300 rounded px-3 py-1 focus:outline-none focus:border-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-600">
+                                          Total:{" "}
+                                          <strong className="text-gray-900">
+                                            ৳ {totalCost.toFixed(2)}
+                                          </strong>
+                                        </span>
+                                      </div>
+                                    )}
 
                                     <FormikErrorMessage name="selectedpackage" />
                                     <FormikErrorMessage

@@ -23,9 +23,9 @@ function SectionTitle({ children }) {
 }
 
 function CategorySection({ title, products, limit_product, product_limit }) {
-  if (!products || products.length === 0) return null;
-
   const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!products || products.length === 0) return null;
 
   const shouldLimit =
     limit_product === 1 && product_limit > 0 && products.length > product_limit;

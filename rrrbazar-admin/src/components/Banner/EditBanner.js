@@ -86,7 +86,7 @@ function EditBanner(props) {
 
 
                                         <div className="cursor-pointer" >
-                                            <input ref={isactive} id="isactive" defaultChecked={data?.isactive == 1} type="checkbox" className="mr-2" />
+                                            <input ref={isactive} id="isactive" defaultChecked={data?.isactive === 1} type="checkbox" className="mr-2" />
                                             <label htmlFor="isactive" className="select-none cursor-pointer">Is Active</label>
                                         </div>
 

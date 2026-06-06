@@ -1,17 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import ReactTable from '../ReactTables/ReactTable';
 import Pagination from '../ReactTables/Pagination';
 import ListPerPage from '../ReactTables/ListPerPage';
-import { adminTransactionsTableColumns, transactionsTableColumns } from '../../utils/reactTableColumns';
-import { formatAddWalletTableData, getErrors, hasData, toastDefault } from '../../utils/handler.utils';
+import { adminTransactionsTableColumns } from '../../utils/reactTableColumns';
+import { formatAddWalletTableData, hasData } from '../../utils/handler.utils';
 import useGet from '../../hooks/useGet';
 import UiHandler from '../UiHandler';
-import Swal from 'sweetalert2';
-import axiosInstance from '../../common/axios';
-import { toast } from 'react-toastify'
 import Modal from 'react-modal';
 import EditTransaction from '../AddWallet/EditTransaction'
-import { FaEllipsisV } from 'react-icons/fa'
 Modal.setAppElement('#root')
 
 function AdminWallet() {
@@ -20,7 +16,7 @@ function AdminWallet() {
     const [uniqueState, setUniqueState] = useState(false)
     const [searchWalletInput, setSearchWalletInput] = useState('')
     const [isOpenModal, setIsOpenModal] = useState(false)
-    const [editRowId, setEditRowId] = useState(null)
+    const [editRowId] = useState(null)
 
     const [urlToFetch, setUrlToFetch] = useState(`admin/profile/transactions?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
     const [transactionData, loading, error] = useGet(urlToFetch, '', uniqueState)
@@ -28,28 +24,23 @@ function AdminWallet() {
 
     useEffect(() => {
         setUrlToFetch(`admin/profile/transactions?page=${currentPage}&limit=${listPerPage}&q=${searchWalletInput}`)
-    }, [currentPage, listPerPage])
+    }, [currentPage, listPerPage, searchWalletInput])
+
+    const clearSearchHandler = useCallback(() => {
+        setSearchWalletInput('')
+        setCurrentPage(1)
+        setUrlToFetch(`admin/profile/transactions?page=1&limit=${listPerPage}&q=`)
+    }, [listPerPage])
 
     useEffect(() => {
         if (!searchWalletInput) clearSearchHandler()
-    }, [searchWalletInput])
+    }, [searchWalletInput, clearSearchHandler])
 
     const searchWalletHandler = (e) => {
         setCurrentPage(1)
         e.preventDefault();
         if (!searchWalletInput) return false
-        const totalLength = searchWalletInput.length;
-        if (totalLength >= 8) {
-            setUrlToFetch(`admin/profile/transactions?q=${searchWalletInput}&page=${currentPage}&limit=${listPerPage}`)
-        } else {
-            setUrlToFetch(`admin/profile/transactions?q=${searchWalletInput}&page=${currentPage}&limit=${listPerPage}`)
-        }
-    }
-
-    const clearSearchHandler = () => {
-        setSearchWalletInput('')
-        setCurrentPage(1)
-        setUrlToFetch(`admin/profile/transactions?page=${currentPage}&limit=${listPerPage}`)
+        setUrlToFetch(`admin/profile/transactions?q=${searchWalletInput}&page=1&limit=${listPerPage}`)
     }
 
 

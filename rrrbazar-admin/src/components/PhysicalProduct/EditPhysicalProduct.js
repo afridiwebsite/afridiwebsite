@@ -102,7 +102,7 @@ function EditPhysicalProduct(props) {
 
                                         <div className="my-2" >
                                             <label className="py-2 inline-block cursor-pointer select-none" >
-                                                <input type="checkbox" defaultChecked={data?.is_active == 1} ref={is_active_product} className="mr-2" />
+                                                <input type="checkbox" defaultChecked={data?.is_active === 1} ref={is_active_product} className="mr-2" />
                                                 Is active product
                                             </label>
                                         </div>

@@ -150,7 +150,7 @@ function EditNotice(props) {
                                         </div>
 
                                         <div className="cursor-pointer mt-3" >
-                                            <input ref={is_active} id="is_active" defaultChecked={data?.is_active == 1} type="checkbox" className="mr-2" />
+                                            <input ref={is_active} id="is_active" defaultChecked={data?.is_active === 1} type="checkbox" className="mr-2" />
                                             <label htmlFor="is_active" className="select-none cursor-pointer">Is Active</label>
                                         </div>
 

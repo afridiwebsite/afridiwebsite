@@ -27,7 +27,6 @@ function AddPackage(props) {
   const logo = useRef(null);
   const coin_value = useRef(null);
   const bot_url = useRef(null);
-  const auto_delivery = useRef(null);
   const allow_quantity = useRef(null);
 
   // Re-order limit: 0 = none, 1 = once forever per player ID, 2 = once/day
@@ -52,10 +51,6 @@ function AddPackage(props) {
   const [resellerCashback, setResellerCashback] = useState(0);
 
   const [selectedProductId, setSelectedProductId] = useState(productId || "");
-  const selectedProduct =
-    (products || []).find((p) => String(p.id) === String(selectedProductId)) ||
-    null;
-  const isVoucherProduct = selectedProduct?.is_voucher == 1;
 
   // Bot type — replaces the legacy Auto-delivery + Is-shell checkboxes
   // with a single dropdown. Each value enables a different config slice
@@ -347,8 +342,7 @@ function AddPackage(props) {
         reseller_cashback: Number(resellerCashback) || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
-        allow_quantity:
-          isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
+        allow_quantity: allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
         // Legacy flags — server derives these from bot_type too, but
@@ -678,29 +672,28 @@ function AddPackage(props) {
 
                   {/* Allow quantity — voucher-products only. Gates the
                       quantity stepper on /topup/:id so admins can sell
-                      single-unit voucher packages alongside bulk ones. */}
-                  {isVoucherProduct && (
-                    <div className="form_grid">
-                      <div>
-                        <label className="inline-flex items-center cursor-pointer select-none">
-                          <input
-                            ref={allow_quantity}
-                            id="allow_quantity"
-                            value="1"
-                            className="form-checkbox"
-                            type="checkbox"
-                          />
-                          <span className="ml-2">
-                            Allow quantity input on storefront
-                          </span>
-                        </label>
-                        <p className="text-xs text-gray-500 mt-1">
-                          When on, customers can buy multiple units in one
-                          order.
-                        </p>
-                      </div>
+                      single-unit packages alongside bulk ones. */}
+                  <div className="form_grid">
+                    <div>
+                      <label className="inline-flex items-center cursor-pointer select-none">
+                        <input
+                          ref={allow_quantity}
+                          id="allow_quantity"
+                          value="1"
+                          className="form-checkbox"
+                          type="checkbox"
+                        />
+                        <span className="ml-2">
+                          Allow quantity input on storefront
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        When on, customers can buy multiple units in one
+                        order. The package card hides its price and centers
+                        the name so the quantity input becomes the focus.
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   {/* Bot type — single dropdown replaces the legacy
                       Auto-delivery + Is-shell checkboxes. Per-type config

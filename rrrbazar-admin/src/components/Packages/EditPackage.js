@@ -28,7 +28,6 @@ function EditPackage(props) {
   const logo = useRef(null);
   const coin_value = useRef(null);
   const bot_url = useRef(null);
-  const auto_delivery = useRef(null);
   const allow_quantity = useRef(null);
 
   // Re-order limit:
@@ -78,11 +77,7 @@ function EditPackage(props) {
   const [selectedProductId, setSelectedProductId] = useState("");
   useEffect(() => {
     if (data?.product_id) setSelectedProductId(String(data.product_id));
-  }, [data?.id]);
-  const selectedProduct =
-    (products || []).find((p) => String(p.id) === String(selectedProductId)) ||
-    null;
-  const isVoucherProduct = selectedProduct?.is_voucher == 1;
+  }, [data?.id, data?.product_id]);
 
   // Bot type — single dropdown replaces the legacy Auto-delivery +
   // Is-shell checkboxes. Per-type config sections render below based on
@@ -472,8 +467,7 @@ function EditPackage(props) {
         reseller_cashback: Number(resellerCashback) || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
-        allow_quantity:
-          isVoucherProduct && allow_quantity.current?.checked ? 1 : 0,
+        allow_quantity: allow_quantity.current?.checked ? 1 : 0,
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
         // Legacy flags — server derives these from bot_type too, but
@@ -730,7 +724,7 @@ function EditPackage(props) {
                           value="1"
                           className="form-checkbox"
                           type="checkbox"
-                          defaultChecked={data?.in_stock == 1 ? true : false}
+                          defaultChecked={data?.in_stock === 1 ? true : false}
                         />
                         <span class="ml-2">In Stock</span>
                       </label>
@@ -807,31 +801,30 @@ function EditPackage(props) {
                     </div>
                   </div>
 
-                  {/* Allow quantity — voucher-products only. */}
-                  {isVoucherProduct && (
-                    <div className="form_grid">
-                      <div>
-                        <label className="inline-flex items-center cursor-pointer select-none">
-                          <input
-                            ref={allow_quantity}
-                            id="allow_quantity"
-                            value="1"
-                            className="form-checkbox"
-                            type="checkbox"
-                            defaultChecked={data?.allow_quantity == 1}
-                            key={`aq-${data?.id}-${data?.allow_quantity}`}
-                          />
-                          <span className="ml-2">
-                            Allow quantity input on storefront
-                          </span>
-                        </label>
-                        <p className="text-xs text-gray-500 mt-1">
-                          When on, customers can buy multiple units in one
-                          order.
-                        </p>
-                      </div>
+                  {/* Allow quantity — per-package, any product type. */}
+                  <div className="form_grid">
+                    <div>
+                      <label className="inline-flex items-center cursor-pointer select-none">
+                        <input
+                          ref={allow_quantity}
+                          id="allow_quantity"
+                          value="1"
+                          className="form-checkbox"
+                          type="checkbox"
+                          defaultChecked={data?.allow_quantity === 1}
+                          key={`aq-${data?.id}-${data?.allow_quantity}`}
+                        />
+                        <span className="ml-2">
+                          Allow quantity input on storefront
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        When on, customers can buy multiple units in one
+                        order. The package card hides its price and centers
+                        the name so the quantity input becomes the focus.
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   {/* Bot type — single dropdown replaces the legacy
                       Auto-delivery + Is-shell checkboxes. Per-type config

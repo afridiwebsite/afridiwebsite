@@ -1209,12 +1209,13 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      // Quantity is honoured when EITHER switch is on: the product-level
-      // master switch (migration 009) OR the per-package switch (migration
-      // 006). The per-package flag was originally voucher-only, so AND-ing
-      // both would have effectively required vouchers — which we
-      // explicitly don't want. OR matches the storefront gate and lets the
-      // admin enable quantity at whichever level fits the product.
+      // Quantity is honoured only when the SELECTED PACKAGE has
+      // `allow_quantity = 1`. The earlier product-level master switch
+      // (migration 009) is retired — quantity is a per-package property
+      // now, since different packages under the same product can have
+      // very different sell models. The product still owns the prefix
+      // label (`quantity_prefix`) used for the input legend, but not
+      // whether quantity is allowed.
       //
       // Voucher products still emit N codes from the pool inside
       // handleVoucherProduct; non-voucher quantity orders just record the
@@ -1224,7 +1225,6 @@ class UserController {
       // against a runaway number.
       const isVoucherProduct = (product as any).is_voucher == 1;
       const quantityAllowed =
-        Number((product as any).allow_quantity) === 1 ||
         Number((topupPackage as any).allow_quantity) === 1;
       const quantity = quantityAllowed
         ? Math.min(

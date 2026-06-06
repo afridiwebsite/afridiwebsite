@@ -83,12 +83,12 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
           function (registration) {
             console.log(
               "Service Worker registration successful with scope: ",
-              registration.scope
+              registration.scope,
             );
           },
           function (err) {
             console.log("Service Worker registration failed: ", err);
-          }
+          },
         );
       });
     }
@@ -103,7 +103,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
         })
         .catch(() => {});
     }
-  }, []);
+  }, [isAuth, accessToken]);
 
   // Refresh siteSettings client-side too, so admin edits propagate without
   // a full reload. This is purely a freshness pass — the favicon was
@@ -140,10 +140,10 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     }
   }, [siteSettings]);
 
-  const setWhereItHas = (key, value) => {
+  const setWhereItHas = React.useCallback((key, value) => {
     if (getSession(key)) return setSession(key, value);
     setLocal(key, value);
-  };
+  }, []);
 
   const signOut = () => {
     removeBoth(__user_key);
@@ -183,10 +183,13 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     router.push(redirectUrl || routes.profile.name);
   };
 
-  const updateAuthUserInfo = (userObj) => {
-    setWhereItHas(__user_key, userObj);
-    setAuthUser(userObj);
-  };
+  const updateAuthUserInfo = React.useCallback(
+    (userObj) => {
+      setWhereItHas(__user_key, userObj);
+      setAuthUser(userObj);
+    },
+    [setWhereItHas],
+  );
 
   const installPWA = async () => {
     if (!deferredPrompt) return;

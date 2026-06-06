@@ -67,7 +67,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         About Us
                       </a>
@@ -75,7 +75,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         Blog
                       </a>
@@ -83,7 +83,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         Github
                       </a>
@@ -91,7 +91,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         Free Products
                       </a>
@@ -106,7 +106,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         MIT License
                       </a>
@@ -114,7 +114,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         Terms & Conditions
                       </a>
@@ -122,7 +122,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         Privacy Policy
                       </a>
@@ -130,7 +130,7 @@ export default function Footer() {
                     <li>
                       <a
                         className="text-blueGray-600 hover:text-blueGray-800 font-semibold block pb-2 text-sm"
-                        href="#"
+                        href="#!"
                       >
                         Contact Us
                       </a>
@@ -146,7 +146,7 @@ export default function Footer() {
               <div className="text-sm text-blueGray-500 font-semibold py-1">
                 Copyright © {new Date().getFullYear()} by{" "}
                 <a
-                  href="#"
+                  href="#!"
                   className="text-blueGray-500 hover:text-blueGray-800"
                 >
                   Self

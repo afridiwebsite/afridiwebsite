@@ -25,7 +25,7 @@ function Admins() {
         Header: "Action",
         accessor: 'id',
         Cell: (e) => {
-            return e.row.original.status == 0 ? <button className="cstm_btn_extra_small" onClick={() => editRow(e)}>Active</button> : <span className="cstm_btn_extra_small !bg-green-500" >Activated</span>
+            return e.row.original.status === 0 ? <button className="cstm_btn_extra_small" onClick={() => editRow(e)}>Active</button> : <span className="cstm_btn_extra_small !bg-green-500" >Activated</span>
         }
     };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import ReactTable from '../ReactTables/ReactTable';
 import Pagination from '../ReactTables/Pagination';
 import ListPerPage from '../ReactTables/ListPerPage';
@@ -9,11 +9,21 @@ import UiHandler from '../UiHandler';
 import Swal from 'sweetalert2';
 import axiosInstance from '../../common/axios';
 import { toast } from 'react-toastify'
-import { Link } from 'react-router-dom';
 import Modal from 'react-modal';
 import EditTransaction from '../AddWallet/EditTransaction'
 import { FaEllipsisV } from 'react-icons/fa'
 Modal.setAppElement('#root')
+
+// Build the URL from the current filter state. Centralizing this avoids
+// forgetting one of the params when a new filter is added later.
+const buildUrl = (page, perPage, q, txId) => {
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('limit', String(perPage))
+    if (q) params.set('q', q)
+    if (txId) params.set('transaction_id', txId)
+    return `admin/transaction?${params.toString()}`
+}
 
 function AddWallet() {
     const [currentPage, setCurrentPage] = useState(1)
@@ -24,28 +34,23 @@ function AddWallet() {
     const [isOpenModal, setIsOpenModal] = useState(false)
     const [editRowId, setEditRowId] = useState(null)
 
-    // Build the URL from the current filter state. Centralizing this avoids
-    // forgetting one of the params when a new filter is added later.
-    const buildUrl = (page, perPage, q, txId) => {
-        const params = new URLSearchParams()
-        params.set('page', String(page))
-        params.set('limit', String(perPage))
-        if (q) params.set('q', q)
-        if (txId) params.set('transaction_id', txId)
-        return `admin/transaction?${params.toString()}`
-    }
-
     const [urlToFetch, setUrlToFetch] = useState(buildUrl(currentPage, listPerPage, searchWalletInput, transactionIdInput))
     const [transactionData, loading, error] = useGet(urlToFetch, '', uniqueState)
     const addWalletData = transactionData?.transactions
 
     useEffect(() => {
         setUrlToFetch(buildUrl(currentPage, listPerPage, searchWalletInput, transactionIdInput))
-    }, [currentPage, listPerPage])
+    }, [currentPage, listPerPage, searchWalletInput, transactionIdInput])
+
+    const clearSearchHandler = useCallback(() => {
+        setSearchWalletInput('')
+        setCurrentPage(1)
+        setUrlToFetch(buildUrl(1, listPerPage, '', transactionIdInput))
+    }, [listPerPage, transactionIdInput])
 
     useEffect(() => {
         if (!searchWalletInput) clearSearchHandler()
-    }, [searchWalletInput])
+    }, [searchWalletInput, clearSearchHandler])
 
     // Debounce the transaction-id input so we don't fire a request on every
     // keystroke when the admin pastes a long id.
@@ -55,19 +60,13 @@ function AddWallet() {
             setUrlToFetch(buildUrl(1, listPerPage, searchWalletInput, transactionIdInput))
         }, 400)
         return () => clearTimeout(t)
-    }, [transactionIdInput])
+    }, [transactionIdInput, listPerPage, searchWalletInput])
 
     const searchWalletHandler = (e) => {
         setCurrentPage(1)
         e.preventDefault();
         if (!searchWalletInput) return false
         setUrlToFetch(buildUrl(1, listPerPage, searchWalletInput, transactionIdInput))
-    }
-
-    const clearSearchHandler = () => {
-        setSearchWalletInput('')
-        setCurrentPage(1)
-        setUrlToFetch(buildUrl(1, listPerPage, '', transactionIdInput))
     }
 
     const openChangeStatusModal = async (transaction_id) => {

@@ -9,7 +9,7 @@ import { useFormik } from 'formik'
 import { getLocal, getSession, setLocal, setSession } from '../../utils/localStorage.utils'
 
 function Profile() {
-    const [data, loading, error, refresh] = useGet('admin/profile')
+    const [data, loading, _error, refresh] = useGet('admin/profile')
     const [uploading, setUploading] = useState(false)
 
     const formik = useFormik({
@@ -48,7 +48,7 @@ function Profile() {
                 image: data.image || ''
             })
         }
-    }, [data])
+    }, [data, formik])
 
     const handleImageChange = async (e) => {
         const file = e.target.files[0]

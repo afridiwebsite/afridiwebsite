@@ -48,32 +48,32 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
     useEffect(() => {
         if (orserStatus) addSearchParam('status', orserStatus)
         else removeSearchParam('status')
-    }, [orserStatus])
+    }, [orserStatus, addSearchParam, removeSearchParam])
 
     useEffect(() => {
         if (userId) addSearchParam('user_id', userId)
         else removeSearchParam('user_id')
-    }, [userId])
+    }, [userId, addSearchParam, removeSearchParam])
 
     useEffect(() => {
         if (orderId) addSearchParam('order_id', orderId)
         else removeSearchParam('order_id')
-    }, [orderId])
+    }, [orderId, addSearchParam, removeSearchParam])
 
     useEffect(() => {
         if (uc) addSearchParam('uc', uc)
         else removeSearchParam('uc')
-    }, [uc])
+    }, [uc, addSearchParam, removeSearchParam])
 
     useEffect(() => {
         if (startDate) addSearchParam('start_date', startDate)
         else removeSearchParam('start_date')
-    }, [startDate])
+    }, [startDate, addSearchParam, removeSearchParam])
 
     useEffect(() => {
         if (endDate) addSearchParam('end_date', endDate)
         else removeSearchParam('end_date')
-    }, [endDate])
+    }, [endDate, addSearchParam, removeSearchParam])
 
     const submitHandler = (e) => {
         e.preventDefault()

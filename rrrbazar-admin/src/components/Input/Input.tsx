@@ -68,7 +68,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>((ownerState, ref) =
                 transition: undefined,
             }));
         }, 500);
-    }, [startAdornment, endAdornment, size, enablePasswordShoHideButton]);
+    }, [startAdornment, endAdornment, size, enablePasswordShoHideButton, type]);
 
     return (
         <div className='inline-block w-full'>
@@ -210,7 +210,7 @@ const PasswordFieldToggleButton = ({ inputRef }) => {
     const [inputType, setInputType] = useState<string>('password');
     useEffect(() => {
         setInputType(inputRef.current.type);
-    }, []);
+    }, [inputRef]);
 
     const inputTypeHandler = (prev) => {
         if (prev === 'password') {

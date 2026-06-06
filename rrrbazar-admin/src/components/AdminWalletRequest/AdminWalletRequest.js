@@ -3,12 +3,11 @@ import { useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axiosInstance from '../../common/axios';
 import useGet from '../../hooks/useGet';
-import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
-import Loader from '../Loader/Loader';
+import { getErrors, toastDefault } from '../../utils/handler.utils';
 function AdminWalletRequest({ transactionId, onComplete }) {
     const history = useHistory()
 
-    const [loading, setLoading] = useState(null)
+    const [, setLoading] = useState(null)
     const [data, loadingData] = useGet(`admin/profile`)
     
     const amount = useRef(null);
