@@ -20,19 +20,26 @@ const { CoinTransaction, TopupPackage, User } = Schema;
  * Any other status is a no-op. The function never throws — coin sync should
  * never block the calling endpoint; problems are logged for manual reconciliation.
  *
- * `multiplier` lets the voucher branch credit per-unit (qty × coin_value); the
- * default of 1 fits every other completion path (auto-delivery, regular bot,
- * type=2 immediate complete, admin manual complete).
+ * `multiplier` is optional — when callers don't supply one we read
+ * `order.quantity` (default 1) so quantity-enabled non-voucher orders pay
+ * per-unit rewards on the deferred completion path (checkOrder webhook,
+ * admin manual complete, etc.). The voucher branch still passes an
+ * explicit multiplier; that's the same value persisted on the order so the
+ * two are equivalent.
  */
 export async function syncOrderCoinsForStatus(
   order: any,
   newStatus: string,
-  multiplier: number = 1,
+  multiplier?: number,
 ): Promise<void> {
+  const effectiveMultiplier =
+    multiplier !== undefined
+      ? multiplier
+      : Math.max(1, Number(order?.quantity || 1));
   console.log("[syncOrderCoinsForStatus] called", {
     order_id: order?.id,
     newStatus,
-    multiplier,
+    effectiveMultiplier,
     topuppackage_id: order?.topuppackage_id,
     user_id: order?.user_id,
   });
@@ -75,13 +82,13 @@ export async function syncOrderCoinsForStatus(
         );
         return;
       }
-      const coinReward = Number(pkg.coin_value || 0) * Math.max(1, multiplier);
+      const coinReward = Number(pkg.coin_value || 0) * Math.max(1, effectiveMultiplier);
       console.log("[syncOrderCoinsForStatus][completed] resolved reward", {
         order_id: order.id,
         package_id: pkg.id,
         package_name: pkg.name,
         coin_value: pkg.coin_value,
-        multiplier,
+        effectiveMultiplier,
         coinReward,
       });
       if (coinReward <= 0) {

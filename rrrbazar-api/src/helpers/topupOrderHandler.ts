@@ -629,6 +629,7 @@ async function handleLikeBot(opts: {
       resellerCashback: (topupPackage as any).reseller_cashback,
       isReseller:
         String((likeUser as any)?.user_type || "").toLowerCase() === "reseller",
+      quantity: Math.max(1, Number((order as any).quantity) || 1),
     });
     order.brief_note =
       `Name : ${escapeHtml(nickname || "Unknown")}<br/>` +
@@ -992,6 +993,7 @@ async function finalizePubgSuccess(opts: {
     resellerCashback: (topupPackage as any).reseller_cashback,
     isReseller:
       String((pubgUser as any)?.user_type || "").toLowerCase() === "reseller",
+    quantity: Math.max(1, Number((order as any).quantity) || 1),
   });
 
   if (branch === "manual" && manualCode) {

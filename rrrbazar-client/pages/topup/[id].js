@@ -228,8 +228,6 @@ function TopupOrderPage() {
     }, {}),
   };
 
-  const isVoucherProduct = productInfo?.is_voucher == 1;
-
   // Form Validation Schema — playerid is only required when a Player ID
   // dynamic input is configured (or the legacy isactivefortopup flag is set).
   // Likewise, `selectedpackage` is only required when the product actually
@@ -375,13 +373,30 @@ function TopupOrderPage() {
                         }
                       }
 
+                      // Quantity gate: either the product-level master
+                      // switch OR the per-package switch is enough. Mirrors
+                      // the render path + the submit payload below so the
+                      // modal can't disagree with what the user saw.
+                      const confirmQuantity =
+                        selectedpackage &&
+                        (productInfo?.allow_quantity == 1 ||
+                          selectedpackage?.allow_quantity == 1)
+                          ? Math.max(1, Number(values.quantity) || 1)
+                          : 1;
+                      const confirmTotal =
+                        Number(selectedpackage?.price || 0) * confirmQuantity;
+                      const confirmBreakdown =
+                        confirmQuantity > 1
+                          ? ` <span class="text-xs text-gray-500">(${confirmQuantity} × ৳${selectedpackage?.price})</span>`
+                          : "";
+
                       // Info-only products (no packages) skip the Swal
                       // confirmation since there's no price to confirm.
                       const confirmHtml = selectedpackage
                         ? `<div class="_confirm_order_body">
                               <h4 class="_h4">Confirm Order</h4>
                               <p className="modal_sub_title">Your current wallet is <span class="_bold_it">৳${userWallet}</span></p>
-                              <p className="modal_sub_title">You need <span class="_bold_it">৳${selectedpackage.price}</span> to purchase this product.</p>
+                              <p className="modal_sub_title">You need <span class="_bold_it">৳${confirmTotal.toFixed(2)}</span>${confirmBreakdown} to purchase this product.</p>
                             </div>`
                         : `<div class="_confirm_order_body">
                               <h4 class="_h4">Submit details</h4>
@@ -437,9 +452,16 @@ function TopupOrderPage() {
                                 ? "IDCODE"
                                 : securitycode,
                               payment_mathod: payment_mathod || "pay",
+                              // Quantity is honoured only when both the
+                              // product (master switch) and the selected
+                              // package have `allow_quantity` on. Other
+                              // packages always submit 1. The server
+                              // re-checks both flags as a safety net.
                               quantity:
-                                isVoucherProduct &&
-                                values.selectedpackage?.allow_quantity == 1
+                              ((productInfo?.allow_quantity == 1 &&
+                                      values.selectedpackage) ||
+                                     (values.selectedpackage && values.selectedpackage.allow_quantity ==
+                                        1))
                                   ? Math.max(1, Number(values.quantity) || 1)
                                   : 1,
                             })
@@ -539,12 +561,15 @@ function TopupOrderPage() {
                       const isPaymentError = errors["payment_mathod"];
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
-                      // Voucher products can be ordered in quantities — but
-                      // only when the picked package has `allow_quantity` on.
+                      // Both flags must be on to honour the input:
+                      // the product master switch (admin-set on the
+                      // product form) AND the per-package switch.
                       // Anything else implicitly uses quantity 1.
                       const orderQuantity =
-                        isVoucherProduct &&
-                        values.selectedpackage?.allow_quantity == 1
+                      ((productInfo?.allow_quantity == 1 &&
+                                      values.selectedpackage) ||
+                                     (values.selectedpackage && values.selectedpackage.allow_quantity ==
+                                        1))
                           ? Math.max(1, Number(values.quantity) || 1)
                           : 1;
                       const totalCost =
@@ -847,18 +872,21 @@ function TopupOrderPage() {
                                         quantity tracking for the package so
                                         non-tracked packages stay unchanged. */}
 
-                                    {/* Quantity stepper — voucher-pool products
-                                        whose admin flipped on `allow_quantity`
-                                        for the selected package can be bought
-                                        in bulk. Other voucher packages stay
-                                        single-unit. */}
-                                    {isVoucherProduct &&
-                                      values.selectedpackage &&
-                                      values.selectedpackage.allow_quantity ==
-                                        1 && (
+                                    {/* Quantity stepper — both the product
+                                        master switch AND the per-package
+                                        switch must be on. The label is
+                                        re-skinned per product via
+                                        `quantity_prefix` (e.g. "Dollars");
+                                        blank ⇒ default "Quantity". */}
+                                    {((productInfo?.allow_quantity == 1 &&
+                                      values.selectedpackage) ||
+                                     (values.selectedpackage && values.selectedpackage.allow_quantity ==
+                                        1)) && (
                                         <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
                                           <label className="text-sm font-semibold text-gray-700">
-                                            Quantity
+                                            {String(
+                                              productInfo?.quantity_prefix || "",
+                                            ).trim() || "Quantity"}
                                           </label>
                                           <div className="inline-flex items-center border border-gray-300 rounded overflow-hidden">
                                             <button
@@ -1181,13 +1209,12 @@ function TopupOrderPage() {
                                     </span>
                                     <strong className="topup-pay-info-value">
                                       ৳ {totalCost.toFixed(2)}
-                                      {isVoucherProduct &&
-                                        orderQuantity > 1 && (
-                                          <span className="text-xs font-normal text-gray-500 ml-1">
-                                            ({orderQuantity} ×{" "}
-                                            {values.selectedpackage.price})
-                                          </span>
-                                        )}
+                                      {orderQuantity > 1 && (
+                                        <span className="text-xs font-normal text-gray-500 ml-1">
+                                          ({orderQuantity} ×{" "}
+                                          {values.selectedpackage.price})
+                                        </span>
+                                      )}
                                     </strong>
                                   </div>
                                 )}

@@ -33,9 +33,11 @@ const resellerRefundPurpose = (orderId: number | string) =>
  *     user.cashback_total is *not* clawed back — it represents lifetime
  *     credited cashback, which matches how the storefront displays it.
  *
- * Multiplier mirrors the coin helper — the voucher branch passes `quantity`
- * so a bulk voucher order pays out per-unit cashback. Every other path
- * defaults to 1.
+ * Multiplier mirrors the coin helper — when omitted we read `order.quantity`
+ * (default 1) so quantity-enabled non-voucher orders pay per-unit cashback
+ * on the deferred completion path (checkOrder webhook, admin manual
+ * complete). The voucher branch still passes an explicit multiplier; it's
+ * the same value persisted on the order so the two are equivalent.
  *
  * Never throws. Failures are logged so cashback bookkeeping never blocks
  * the calling endpoint.
@@ -43,8 +45,12 @@ const resellerRefundPurpose = (orderId: number | string) =>
 export async function syncOrderCashbackForStatus(
   order: any,
   newStatus: string,
-  multiplier: number = 1,
+  multiplier?: number,
 ): Promise<void> {
+  const effectiveMultiplier =
+    multiplier !== undefined
+      ? multiplier
+      : Math.max(1, Number(order?.quantity || 1));
   try {
     if (!order) return;
     const order_id = order.id;
@@ -63,7 +69,7 @@ export async function syncOrderCashbackForStatus(
       const rewardType = String((pkg as any).reward_type || "coin").toLowerCase();
       const cashback =
         rewardType === "money"
-          ? Number((pkg as any).cashback_amount || 0) * Math.max(1, multiplier)
+          ? Number((pkg as any).cashback_amount || 0) * Math.max(1, effectiveMultiplier)
           : 0;
       if (cashback > 0) {
         const already = await Transaction.findOne({
@@ -87,7 +93,7 @@ export async function syncOrderCashbackForStatus(
       const isReseller =
         String((user as any).user_type || "").toLowerCase() === "reseller";
       const resellerCashback = isReseller
-        ? Number((pkg as any).reseller_cashback || 0) * Math.max(1, multiplier)
+        ? Number((pkg as any).reseller_cashback || 0) * Math.max(1, effectiveMultiplier)
         : 0;
       if (resellerCashback > 0) {
         const already = await Transaction.findOne({

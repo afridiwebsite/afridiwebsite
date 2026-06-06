@@ -213,6 +213,8 @@ class TopupProductController {
             youtube_link,
             is_voucher,
             redeem_link,
+            quantity_prefix,
+            allow_quantity,
         } = req.body
 
         const data = await TopupProduct.create({
@@ -232,6 +234,10 @@ class TopupProductController {
             youtube_link: youtube_link || '',
             is_voucher: is_voucher == 1 ? 1 : 0,
             redeem_link: redeem_link || '',
+            // Cap to the column width (64) — admin form lets them type
+            // anything but the DB truncation would silently lose chars.
+            quantity_prefix: String(quantity_prefix || '').slice(0, 64),
+            allow_quantity: allow_quantity == 1 ? 1 : 0,
         })
         response.data = data
         res.send(response.response)
@@ -258,6 +264,8 @@ class TopupProductController {
             youtube_link,
             is_voucher,
             redeem_link,
+            quantity_prefix,
+            allow_quantity,
         } = req.body
 
         const product = await TopupProduct.findByPk(id)
@@ -286,6 +294,10 @@ class TopupProductController {
         if (youtube_link !== undefined) product.youtube_link = youtube_link || '';
         if (is_voucher !== undefined) product.is_voucher = is_voucher == 1 ? 1 : 0;
         if (redeem_link !== undefined) product.redeem_link = redeem_link || '';
+        if (quantity_prefix !== undefined)
+            product.quantity_prefix = String(quantity_prefix || '').slice(0, 64);
+        if (allow_quantity !== undefined)
+            product.allow_quantity = allow_quantity == 1 ? 1 : 0;
 
         await product.save();
 

@@ -30,6 +30,15 @@ function EditTopupProduct(props) {
   // Mirrors the `is_voucher` checkbox so we can gate the Redeem link input.
   const [isVoucherChecked, setIsVoucherChecked] = useState(false);
   const [redeemLinkValue, setRedeemLinkValue] = useState("");
+  // Product-level quantity master switch. Storefront ANDs this with each
+  // package's own `allow_quantity` — see migration 009.
+  const allow_quantity = useRef(null);
+  const [isAllowQuantityChecked, setIsAllowQuantityChecked] = useState(false);
+  // Admin-supplied label shown in front of the storefront quantity stepper.
+  // Capped at 64 chars to match the DB column. Loaded from `data` once the
+  // product fetch resolves (see useEffect below). Blank ⇒ storefront falls
+  // back to the default "Quantity" label.
+  const [quantityPrefixValue, setQuantityPrefixValue] = useState("");
 
   // Passthrough product link + tutorial youtube link. When productLinkValue
   // is non-empty, the form hides everything that doesn't make sense for an
@@ -41,7 +50,9 @@ function EditTopupProduct(props) {
       if (typeof data.product_link === "string") setProductLinkValue(data.product_link);
       if (typeof data.youtube_link === "string") setYoutubeLinkValue(data.youtube_link);
       if (typeof data.redeem_link === "string") setRedeemLinkValue(data.redeem_link);
+      if (typeof data.quantity_prefix === "string") setQuantityPrefixValue(data.quantity_prefix);
       setIsVoucherChecked(data.is_voucher == 1);
+      setIsAllowQuantityChecked(data.allow_quantity == 1);
     }
   }, [data]);
   const isPassthrough = !!productLinkValue.trim();
@@ -271,6 +282,11 @@ function EditTopupProduct(props) {
         youtube_link: youtubeLinkValue.trim(),
         is_voucher: is_voucher.current?.checked ? 1 : 0,
         redeem_link: is_voucher.current?.checked ? redeemLinkValue.trim() : '',
+        allow_quantity: allow_quantity.current?.checked ? 1 : 0,
+        // Send the prefix even when allow_quantity is off — it's just a
+        // label string and harmless if stored. Saves admins from re-typing
+        // it if they toggle the master switch off and back on.
+        quantity_prefix: quantityPrefixValue.trim().slice(0, 64),
       })
       .then(async () => {
         try {
@@ -775,6 +791,58 @@ function EditTopupProduct(props) {
                         placeholder="https://example.com/redeem"
                         value={redeemLinkValue}
                         onChange={(e) => setRedeemLinkValue(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Quantity master switch. When on, packages under this
+                      product whose own `allow_quantity` is also on will
+                      show the storefront quantity stepper. The label
+                      input below the checkbox only renders when the
+                      master switch is on. */}
+                  <div className="my-2">
+                    <label className="py-2 inline-block cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        defaultChecked={data?.allow_quantity == 1}
+                        ref={allow_quantity}
+                        className="mr-2"
+                        onChange={(e) =>
+                          setIsAllowQuantityChecked(e.target.checked)
+                        }
+                      />
+                      Allow quantity input{" "}
+                      <span className="text-xs font-normal text-gray-500">
+                        (when on, the storefront shows a quantity stepper
+                        on any package under this product. Per-package{" "}
+                        <em>Allow quantity</em> also enables it for a
+                        single package without flipping the product-level
+                        switch.)
+                      </span>
+                    </label>
+                  </div>
+                  {isAllowQuantityChecked && (
+                    <div className="my-2">
+                      <label
+                        htmlFor="quantity_prefix"
+                        className="block font-semibold"
+                      >
+                        Quantity label{" "}
+                        <span className="text-xs font-normal text-gray-500">
+                          (optional — shown in front of the storefront
+                          quantity stepper. Example: "Dollars" → the stepper
+                          reads <em>Dollars [ − 1 + ]</em>. Leave blank for
+                          the default "Quantity".)
+                        </span>
+                      </label>
+                      <input
+                        id="quantity_prefix"
+                        type="text"
+                        maxLength={64}
+                        className="form_input mt-1"
+                        placeholder="e.g. Dollars, Hours, Items"
+                        value={quantityPrefixValue}
+                        onChange={(e) => setQuantityPrefixValue(e.target.value)}
                       />
                     </div>
                   )}

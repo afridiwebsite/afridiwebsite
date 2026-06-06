@@ -158,6 +158,22 @@ function OrderPage() {
                         </span>{" "}
                         {order?.amount}
                       </p>
+                      {/* Quantity — only shown when the customer ordered
+                          more than one unit (migration 008). Single-unit
+                          orders skip it to keep the card uncluttered. The
+                          label honours the product's quantity_prefix so a
+                          bulk-dollar order reads "Dollars: 50" instead of
+                          a generic "Quantity: 50". */}
+                      {Number(order?.quantity) > 1 && (
+                        <p className="_subtitle1">
+                          <span className="font-semibold mr-1.5">
+                            {String(product?.quantity_prefix || "").trim() ||
+                              "Quantity"}
+                            :
+                          </span>{" "}
+                          {order.quantity}
+                        </p>
+                      )}
                       {order?.playerid && (
                         <p className="_subtitle1">
                           <span className="font-semibold mr-1.5">

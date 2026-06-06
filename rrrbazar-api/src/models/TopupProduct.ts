@@ -23,6 +23,8 @@ export default (sequelize: Sequelize) => {
         public youtube_link!: string;
         public is_voucher!: number;
         public redeem_link!: string;
+        public quantity_prefix!: string;
+        public allow_quantity!: number;
 
         static associate({ Category, ProductCategory, TopupProductInput, TopupPackage }: typeof Schema) {
             this.belongsToMany(Category, {
@@ -127,6 +129,26 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING(512),
             allowNull: true,
             defaultValue: '',
+        },
+        quantity_prefix: {
+            // Admin-supplied label shown in front of the storefront quantity
+            // stepper. Lets the admin re-skin the input for products where
+            // "Quantity" reads oddly — e.g. "Dollars" for an admin-fulfilled
+            // currency package, "Hours" for a service package. Blank falls
+            // back to the default "Quantity" label client-side.
+            type: DataTypes.STRING(64),
+            allowNull: false,
+            defaultValue: '',
+        },
+        allow_quantity: {
+            // Product-level master switch for the quantity stepper. The
+            // storefront ANDs this with the per-package `allow_quantity`
+            // (migration 006) so the admin can flip a whole product off
+            // without walking each package — but per-package granularity
+            // is preserved.
+            type: DataTypes.TINYINT,
+            allowNull: false,
+            defaultValue: 0,
         },
         created_at: {
             type: DataTypes.DATE,

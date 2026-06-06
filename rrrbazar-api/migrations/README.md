@@ -13,6 +13,8 @@ mean you can safely run them again.
 | `005_spin_system.sql` | Adds `spin_rewards` and `spin_results` tables, `site_settings.spin_cost_coins` / `spin_daily_limit` columns, and seeds six default wheel rewards. |
 | `006_add_allow_quantity.sql` | Adds `topuppackages.allow_quantity` — per-package opt-in for the quantity stepper on /topup/:id (voucher-type products only). |
 | `007_widen_brief_note.sql` | Widens `orders.brief_note` from VARCHAR(255) to TEXT. Required after the reward-block HTML started getting appended to brief_note — Bengali cancel copy + the reward block pushed the combined string past 255 bytes, triggering `ER_DATA_TOO_LONG` writes. |
+| `008_quantity_and_prefix.sql` | Adds `orders.quantity` (default 1) so refunds/admin views/reward sync have a single source of truth for unit count, and `topup_products.quantity_prefix` so the admin can re-label the storefront quantity stepper (e.g. "Dollars"). Together they extend the existing `allow_quantity` flag to non-voucher products. |
+| `009_product_allow_quantity.sql` | Adds `topup_products.allow_quantity` — product-level master switch for the quantity stepper. Storefront ORs it with the per-package flag from 006 so the admin can enable quantity at either level (per-package was originally voucher-only, so AND-ing them would have restricted quantity to vouchers). |
 
 ## Apply
 

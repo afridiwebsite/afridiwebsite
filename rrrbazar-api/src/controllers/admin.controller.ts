@@ -292,6 +292,10 @@ class AdminController {
           isReseller:
             String((rewardUser as any)?.user_type || '').toLowerCase() ===
             'reseller',
+          // Multiply the displayed reward by the order's unit count so a
+          // bulk order shows the per-unit reward × quantity. coin/cashback
+          // sync helpers already auto-pick this from order.quantity.
+          quantity: Math.max(1, Number((order as any).quantity) || 1),
         });
         if (rewardHtml) {
           order.brief_note = String(order.brief_note || '') + rewardHtml;

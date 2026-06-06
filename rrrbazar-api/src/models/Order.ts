@@ -24,6 +24,7 @@ export default (sequelize: Sequelize) => {
         public user_id!: number;
         public amount!: number;
         public bprice!: Float64Array;
+        public quantity!: number;
         public uc!: string;
         public details!: string;
         public completed_by!: number;
@@ -149,6 +150,16 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING,
             allowNull: true,
             defaultValue: '',
+        },
+        quantity: {
+            // Per-order unit count. Defaults to 1 so legacy/non-quantity
+            // packages stay equivalent to the pre-migration behaviour;
+            // packages with `allow_quantity = 1` can persist N > 1 here so
+            // refund math, reward sync, and the admin view all read the
+            // same source of truth instead of inferring from `amount`.
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 1,
         },
         uc: {
             type: DataTypes.STRING,

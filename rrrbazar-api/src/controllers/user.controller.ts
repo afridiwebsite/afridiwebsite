@@ -947,7 +947,17 @@ class UserController {
           {
             model: TopupProduct,
             required: false,
-            attributes: ["id", "name", "logo", "redeem_link", "is_voucher"],
+            attributes: [
+              "id",
+              "name",
+              "logo",
+              "redeem_link",
+              "is_voucher",
+              // Needed so the user-facing order card can label a bulk
+              // quantity line as "Dollars: 50" instead of the generic
+              // "Quantity: 50" — admin sets this per product.
+              "quantity_prefix",
+            ],
           },
         ],
         order: [["created_at", "DESC"]],
@@ -1187,11 +1197,24 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      // Quantity only applies to voucher-pool products; everything else is
-      // implicitly a quantity of 1. Clamp to a sane upper bound to keep
-      // accidental bulk orders bounded.
+      // Quantity is honoured when EITHER switch is on: the product-level
+      // master switch (migration 009) OR the per-package switch (migration
+      // 006). The per-package flag was originally voucher-only, so AND-ing
+      // both would have effectively required vouchers — which we
+      // explicitly don't want. OR matches the storefront gate and lets the
+      // admin enable quantity at whichever level fits the product.
+      //
+      // Voucher products still emit N codes from the pool inside
+      // handleVoucherProduct; non-voucher quantity orders just record the
+      // unit count on the order and let the existing fulfilment flow (bot
+      // or admin-manual) run once per order. Clamp to a sane upper bound
+      // so an accidental bulk order can't run the wallet/stock checks
+      // against a runaway number.
       const isVoucherProduct = (product as any).is_voucher == 1;
-      const quantity = isVoucherProduct
+      const quantityAllowed =
+        Number((product as any).allow_quantity) === 1 ||
+        Number((topupPackage as any).allow_quantity) === 1;
+      const quantity = quantityAllowed
         ? Math.min(
             Math.max(parseInt(String(rawQuantity || "1"), 10) || 1, 1),
             100,
@@ -1312,6 +1335,7 @@ class UserController {
         user_id,
         amount,
         bprice,
+        quantity,
       };
 
       if (payment_mathod === "pay") {
@@ -1346,6 +1370,7 @@ class UserController {
           user_id,
           amount,
           bprice,
+          quantity,
         };
 
         const meta_data = {
@@ -1425,6 +1450,7 @@ class UserController {
           resellerCashback: (topupPackage as any).reseller_cashback,
           isReseller:
             String((user as any).user_type || "").toLowerCase() === "reseller",
+          quantity,
         });
         if (rewardHtml) {
           order.brief_note = stripRewardNote(order.brief_note) + rewardHtml;
@@ -1652,6 +1678,7 @@ class UserController {
             isReseller:
               String((rewardUser as any)?.user_type || "").toLowerCase() ===
               "reseller",
+            quantity: Math.max(1, Number((order as any).quantity) || 1),
           });
           // checkOrder is the deferred path — no UniPin/voucher prefix to
           // preserve here, so the reward block stands alone (or empty if
