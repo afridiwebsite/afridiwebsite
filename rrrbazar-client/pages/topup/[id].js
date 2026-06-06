@@ -842,7 +842,7 @@ function TopupOrderPage() {
                                               <span
                                                 className={`topup-pack-card-row ${
                                                   isQuantityPack
-                                                    ? "is-quantity-row"
+                                                    ? "!justify-center font-bold"
                                                     : ""
                                                 }`}
                                               >
