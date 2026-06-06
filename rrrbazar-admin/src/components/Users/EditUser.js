@@ -10,6 +10,10 @@ import {
   FaShoppingCart,
   FaClipboardList,
   FaGift,
+  FaCheck,
+  FaTimes,
+  FaClock,
+  FaTrash,
 } from "react-icons/fa";
 import axiosInstance from "../../common/axios";
 import useGet from "../../hooks/useGet";
@@ -98,6 +102,23 @@ function EditUser(props) {
   const [stats, loadingStats, , refreshStats] = useGet(
     `admin/user/${userId}/stats`
   );
+  // Verification snapshot for this user. The endpoint returns the schema
+  // (step definitions) + the user's current submissions so the review
+  // panel can render every field even when the storefront's schema
+  // changes.
+  const [verification, loadingVerification, , refreshVerification] = useGet(
+    `admin/user/${userId}/verification`
+  );
+  const verificationSteps = verification?.steps || [];
+  const verificationSubmissions = verification?.submissions || [];
+  const subByStep = verificationSubmissions.reduce((acc, s) => {
+    acc[String(s.step)] = s;
+    return acc;
+  }, {});
+  // Step 4 must be verified before the Reseller checkbox is interactive.
+  // The server enforces the same gate on update so a stale view can't
+  // sneak it through.
+  const step4Verified = subByStep["4"]?.status === "verified";
 
   const wallet = useRef(null);
   const coins = useRef(null);
@@ -118,6 +139,18 @@ function EditUser(props) {
   const handleResellerChange = (e) => {
     const val = e.target.checked;
     if (val) {
+      // Local gate matching the server-side check in admin.controller.ts
+      // (canPromoteToReseller). When the verification module is on, the
+      // server will refuse the update unless step 4 is verified — so we
+      // refuse here too, with a clearer message than the API error.
+      if (verification && !step4Verified) {
+        Swal.fire({
+          icon: "info",
+          title: "Step 4 not verified",
+          text: "Verify the user's Work info submission (Step 4) before promoting them to Reseller.",
+        });
+        return;
+      }
       Swal.fire({
         title: "Promote to Reseller?",
         text: "This user will earn per-package Reseller cashback on every completed order.",
@@ -134,6 +167,100 @@ function EditUser(props) {
     } else {
       setIsReseller(false);
     }
+  };
+
+  // Approve / reject a single submission. Reject prompts for a reason
+  // (server-side validation enforces non-empty for rejects too).
+  const handleReview = async (submission, nextStatus) => {
+    if (nextStatus === "rejected") {
+      const { value: reason } = await Swal.fire({
+        title: `Reject step ${submission.step}?`,
+        input: "textarea",
+        inputLabel: "Rejection reason",
+        inputPlaceholder:
+          "What should the user fix before resubmitting?",
+        inputValidator: (value) =>
+          !value || !value.trim() ? "A reason is required." : null,
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        confirmButtonText: "Reject",
+      });
+      if (!reason) return;
+      try {
+        await axiosInstance.post(
+          `/admin/verification/${submission.id}/review`,
+          { status: "rejected", rejection_reason: reason.trim() },
+        );
+        toast.success("Submission rejected", toastDefault);
+        refreshVerification();
+      } catch (err) {
+        toast.error(getErrors(err, false, true), toastDefault);
+      }
+      return;
+    }
+    if (nextStatus === "verified") {
+      try {
+        await axiosInstance.post(
+          `/admin/verification/${submission.id}/review`,
+          { status: "verified" },
+        );
+        toast.success("Submission verified", toastDefault);
+        refreshVerification();
+      } catch (err) {
+        toast.error(getErrors(err, false, true), toastDefault);
+      }
+    }
+  };
+
+  // Wipes a submission so the user can resubmit (e.g. admin clears the
+  // verified phone so the user can change it).
+  const handleClear = async (submission) => {
+    const { isConfirmed } = await Swal.fire({
+      title: `Clear step ${submission.step}?`,
+      text: "The user will need to resubmit this step from scratch.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Clear",
+    });
+    if (!isConfirmed) return;
+    try {
+      await axiosInstance.delete(`/admin/verification/${submission.id}`);
+      toast.success("Submission cleared", toastDefault);
+      refreshVerification();
+    } catch (err) {
+      toast.error(getErrors(err, false, true), toastDefault);
+    }
+  };
+
+  // Shared status pill — same tri-state palette the storefront uses.
+  const StatusPill = ({ status }) => {
+    if (status === "verified") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
+          <FaCheck size={10} /> Verified
+        </span>
+      );
+    }
+    if (status === "rejected") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+          <FaTimes size={10} /> Rejected
+        </span>
+      );
+    }
+    if (status === "under_review") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">
+          <FaClock size={10} /> Under review
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold">
+        Not started
+      </span>
+    );
   };
 
   const editPaymentMethodHandler = (e) => {
@@ -289,12 +416,21 @@ function EditUser(props) {
                   </div>
                   <div className="form_grid">
                     <div>
-                      <label className="inline-flex items-center cursor-pointer select-none mt-2">
+                      <label
+                        className={`inline-flex items-center cursor-pointer select-none mt-2 ${
+                          verification && !step4Verified && !isReseller
+                            ? "opacity-60 cursor-not-allowed"
+                            : ""
+                        }`}
+                      >
                         <input
                           type="checkbox"
                           className="form-checkbox"
                           checked={isReseller}
                           onChange={handleResellerChange}
+                          disabled={
+                            verification && !step4Verified && !isReseller
+                          }
                         />
                         <span className="ml-2">Reseller</span>
                       </label>
@@ -302,6 +438,12 @@ function EditUser(props) {
                         Resellers earn the per-package Reseller cashback (BDT)
                         on every completed order, on top of the regular
                         coin/cashback reward.
+                        {verification && !step4Verified && (
+                          <span className="block text-amber-700 mt-1">
+                            Step 4 (Work info) must be verified before this user
+                            can be promoted.
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -312,6 +454,132 @@ function EditUser(props) {
                                                 <input ref={password} className="form_input" type="text" placeholder="New password" />
                                             </div>
                                         </div> */}
+
+                  {/* Verification review panel. Renders one card per step
+                      so the admin can approve / reject / clear them
+                      independently. The card shows whatever fields the
+                      schema declares — when the storefront adds a new
+                      field, it surfaces here automatically. Images use
+                      the same imgPath helper as the rest of the admin
+                      so uploads from the verification page render
+                      inline. */}
+                  {verification && (
+                    <div className="mt-8 border-t border-gray-200 pt-6">
+                      <h4 className="font-bold mb-3">
+                        Account verification
+                      </h4>
+                      {loadingVerification && <p>Loading…</p>}
+                      {!loadingVerification && verificationSteps.length === 0 && (
+                        <p className="text-sm text-gray-500">
+                          Verification module disabled — no submissions to review.
+                        </p>
+                      )}
+                      {!loadingVerification && verificationSteps.length > 0 && (
+                        <div className="space-y-3">
+                          {verificationSteps.map((step) => {
+                            const sub = subByStep[String(step.step)];
+                            return (
+                              <div
+                                key={step.step}
+                                className="border border-gray-200 rounded-lg p-3"
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                  <div>
+                                    <div className="font-semibold text-gray-800">
+                                      Step {step.step}: {step.title}
+                                    </div>
+                                    {sub?.status === "rejected" &&
+                                      sub?.rejection_reason && (
+                                        <div className="text-xs text-red-700 mt-1">
+                                          Reason: {sub.rejection_reason}
+                                        </div>
+                                      )}
+                                  </div>
+                                  <StatusPill status={sub?.status} />
+                                </div>
+
+                                {sub ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                    {step.fields.map((f) => {
+                                      const v = (sub.data || {})[f.key];
+                                      if (v === undefined || v === null || v === "") {
+                                        return null;
+                                      }
+                                      if (f.type === "file") {
+                                        return (
+                                          <div key={f.key}>
+                                            <div className="text-xs text-gray-500">
+                                              {f.label}
+                                            </div>
+                                            <a
+                                              href={imgPath(v)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                            >
+                                              <img
+                                                src={imgPath(v)}
+                                                alt={f.label}
+                                                className="max-h-40 rounded border border-gray-200 mt-1"
+                                              />
+                                            </a>
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <div key={f.key}>
+                                          <div className="text-xs text-gray-500">
+                                            {f.label}
+                                          </div>
+                                          <div className="text-gray-800 break-words">
+                                            {String(v)}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-500">
+                                    User has not submitted this step yet.
+                                  </p>
+                                )}
+
+                                {sub && (
+                                  <div className="flex flex-wrap gap-2 mt-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReview(sub, "verified")}
+                                      disabled={sub.status === "verified"}
+                                      className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded disabled:opacity-50"
+                                    >
+                                      <FaCheck className="inline mr-1" />
+                                      Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReview(sub, "rejected")}
+                                      disabled={sub.status === "rejected"}
+                                      className="px-3 py-1.5 bg-red-600 text-white text-sm rounded disabled:opacity-50"
+                                    >
+                                      <FaTimes className="inline mr-1" />
+                                      Reject
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleClear(sub)}
+                                      className="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm rounded"
+                                    >
+                                      <FaTrash className="inline mr-1" />
+                                      Clear
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-8">
                     <button type="submit" className="cstm_btn w-full block">

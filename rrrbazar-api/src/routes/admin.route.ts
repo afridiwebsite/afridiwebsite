@@ -14,6 +14,7 @@ import userController from '../controllers/user.controller';
 import categoryController from '../controllers/category.controller';
 import siteSettingController from '../controllers/siteSetting.controller';
 import spinController from '../controllers/spin.controller';
+import verificationAdminController from '../controllers/verificationAdmin.controller';
 import auth from '../middleware/auth.middleware';
 import { createAdminValidator } from '../middleware/validators/adminValidator';
 import { addPermissionValidator, adminWalletRequestValidator, authModuleActiveValidator } from '../middleware/validators/authModuleValidator';
@@ -154,6 +155,11 @@ router.post('/site-settings/update', auth, siteSettingController.update)
 // can save independently of the main settings form.
 router.post('/site-settings/sms-provider', auth, siteSettingController.updateSmsProvider)
 router.post('/site-settings/sms-provider/test', auth, siteSettingController.testSmsProvider)
+
+// User-verification module — admin review surface mounted into EditUser.
+router.get('/user/:user_id/verification', auth, verificationAdminController.list)
+router.post('/verification/:id/review', auth, verificationAdminController.review)
+router.delete('/verification/:id', auth, verificationAdminController.remove)
 
 // Spin rewards CRUD ----START----
 router.get('/spin-rewards', auth, spinController.adminList)

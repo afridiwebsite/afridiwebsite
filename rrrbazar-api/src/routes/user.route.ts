@@ -10,6 +10,7 @@ import spinController from '../controllers/spin.controller';
 import searchController from '../controllers/search.controller';
 import publicTopupProductController from '../controllers/publicTopupProduct.controller';
 import tutorialController from '../controllers/tutorial.controller';
+import verificationController from '../controllers/verification.controller';
 const router = express.Router();
 
 router.get('/products', productController.getProducts);
@@ -43,6 +44,16 @@ router.post('/reset-password', userController.resetPassword)
 router.get('/reset-password-otp/:id', userController.resetPasswordOtp)
 router.post('/reset-password-otp/:id', userController.resetPasswordVerify)
 router.get('/user/profile', userAuth, userController.userProfile)
+
+// User-verification module (KYC). All endpoints respect the
+// `verification_enabled` master switch in site settings — when off, /me
+// still returns the structure with `enabled: false` so the storefront
+// hides the page, but the OTP and submit endpoints reject with 400 to
+// avoid wasting SMS credits.
+router.get('/verification/me', userAuth, verificationController.me)
+router.post('/verification/otp/send', userAuth, verificationController.sendOtp)
+router.post('/verification/otp/verify', userAuth, verificationController.verifyOtp)
+router.post('/verification/step/:step', userAuth, verificationController.submitStep)
 router.get('/topup-payment-method/active', userController.getActivePaymentMethods)
 router.post('/change-phone', userAuth, userController.changePhone)
 router.get('/verify-phone', userAuth, userController.verifyPhone)

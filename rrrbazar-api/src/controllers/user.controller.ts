@@ -22,6 +22,7 @@ import {
   handleVoucherProduct,
   parseTags,
 } from "../helpers/topupOrderHandler";
+import { userCanOrder } from "./verification.controller";
 const {
   User,
   Banner,
@@ -1113,6 +1114,17 @@ class UserController {
       } = req.body;
 
       let user_id = req.user.id;
+
+      // Verification gate. When the master toggle is on and step 1 of
+      // the user's verification isn't `verified`, refuse the order with
+      // a message the storefront surfaces inline. Module off ⇒ no-op.
+      const gate = await userCanOrder(user_id);
+      if (!gate.ok) {
+        response.message = gate.reason || "Account verification required.";
+        response.status = 403;
+        response.success = false;
+        return res.status(403).send(response.response);
+      }
 
       const topupPackage = await TopupPackage.findByPk(topuppackage_id);
 

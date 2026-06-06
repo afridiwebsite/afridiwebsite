@@ -1,6 +1,7 @@
 import Schema from "../models";
 import express from "express";
 import responseUtils from "../utils/response.utils";
+import { sendOtpSms } from "../helpers/smsProvider";
 
 const { SiteSetting } = Schema;
 
@@ -29,6 +30,20 @@ class SiteSettingController {
     json.wallet_pay_image_full_url = json.wallet_pay_image
       ? `${reqPath}/images/${json.wallet_pay_image}`
       : "";
+
+    // The SMS credentials are admin-only — never leak them on the
+    // public settings endpoint (consumed by the storefront). The admin
+    // path mounts `auth` middleware before this handler, which
+    // populates `req.admin`; absence of `req.admin` therefore means the
+    // public route, in which case we strip the fields. With this guard
+    // the admin SmsProvider page can hydrate its own saved values.
+    if (!(req as any).admin) {
+      delete json.sms_provider_url;
+      delete json.sms_provider_api_key;
+      delete json.sms_provider_sender_id;
+      delete json.sms_message_template;
+    }
+
     response.data = json;
     res.send(response.response);
   }
@@ -164,9 +179,6 @@ class SiteSettingController {
         return res.status(400).send(response.response);
       }
       const settings = await getOrCreate();
-      // Import lazily so the SMS helper can stay tree-shakeable for
-      // deployments that never enable the verification module.
-      const { sendOtpSms } = await import("../helpers/smsProvider");
       const result = await sendOtpSms({
         phone: trimmedPhone,
         message:

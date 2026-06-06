@@ -23,6 +23,7 @@ import { HiSparkles } from 'react-icons/hi';
 import {
   getMyAddedTotal,
   getMyCoins,
+  getMyVerification,
   getUserOrders,
   getUserProfile,
 } from '../api/api';
@@ -44,6 +45,17 @@ function ProfilePage() {
   useEffect(() => {
     if (data) updateAuthUserInfo(data);
   }, [data, updateAuthUserInfo]);
+
+  // Verification snapshot — fetches per-step status + counts in one shot.
+  // Used to render the tag system below; failures are silent (the section
+  // just hides) so a broken module doesn't break the whole profile page.
+  const { data: verificationResp } = useQuery(
+    'verification-me',
+    getMyVerification,
+    { ...reactQueryConfig, retry: false },
+  );
+  const verification = verificationResp?.data?.data;
+  const verificationEnabled = !!verification?.enabled;
 
   const {
     data: ordersData,
@@ -164,6 +176,83 @@ function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Verification tag system. Only renders when the master toggle is
+          on. Each tag is a clickable link to /profile/verification#step-N
+          carrying the step's current status (verified / under review /
+          rejected / not started). A summary chip on the left tells the
+          user at a glance how many of the 4 steps are done. */}
+      {verificationEnabled && (
+        <div className="container mt-8">
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+              <div>
+                <div className="text-sm text-gray-500">Account verification</div>
+                <div className="text-base font-bold text-gray-800">
+                  {verification?.all_verified ? (
+                    <span className="text-emerald-700">Fully verified ✓</span>
+                  ) : (
+                    <>
+                      {verification?.counts?.verified || 0} of{' '}
+                      {verification?.counts?.total_steps || 4} steps verified
+                    </>
+                  )}
+                </div>
+                {verification?.order_blocked && (
+                  <div className="text-xs text-red-700 mt-1 font-semibold">
+                    Orders are blocked until step 1 is verified.
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push(routes.verification.name)}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded"
+              >
+                Open verification page
+              </button>
+            </div>
+
+            {/* Per-step tags. Server already returned a per-step submission
+                map keyed by step number; we walk it to colour each tag.
+                Clicking a tag deep-links to the relevant step form. */}
+            <div className="flex flex-wrap gap-2">
+              {(verification?.steps || []).map((step) => {
+                const sub = verification?.submissions?.[String(step.step)];
+                const status = sub?.status || 'not_started';
+                const styles = {
+                  verified: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                  under_review: 'bg-amber-100 text-amber-800 border-amber-200',
+                  rejected: 'bg-red-100 text-red-800 border-red-200',
+                  not_started: 'bg-gray-100 text-gray-700 border-gray-200',
+                }[status];
+                const label = {
+                  verified: 'Verified',
+                  under_review: 'Under review',
+                  rejected: 'Rejected',
+                  not_started: 'Not started',
+                }[status];
+                return (
+                  <button
+                    type="button"
+                    key={step.step}
+                    onClick={() =>
+                      router.push(`${routes.verification.name}#step-${step.step}`)
+                    }
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${styles}`}
+                    title={`Step ${step.step}: ${step.title}`}
+                  >
+                    <span className="font-bold">#{step.step}</span>
+                    <span>{step.title}</span>
+                    <span className="opacity-60">·</span>
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats — five cards in a 5-col grid on lg, wrapping on smaller. */}
       <div className="container mt-14">

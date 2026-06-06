@@ -62,6 +62,10 @@ const routes = Object.freeze({
   tutorials: {
     name: '/tutorials',
   },
+  verification: {
+    auth: true,
+    name: '/profile/verification',
+  },
 });
 
 export default routes;

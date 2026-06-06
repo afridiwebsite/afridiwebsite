@@ -82,6 +82,28 @@ export const getMyCoins = async () => api.get('/coins/me');
 export const claimCoins = async () => api.post('/coins/claim');
 export const convertCoins = async (amount) =>
   api.post('/coins/convert', { amount });
+
+// --- User verification (KYC) module ---------------------------------------
+// `me` is one fetch by design — it returns the step schema, every
+// submission's current status, and convenience flags (order_blocked,
+// all_verified, counts). The profile tag, the verification page, and
+// any future banner all read from the same shape.
+export const getMyVerification = async () => api.get('/verification/me');
+export const sendVerificationOtp = async (phone) =>
+  api.post('/verification/otp/send', { phone });
+export const verifyVerificationOtp = async (phone, code) =>
+  api.post('/verification/otp/verify', { phone, code });
+export const submitVerificationStep = async (step, payload) =>
+  api.post(`/verification/step/${step}`, payload);
+// Step 2/3 use the same upload endpoint as the admin product forms.
+// Returns { data: { path } } — store `path` in the step payload.
+export const uploadVerificationImage = async (file) => {
+  const fd = new FormData();
+  fd.append('image', file);
+  return api.post('/upload/image', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
 export const getCoinHistory = async () => api.get('/coins/history');
 
 // Spin / gacha

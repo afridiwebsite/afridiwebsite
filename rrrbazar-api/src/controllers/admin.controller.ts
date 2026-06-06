@@ -8,6 +8,7 @@ import responseUtils from '../utils/response.utils';
 import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
 import syncOrderCashbackForStatus from '../helpers/orderCashbackSync';
 import buildRewardNoteHtml, { stripRewardNote } from '../helpers/orderRewardNote';
+import { canPromoteToReseller } from './verificationAdmin.controller';
 import {
   aggregateOrderFromDispatches,
   buildOrderDetailsHtml,
@@ -2885,8 +2886,23 @@ class AdminController {
       // Reseller toggle. Only persists the two recognised values so a
       // malformed payload can't store garbage. Cashback wiring keys off
       // 'reseller' (case-insensitive) so the comparison stays the same.
+      //
+      // When the verification module is on, promotion to reseller is
+      // gated on step 4 being verified — see canPromoteToReseller. The
+      // admin UI already greys the checkbox out in that case but we
+      // enforce it server-side too so a stale form can't slip through.
       if (typeof user_type === 'string') {
         const next = user_type.toLowerCase() === 'reseller' ? 'reseller' : 'normal';
+        if (next === 'reseller' && String((user as any).user_type || '').toLowerCase() !== 'reseller') {
+          const allowed = await canPromoteToReseller(Number((user as any).id));
+          if (!allowed) {
+            response.success = false;
+            response.status = 400;
+            response.message =
+              'Cannot promote: step 4 (Work info) of the user verification is not verified yet.';
+            return res.status(400).send(response.response);
+          }
+        }
         (user as any).user_type = next;
       }
 

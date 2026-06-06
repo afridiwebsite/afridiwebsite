@@ -38,6 +38,8 @@ import Voucher from './Voucher'
 import PackageVoucherMap from './PackageVoucherMap'
 import Tutorial from './Tutorial'
 import BotDispatch from './BotDispatch'
+import VerificationSubmission from './VerificationSubmission'
+import OtpAttempt from './OtpAttempt'
 
 
 
@@ -96,4 +98,6 @@ export const Schema = {
   PackageVoucherMap: PackageVoucherMap(sequelize),
   Tutorial: Tutorial(sequelize),
   BotDispatch: BotDispatch(sequelize),
+  VerificationSubmission: VerificationSubmission(sequelize),
+  OtpAttempt: OtpAttempt(sequelize),
 }
