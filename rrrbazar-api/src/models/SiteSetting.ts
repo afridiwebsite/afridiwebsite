@@ -30,6 +30,19 @@ export default (sequelize: Sequelize) => {
         // Minimum coins a user can convert to wallet balance in a single call.
         // 0 (the default) disables the floor.
         public min_convert_coins!: number;
+        // KYC verification master switch (migration 010). When 0 the whole
+        // verification UX is invisible — storefront page hides, profile tag
+        // hides, order-block never fires — regardless of what's already in
+        // the verification_submissions table.
+        public verification_enabled!: number;
+        // SMS gateway config for the OTP step. URL + key + sender are
+        // exposed on a dedicated admin page so the gateway can be swapped
+        // without code changes. `sms_message_template` may contain {code}
+        // and {minutes} placeholders.
+        public sms_provider_url!: string;
+        public sms_provider_api_key!: string;
+        public sms_provider_sender_id!: string;
+        public sms_message_template!: string;
     }
 
     SiteSetting.init({
@@ -82,6 +95,19 @@ export default (sequelize: Sequelize) => {
         youtube_link:     { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         wallet_pay_image: { type: DataTypes.STRING, allowNull: true, defaultValue: '' },
         min_convert_coins: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 },
+        verification_enabled: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
+        sms_provider_url: {
+            type: DataTypes.STRING(512),
+            allowNull: false,
+            defaultValue: 'https://api.sms.net.bd/sendsms',
+        },
+        sms_provider_api_key:   { type: DataTypes.STRING(255), allowNull: false, defaultValue: '' },
+        sms_provider_sender_id: { type: DataTypes.STRING(64),  allowNull: false, defaultValue: '' },
+        sms_message_template:   {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            defaultValue: 'Your verification code is {code}. It expires in 5 minutes.',
+        },
         created_at: {
             type: DataTypes.DATE,
             allowNull: true,

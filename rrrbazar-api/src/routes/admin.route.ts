@@ -150,6 +150,10 @@ router.post('/topup-package/:id/inputs', auth, adminController.assignPackageInpu
 // Site settings apis ----START----
 router.get('/site-settings', auth, siteSettingController.get)
 router.post('/site-settings/update', auth, siteSettingController.update)
+// SMS / OTP provider config — separate endpoint so the SMS settings page
+// can save independently of the main settings form.
+router.post('/site-settings/sms-provider', auth, siteSettingController.updateSmsProvider)
+router.post('/site-settings/sms-provider/test', auth, siteSettingController.testSmsProvider)
 
 // Spin rewards CRUD ----START----
 router.get('/spin-rewards', auth, spinController.adminList)

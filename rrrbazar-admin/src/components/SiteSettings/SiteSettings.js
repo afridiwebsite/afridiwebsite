@@ -23,6 +23,10 @@ function SiteSettings() {
     const telegram_support_number = useRef(null)
     const youtube_link = useRef(null)
     const min_convert_coins = useRef(null)
+    // Verification module master toggle. Kept in state (not just a ref) so
+    // the description text below the checkbox can react to the current
+    // value — and so we don't read stale DOM if the user submits twice.
+    const [verificationEnabled, setVerificationEnabled] = useState(false)
 
     const [logoFile, setLogoFile] = useState(null)
     const { path: uploadedLogo, uploading } = useUpload(logoFile)
@@ -53,6 +57,7 @@ function SiteSettings() {
                 primary: data.primary_color || '#2563eb',
                 secondary: data.secondary_color || '#1e40af'
             })
+            setVerificationEnabled(data.verification_enabled == 1)
         }
     }, [data])
 
@@ -85,6 +90,7 @@ function SiteSettings() {
             youtube_link: youtube_link.current?.value || '',
             wallet_pay_image: uploadedWalletPay || savedWalletPay,
             min_convert_coins: parseInt(min_convert_coins.current?.value || 0, 10),
+            verification_enabled: verificationEnabled ? 1 : 0,
         }
         axiosInstance
             .post('/admin/site-settings/update', payload)
@@ -305,6 +311,37 @@ function SiteSettings() {
                                         </div>
                                     ))}
                                 </div> */}
+
+                                <h4 className="font-bold mt-6 mb-2">User verification</h4>
+                                <div className="border border-gray-200 rounded p-3 bg-gray-50">
+                                    <label className="inline-flex items-center cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            className="form-checkbox h-5 w-5"
+                                            checked={verificationEnabled}
+                                            onChange={(e) =>
+                                                setVerificationEnabled(e.target.checked)
+                                            }
+                                        />
+                                        <span className="ml-2 font-semibold">
+                                            Enable verification module
+                                        </span>
+                                    </label>
+                                    <p className="text-xs text-gray-600 mt-2">
+                                        Master switch for the KYC flow. When ON, users see a
+                                        Verification tag in their profile and step 1 (phone +
+                                        personal info) is required before they can place an
+                                        order. SMS gateway credentials live on the{' '}
+                                        <a
+                                            href="/sms-provider"
+                                            className="text-blue-600 underline"
+                                        >
+                                            SMS provider
+                                        </a>{' '}
+                                        page. When OFF the entire UX is hidden and no order is
+                                        blocked, even if submissions exist in the database.
+                                    </p>
+                                </div>
 
                                 <div className="mt-6">
                                     <button

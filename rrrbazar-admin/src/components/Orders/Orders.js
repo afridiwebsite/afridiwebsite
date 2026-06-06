@@ -8,8 +8,8 @@ import Swal from "sweetalert2";
 import SearchOrder from "./SearchOrder";
 import ViewOrderModal from "./ViewOrderModal";
 
-// Escape user-supplied template strings so they're safe to inline as HTML
-// attribute values inside the Swal markup (datalist option, etc.).
+// Escape a string for safe inlining as an HTML attribute value inside the
+// Swal markup (saved-comment <option>, etc.).
 const escAttr = (s) =>
   String(s || "")
     .replace(/&/g, "&amp;")
@@ -220,15 +220,15 @@ function Orders() {
   const withActionMenu = columnsWithSelection;
 
   const openChangeStatusModal = async (order_id) => {
-    // Build the saved-comment picker + datalist from the API-loaded list.
+    // Build the saved-comment picker. The brief note is now a
+    // contenteditable rich editor (not a textarea) so picking a saved
+    // template can drop its HTML straight in — formatting like bold,
+    // lists, and links survives the round-trip.
     const savedOptions = savedComments
       .map((c) => {
         const label = c.label || (c.plain_text || "").slice(0, 80);
         return `<option value="${escAttr(c.id)}">${escAttr(label)}</option>`;
       })
-      .join("");
-    const dynamicDatalist = savedComments
-      .map((c) => `<option value="${escAttr(c.plain_text)}"></option>`)
       .join("");
     const savedPickerHtml = savedComments.length
       ? `<label class="block text-left mb-2">
@@ -240,6 +240,23 @@ function Orders() {
                 </label>`
       : `<p class="text-xs text-gray-500 mb-2 text-left">No saved comment templates yet — <a href="/order-comments" class="text-blue-600 underline">create one</a> to reuse here.</p>`;
 
+    // Minimal rich-text toolbar. We use document.execCommand (deprecated
+    // but still universally supported) because it's the simplest way to
+    // get a working editor inside Swal's HTML body without mounting
+    // React. The supported commands cover the formatting the admin
+    // actually uses on order notes: bold/italic/underline, lists, link,
+    // and a "clear" button that strips all inline formatting.
+    const toolbarHtml = `
+      <div id="order-note-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;border:1px solid #dcdcf3;border-bottom:none;border-radius:6px 6px 0 0;padding:6px;background:#f9fafb;">
+        <button type="button" data-cmd="bold"           style="font-weight:bold;min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">B</button>
+        <button type="button" data-cmd="italic"         style="font-style:italic;min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">I</button>
+        <button type="button" data-cmd="underline"      style="text-decoration:underline;min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">U</button>
+        <button type="button" data-cmd="insertUnorderedList" title="Bulleted list" style="min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">• List</button>
+        <button type="button" data-cmd="insertOrderedList"   title="Numbered list" style="min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">1. List</button>
+        <button type="button" data-cmd="createLink"     title="Link" style="min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">Link</button>
+        <button type="button" data-cmd="removeFormat"   title="Clear formatting" style="min-width:32px;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;">Clear</button>
+      </div>`;
+
     const { value: formValues } = await Swal.fire({
       title: "Change order status",
       html:
@@ -250,63 +267,80 @@ function Orders() {
                     <option value="cancel" style="font-size: 2em;">Cancel</option>
                 </select>` +
         savedPickerHtml +
-        `
-            <label class="block text-left">
+        `<label class="block text-left">
                 <span class="form_label">Brief Note</span>
-                <textarea rows="3" class="mt-1 block w-full form_input" id="order-note" placeholder="Pick a saved comment above or type your own." list="auto_comment"></textarea>
-                <datalist id="auto_comment">
-                    <option value="আইডি কোড ভুল"></option>
-                    <option value="অন্য সার্ভার এর আইডি"></option>
-                    <option value="আইডি/পাসওয়ার্ড ভুল"></option>
-                    <option value="এই order টি নেই"></option>
-                    <option value="আপনার আইডিতে এই order টি নেই"></option>
-                </datalist>
+                ${toolbarHtml}
+                <div
+                  id="order-note"
+                  contenteditable="true"
+                  style="min-height:140px;max-height:300px;overflow-y:auto;border:1px solid #dcdcf3;border-top:none;border-radius:0 0 6px 6px;padding:8px 12px;background:white;text-align:left;outline:none;"
+                  data-placeholder="Pick a saved comment above or type your own — bold, lists, and links are supported."
+                ></div>
+                <style>
+                  #order-note:empty:before {
+                    content: attr(data-placeholder);
+                    color: #9ca3af;
+                  }
+                  #order-note ul { list-style-type: disc; padding-left: 20px; }
+                  #order-note ol { list-style-type: decimal; padding-left: 20px; }
+                  #order-note a { color: #2563eb; text-decoration: underline; }
+                </style>
             </label>`,
       didOpen: () => {
         const picker = document.getElementById("order-saved-comment");
         const note = document.getElementById("order-note");
-        if (!picker || !note) return;
-        // When the admin picks a saved comment, copy its plain text
-        // into the textarea for previewing/editing AND stash the
-        // template's HTML on the textarea via a data-attribute. On
-        // submit we prefer the HTML if it's still the original
-        // template (textarea unchanged), so the client can render
-        // formatting like bold / lists / links.
-        picker.addEventListener("change", (e) => {
-          const id = e.target.value;
-          if (!id) {
-            note.dataset.html = "";
-            note.dataset.plain = "";
-            return;
-          }
-          const found = savedComments.find((c) => String(c.id) === String(id));
-          if (found) {
-            note.value = found.plain_text || "";
-            note.dataset.html = found.html || "";
-            note.dataset.plain = found.plain_text || "";
-          }
-        });
-        // If the admin edits the textarea, drop the cached HTML so we
-        // fall back to submitting the typed plain text.
-        note.addEventListener("input", () => {
-          if (note.value !== note.dataset.plain) {
-            note.dataset.html = "";
-          }
-        });
-        // Append the dynamic datalist options (built from API data).
-        const dl = document.getElementById("auto_comment");
-        if (dl) dl.innerHTML += `${dynamicDatalist}`;
+        const toolbar = document.getElementById("order-note-toolbar");
+        if (!note) return;
+
+        // Saved-comment picker → drop the template's HTML straight into
+        // the editor. Falls back to plain text when the template doesn't
+        // carry HTML (older rows).
+        if (picker) {
+          picker.addEventListener("change", (e) => {
+            const id = e.target.value;
+            if (!id) return;
+            const found = savedComments.find(
+              (c) => String(c.id) === String(id),
+            );
+            if (found) {
+              note.innerHTML = found.html || found.plain_text || "";
+            }
+          });
+        }
+
+        // Toolbar — single delegated click handler covers every button.
+        // Most commands are zero-arg; `createLink` prompts for the URL.
+        if (toolbar) {
+          toolbar.addEventListener("mousedown", (e) => {
+            // Prevent the contenteditable from losing focus before the
+            // command fires (execCommand operates on the active
+            // selection).
+            e.preventDefault();
+          });
+          toolbar.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-cmd]");
+            if (!btn) return;
+            const cmd = btn.getAttribute("data-cmd");
+            note.focus();
+            if (cmd === "createLink") {
+              const url = window.prompt("Link URL:", "https://");
+              if (url) document.execCommand(cmd, false, url);
+            } else {
+              document.execCommand(cmd, false, null);
+            }
+          });
+        }
       },
       focusConfirm: false,
       preConfirm: () => {
-        const orderStatus = document.getElementById("order-status-value").value;
-        const noteEl = document.getElementById("order-note");
-        const plain = noteEl.value;
-        const cachedHtml = noteEl.dataset.html || "";
-        // Prefer the saved-template HTML when the textarea is still
-        // the unedited plain rendering of it; otherwise send the raw
-        // text the admin typed.
-        const orderNote = cachedHtml || plain;
+        const orderStatus = document.getElementById(
+          "order-status-value",
+        ).value;
+        const note = document.getElementById("order-note");
+        // Use innerHTML so saved-template formatting + the toolbar's
+        // rich edits all flow through. An empty editor returns "" which
+        // the backend treats the same as the old empty-textarea case.
+        const orderNote = note ? note.innerHTML.trim() : "";
 
         if (!orderStatus) {
           toast.error("Select an order status", toastDefault);
@@ -333,7 +367,7 @@ function Orders() {
           },
           success: {
             render() {
-              reloadRefFunc.current();
+              reloadRefFunc.current && reloadRefFunc.current();
               return "Order updated successfully";
             },
           },
@@ -342,6 +376,7 @@ function Orders() {
       );
     }
   };
+
   return (
     <div className="md:px-5">
       <div className="bg-white py-5 mb-5 px-5">

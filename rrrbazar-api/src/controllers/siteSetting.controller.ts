@@ -57,6 +57,7 @@ class SiteSettingController {
       youtube_link,
       wallet_pay_image,
       min_convert_coins,
+      verification_enabled,
     } = req.body;
 
     const settings = await getOrCreate();
@@ -101,11 +102,97 @@ class SiteSettingController {
       settings.wallet_pay_image = String(wallet_pay_image || "").trim();
     if (min_convert_coins !== undefined)
       settings.min_convert_coins = Math.max(0, Number(min_convert_coins) || 0);
+    if (verification_enabled !== undefined)
+      settings.verification_enabled = verification_enabled == 1 ? 1 : 0;
 
     await settings.save();
     response.data = settings;
     response.message = "Settings updated";
     res.send(response.response);
+  }
+
+  // Dedicated endpoint for the SMS / OTP provider config page. Kept
+  // separate from the omnibus update above so the SMS page can save
+  // without round-tripping the whole settings payload — and so a future
+  // permissions check (e.g. only super-admins can edit the gateway)
+  // has one obvious place to land.
+  async updateSmsProvider(req: express.Request, res: express.Response) {
+    const response = new responseUtils();
+    const {
+      sms_provider_url,
+      sms_provider_api_key,
+      sms_provider_sender_id,
+      sms_message_template,
+    } = req.body;
+
+    const settings = await getOrCreate();
+    if (sms_provider_url !== undefined)
+      settings.sms_provider_url = String(sms_provider_url || "").trim().slice(0, 512);
+    if (sms_provider_api_key !== undefined)
+      settings.sms_provider_api_key = String(sms_provider_api_key || "").trim().slice(0, 255);
+    if (sms_provider_sender_id !== undefined)
+      settings.sms_provider_sender_id = String(sms_provider_sender_id || "").trim().slice(0, 64);
+    if (sms_message_template !== undefined)
+      settings.sms_message_template = String(sms_message_template || "").trim().slice(0, 255);
+
+    await settings.save();
+    response.message = "SMS provider settings updated";
+    // Don't echo the API key back — the page already has it in state from
+    // the GET, and avoiding round-trip echoes makes audit logs cleaner.
+    response.data = {
+      sms_provider_url: settings.sms_provider_url,
+      sms_provider_sender_id: settings.sms_provider_sender_id,
+      sms_message_template: settings.sms_message_template,
+    };
+    res.send(response.response);
+  }
+
+  // Test-send endpoint for the SMS provider page. Fires a single SMS to
+  // the admin-supplied number using whatever credentials are currently
+  // saved, so they can verify the gateway works before any user-facing
+  // OTP flow exists. Returns the gateway response body so the admin can
+  // see what the upstream said.
+  async testSmsProvider(req: express.Request, res: express.Response) {
+    const response = new responseUtils();
+    try {
+      const { phone, message } = req.body;
+      const trimmedPhone = String(phone || "").trim();
+      if (!trimmedPhone) {
+        response.success = false;
+        response.status = 400;
+        response.message = "Phone number is required for a test send.";
+        return res.status(400).send(response.response);
+      }
+      const settings = await getOrCreate();
+      // Import lazily so the SMS helper can stay tree-shakeable for
+      // deployments that never enable the verification module.
+      const { sendOtpSms } = await import("../helpers/smsProvider");
+      const result = await sendOtpSms({
+        phone: trimmedPhone,
+        message:
+          String(message || "").trim() ||
+          "Test SMS from your topup admin panel.",
+        providerUrl: settings.sms_provider_url,
+        apiKey: settings.sms_provider_api_key,
+        senderId: settings.sms_provider_sender_id,
+      });
+      if (!result.ok) {
+        response.success = false;
+        response.status = 502;
+        response.message = result.error || "SMS gateway rejected the request.";
+        response.data = { upstream: result.body };
+        return res.status(502).send(response.response);
+      }
+      response.message = "Test SMS sent — check the recipient phone.";
+      response.data = { upstream: result.body };
+      res.send(response.response);
+    } catch (err: any) {
+      console.error("[siteSetting.testSmsProvider] failed", err);
+      response.success = false;
+      response.status = 500;
+      response.message = err?.message || "SMS test send failed.";
+      res.status(500).send(response.response);
+    }
   }
 }
 

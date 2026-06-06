@@ -132,6 +132,11 @@ export default function Sidebar({ isOpenSidebar }) {
       icon: "fas fa-cog",
     },
     {
+      text: "SMS Provider",
+      path: "/sms-provider",
+      icon: "fas fa-comment-sms",
+    },
+    {
       text: "Profile",
       path: "/profile",
       icon: "fas fa-user-circle",
