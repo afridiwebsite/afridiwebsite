@@ -50,8 +50,8 @@ export function renderOtpMessage(
 ): string {
   const minutes = vars.minutes ?? 5;
   return String(template || "")
-    .replaceAll("{code}", String(vars.code))
-    .replaceAll("{minutes}", String(minutes));
+    .replace(/\{code\}/g, String(vars.code))
+    .replace(/\{minutes\}/g, String(minutes));
 }
 
 export async function sendOtpSms(opts: SendSmsOptions): Promise<SendSmsResult> {
