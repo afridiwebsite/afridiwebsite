@@ -27,6 +27,11 @@ export interface StepFieldDef {
   options?: string[];
   // Plain-text hint to render below the field.
   help?: string;
+  // Only meaningful for `type === "file"`. Drives the HTML `capture`
+  // attribute so mobile browsers launch the OS camera directly — `user`
+  // for the front camera (selfie), `environment` for the rear. Desktop
+  // browsers ignore it.
+  capture?: "user" | "environment";
 }
 
 export interface StepDef {
@@ -77,7 +82,19 @@ export const STEP_DEFINITIONS: StepDef[] = [
     step: 3,
     title: "Face verification",
     fields: [
-      { key: "face_image", label: "Selfie", type: "file", required: true, help: "Hold the camera at eye level. Good lighting helps the reviewer." },
+      {
+        key: "face_image",
+        label: "Selfie",
+        type: "file",
+        required: true,
+        // `capture: "user"` makes mobile browsers open the front camera
+        // straight away instead of the file picker, which prevents users
+        // from uploading a photo of someone else's photo. Desktop falls
+        // back to the standard picker.
+        capture: "user",
+        help:
+          "On mobile, this opens the front camera directly. Hold the camera at eye level with good lighting.",
+      },
     ],
   },
   {
@@ -88,6 +105,18 @@ export const STEP_DEFINITIONS: StepDef[] = [
       { key: "company", label: "Company / shop name", type: "text", required: false },
       { key: "monthly_income", label: "Monthly income (BDT)", type: "number", required: true },
       { key: "business_address", label: "Business address", type: "textarea", required: false },
+      {
+        // Trade license, NID-of-business, salary slip — anything the
+        // admin can use to corroborate the typed-in work info. Required
+        // because step 4 gates the Reseller flag, and we don't want
+        // resellers approved on text claims alone.
+        key: "work_document",
+        label: "Work document",
+        type: "file",
+        required: true,
+        help:
+          "Trade license, business NID, salary slip, or any document that confirms your role. JPG/PNG/PDF screenshot.",
+      },
     ],
   },
 ];

@@ -257,8 +257,20 @@ function GenericStepForm({ step, fields, submission, onSubmitted, disabled }) {
         setUploading((p) => ({ ...p, [key]: true }));
         try {
             const res = await uploadVerificationImage(file);
-            const path = res?.data?.data?.path || res?.data?.path;
-            setForm((p) => ({ ...p, [key]: path }));
+            // upload.controller returns { image, image_url, image_thumb_url }
+            // — `image` is the bare filename which is what every other
+            // form in this app persists. The path/path-only fallbacks are
+            // belt-and-braces for any future change to the upload shape.
+            const filename =
+                res?.data?.data?.image ||
+                res?.data?.image ||
+                res?.data?.data?.path ||
+                res?.data?.path;
+            if (!filename) {
+                toast.error('Upload returned no filename — try again.');
+                return;
+            }
+            setForm((p) => ({ ...p, [key]: filename }));
         } catch (err) {
             toast.error(getErrors(err, false, true));
         } finally {
@@ -321,6 +333,7 @@ function GenericStepForm({ step, fields, submission, onSubmitted, disabled }) {
                                 uploading={!!uploading[f.key]}
                                 required={f.required}
                                 help={f.help}
+                                capture={f.capture}
                                 disabled={isVerified || disabled}
                             />
                         );
@@ -419,7 +432,13 @@ function TextAreaField({ label, value, onChange, required, disabled, help }) {
     );
 }
 
-function FileField({ label, value, onUpload, uploading, required, disabled, help }) {
+function FileField({ label, value, onUpload, uploading, required, disabled, help, capture }) {
+    // `capture` only has an effect on mobile browsers: when set, tapping
+    // the input launches the OS camera directly instead of the file
+    // picker. `user` = front camera (selfie), `environment` = rear. On
+    // desktop the attribute is ignored, so the field still works as a
+    // regular file picker. We mirror this in the help text so a desktop
+    // admin testing the form knows what to expect.
     return (
         <label className="block">
             <span className="block text-sm font-semibold text-gray-700 mb-1">
@@ -429,6 +448,7 @@ function FileField({ label, value, onUpload, uploading, required, disabled, help
             <input
                 type="file"
                 accept="image/*"
+                capture={capture || undefined}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 onChange={(e) => onUpload(e.target.files?.[0])}
                 disabled={disabled || uploading}
