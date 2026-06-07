@@ -25,6 +25,11 @@ export default (sequelize: Sequelize) => {
         public amount!: number;
         public bprice!: Float64Array;
         public quantity!: number;
+        // Flat charge applied to this order at placement (DECIMAL on disk,
+        // string out of Sequelize). Persisted so refund / cancel math can
+        // restore the full debited amount even if the package's configured
+        // charge changes after the fact.
+        public charge_amount!: string;
         public uc!: string;
         public details!: string;
         public completed_by!: number;
@@ -157,9 +162,18 @@ export default (sequelize: Sequelize) => {
             // packages with `allow_quantity = 1` can persist N > 1 here so
             // refund math, reward sync, and the admin view all read the
             // same source of truth instead of inferring from `amount`.
-            type: DataTypes.INTEGER,
+            //
+            // Widened to DECIMAL in migration 012 to allow fractional units
+            // (e.g. 0.5 hours). All existing readers go through Number(),
+            // so integer-quantity callers still behave the same.
+            type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 1,
+        },
+        charge_amount: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false,
+            defaultValue: 0,
         },
         uc: {
             type: DataTypes.STRING,

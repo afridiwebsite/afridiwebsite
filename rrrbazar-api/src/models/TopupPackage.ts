@@ -24,6 +24,14 @@ export default (sequelize: Sequelize) => {
         public bot_url!: string;
         public auto_delivery!: number;
         public allow_quantity!: number;
+        // Optional knobs for quantity-enabled packages.
+        //   charge_amount  — flat fee added to (unit_price × qty) at order
+        //                    time. 0 = no fee.
+        //   quantity_limit — upper bound on the qty the customer can submit.
+        //                    Defaults to 100 (the historical hard-coded
+        //                    clamp). DECIMAL because quantity is now float.
+        public charge_amount!: string;
+        public quantity_limit!: string;
         // Quantity-tracked stock. `stock_tracking = 1` opts the package in;
         // each successful order decrements `stock_quantity` and the package
         // is treated as out-of-stock once the count hits 0.
@@ -186,6 +194,16 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.TINYINT,
             allowNull: true,
             defaultValue: 0,
+        },
+        charge_amount: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false,
+            defaultValue: 0,
+        },
+        quantity_limit: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false,
+            defaultValue: 100,
         },
         stock_tracking: {
             type: DataTypes.TINYINT,

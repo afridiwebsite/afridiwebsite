@@ -130,8 +130,11 @@ function OrderPage() {
                 // branches operate on a clean brief_note (otherwise the
                 // reward HTML would either render twice or leak into the
                 // plain-text UniPin code display).
-                const { rewardHtml, resellerHtml, rest: cleanedBrief } =
-                  splitRewardNote(order?.brief_note);
+                const {
+                  rewardHtml,
+                  resellerHtml,
+                  rest: cleanedBrief,
+                } = splitRewardNote(order?.brief_note);
                 const isUniPin =
                   cleanedBrief && cleanedBrief.substring(0, 6) === "UniPin";
                 const hasFreeformNote =
@@ -240,26 +243,6 @@ function OrderPage() {
                           {cleanedBrief.substring(8)}
                         </p>
                       )}
-                 
-
-                      {hasFreeformNote&& cleanedBrief!=='' && (
-                        <div
-                          className={`order-note ${noteModifierClass(
-                            order?.status,
-                          )}`.trim()}
-                        >
-                          <span className="order-note-icon" aria-hidden="true">
-                            <BiErrorCircle />
-                          </span>
-                          <div className="order-note-body">
-                            <div className="order-note-label">Note</div>
-                            <div className="order-note-html">
-                            
-                              {ReactHtmlParser(cleanedBrief)}
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
                       {/* Reward block — always rendered when present, even
                           for voucher / UniPin orders that hide brief_note
@@ -275,6 +258,24 @@ function OrderPage() {
                       {resellerHtml && (
                         <div className="order-reseller-wrap mt-1">
                           {ReactHtmlParser(resellerHtml)}
+                        </div>
+                      )}
+
+                      {hasFreeformNote && cleanedBrief !== "" && (
+                        <div
+                          className={`order-note ${noteModifierClass(
+                            order?.status,
+                          )}`.trim()}
+                        >
+                          <span className="order-note-icon" aria-hidden="true">
+                            <BiErrorCircle />
+                          </span>
+                          <div className="order-note-body">
+                            <div className="order-note-label">Note</div>
+                            <div className="order-note-html">
+                              {ReactHtmlParser(cleanedBrief)}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

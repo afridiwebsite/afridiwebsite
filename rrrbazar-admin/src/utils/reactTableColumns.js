@@ -52,34 +52,34 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
   {
     Header: "Package name",
     accessor: "name",
+    Cell: (e) => {
+      const row = e.row.original;
+      const pkgName = row["name"];
+      const pkgId = row["package_id"];
+
+      const q = Number(e.row.original?.quantity || 1);
+
+      return (
+        <div className="flex gap-2 flex-wrap">
+          <p className='w-max'>{pkgName}</p>
+
+          {q > 1 && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-xs"
+              title={`Bulk order — ${q} units`}
+            >
+               {q}
+            </span>
+          )}
+        </div>
+      );
+    },
   },
   {
     Header: "Price",
     accessor: "amount",
   },
-  {
-    // Per-order unit count (migration 008). Single-unit orders render a
-    // dim "1" so the column stays glanceable; multi-unit orders bold the
-    // count so bulk orders jump out in the table. Empty/legacy rows fall
-    // back to 1 (matches the DB default).
-    Header: "Qty",
-    accessor: "quantity",
-    className: "text-center",
-    Cell: (e) => {
-      const q = Number(e.row.original?.quantity || 1);
-      if (q > 1) {
-        return (
-          <span
-            className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-xs"
-            title={`Bulk order — ${q} units`}
-          >
-            × {q}
-          </span>
-        );
-      }
-      return <span className="text-gray-300">1</span>;
-    },
-  },
+
   {
     // "UC" column. Resolution order:
     //   1. Shell-mode package → render the package's configured shell

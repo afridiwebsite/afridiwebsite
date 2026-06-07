@@ -78,12 +78,19 @@ function Table({
         });
     };
 
-    // For adding extra search param from outside oof the component
+    // For adding extra search param from outside oof the component.
+    // Deps locked to [pageString] — the inner setSearchParams/setPage are
+    // React state setters (stable identity), and pageString is the only
+    // closure value that could legitimately change. Previously this
+    // useCallback had no deps array at all, so the function identity
+    // changed every render — consumers that listed it in a useEffect dep
+    // array (e.g. SearchOrder.js) re-ran their effects on every Table
+    // render and recursed into setSearchParams, looping forever.
     const addSearchParam = useCallback((searchParamKey, searchParamValue) => {
         if (!searchParamKey || !searchParamValue)
-            throw new Error('searchParamKey & searchParamValue is required for custom search'); // Validating params
+            throw new Error('searchParamKey & searchParamValue is required for custom search');
         setSearchParams((prevState) => {
-            if (prevState[searchParamKey] === searchParamValue) return prevState; // Preventing unwanted network request
+            if (prevState[searchParamKey] === searchParamValue) return prevState;
             return {
                 ...prevState,
                 [searchParamKey]: searchParamValue,
@@ -91,19 +98,22 @@ function Table({
             };
         });
         setPage(1);
-    });
+    }, [pageString]);
 
-    // For removing extra search param from outside oof the component
+    // For removing extra search param from outside oof the component.
+    // Returns prevState unchanged when the key isn't present, so callers
+    // that fire on mount with no value can't trigger a state churn loop.
     const removeSearchParam = useCallback((searchParamKey) => {
         setSearchParams((prevState) => {
-            delete prevState[searchParamKey];
+            if (!(searchParamKey in prevState)) return prevState;
+            const { [searchParamKey]: _removed, ...rest } = prevState;
             return {
-                ...prevState,
+                ...rest,
                 [pageString]: 1,
             };
         });
         setPage(1);
-    })
+    }, [pageString])
 
     // Rows per page default value
     const _rowsPerPageDefaultValue = useMemo(() => {

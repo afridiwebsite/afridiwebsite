@@ -30,6 +30,20 @@ function EditPackage(props) {
   const bot_url = useRef(null);
   const allow_quantity = useRef(null);
 
+  const [allowQuantityOn, setAllowQuantityOn] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState(0);
+  const [quantityLimit, setQuantityLimit] = useState(100);
+  useEffect(() => {
+    if (!data) return;
+    setAllowQuantityOn(Number(data.allow_quantity) === 1);
+    setChargeAmount(Number(data.charge_amount) || 0);
+    const savedLimit = Number(data.quantity_limit);
+    setQuantityLimit(
+      Number.isFinite(savedLimit) && savedLimit > 0 ? savedLimit : 100,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.id]);
+
   // Re-order limit:
   //   0 = none
   //   1 = once forever per Player ID
@@ -468,6 +482,11 @@ function EditPackage(props) {
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
         allow_quantity: allow_quantity.current?.checked ? 1 : 0,
+        charge_amount: Math.max(0, Number(chargeAmount) || 0),
+        quantity_limit:
+          quantityLimit === "" || quantityLimit === null
+            ? 100
+            : Math.max(0.01, Number(quantityLimit) || 100),
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
         // Legacy flags — server derives these from bot_type too, but
@@ -801,7 +820,6 @@ function EditPackage(props) {
                     </div>
                   </div>
 
-                  {/* Allow quantity — per-package, any product type. */}
                   <div className="form_grid">
                     <div>
                       <label className="inline-flex items-center cursor-pointer select-none">
@@ -811,20 +829,48 @@ function EditPackage(props) {
                           value="1"
                           className="form-checkbox"
                           type="checkbox"
-                          defaultChecked={data?.allow_quantity === 1}
-                          key={`aq-${data?.id}-${data?.allow_quantity}`}
+                          checked={allowQuantityOn}
+                          onChange={(e) => setAllowQuantityOn(e.target.checked)}
                         />
                         <span className="ml-2">
                           Allow quantity input on storefront
                         </span>
                       </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        When on, customers can buy multiple units in one
-                        order. The package card hides its price and centers
-                        the name so the quantity input becomes the focus.
-                      </p>
                     </div>
                   </div>
+
+                  {allowQuantityOn && (
+                    <div className="form_grid">
+                      <div>
+                        <label htmlFor="charge_amount">
+                          Charge per order (৳)
+                        </label>
+                        <input
+                          id="charge_amount"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={chargeAmount}
+                          onChange={(e) => setChargeAmount(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="quantity_limit">Quantity limit</label>
+                        <input
+                          id="quantity_limit"
+                          className="form_input"
+                          type="number"
+                          min="0.01"
+                          step="any"
+                          value={quantityLimit}
+                          onChange={(e) => setQuantityLimit(e.target.value)}
+                          placeholder="100"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Bot type — single dropdown replaces the legacy
                       Auto-delivery + Is-shell checkboxes. Per-type config

@@ -29,6 +29,10 @@ function AddPackage(props) {
   const bot_url = useRef(null);
   const allow_quantity = useRef(null);
 
+  const [allowQuantityOn, setAllowQuantityOn] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState(0);
+  const [quantityLimit, setQuantityLimit] = useState(100);
+
   // Re-order limit: 0 = none, 1 = once forever per player ID, 2 = once/day
   // per player ID. Server enforces by playerid; this is also relayed back
   // through myOrderedOncePackages so the storefront grays the card out.
@@ -343,6 +347,11 @@ function AddPackage(props) {
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
         allow_quantity: allow_quantity.current?.checked ? 1 : 0,
+        charge_amount: Math.max(0, Number(chargeAmount) || 0),
+        quantity_limit:
+          quantityLimit === "" || quantityLimit === null
+            ? 100
+            : Math.max(0.01, Number(quantityLimit) || 100),
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
         // Legacy flags — server derives these from bot_type too, but
@@ -581,10 +590,6 @@ function AddPackage(props) {
                         onChange={(e) => setResellerCashback(e.target.value)}
                         placeholder="0"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Paid to users marked as Reseller, in addition to the
-                        regular reward above. Credited on completion only.
-                      </p>
                     </div>
                     <div>
                       <label class="inline-flex items-center mt-6">
@@ -611,11 +616,6 @@ function AddPackage(props) {
                         />
                         <span className="ml-2">Track stock quantity</span>
                       </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        When on, each order deducts from the count and the
-                        storefront shows the package as out of stock once it
-                        hits 0.
-                      </p>
                     </div>
                     {stockTracking && (
                       <div>
@@ -661,18 +661,9 @@ function AddPackage(props) {
                           </label>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Modes 1 & 2 are scoped by Player ID (no effect on
-                        products without a Player ID input). Modes 3 & 4 are
-                        scoped by user account and apply regardless of
-                        whether the product asks for a Player ID.
-                      </p>
                     </div>
                   </div>
 
-                  {/* Allow quantity — voucher-products only. Gates the
-                      quantity stepper on /topup/:id so admins can sell
-                      single-unit packages alongside bulk ones. */}
                   <div className="form_grid">
                     <div>
                       <label className="inline-flex items-center cursor-pointer select-none">
@@ -682,22 +673,49 @@ function AddPackage(props) {
                           value="1"
                           className="form-checkbox"
                           type="checkbox"
+                          checked={allowQuantityOn}
+                          onChange={(e) => setAllowQuantityOn(e.target.checked)}
                         />
                         <span className="ml-2">
                           Allow quantity input on storefront
                         </span>
                       </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        When on, customers can buy multiple units in one
-                        order. The package card hides its price and centers
-                        the name so the quantity input becomes the focus.
-                      </p>
                     </div>
                   </div>
 
-                  {/* Bot type — single dropdown replaces the legacy
-                      Auto-delivery + Is-shell checkboxes. Per-type config
-                      sections render below based on the selected value. */}
+                  {allowQuantityOn && (
+                    <div className="form_grid">
+                      <div>
+                        <label htmlFor="charge_amount">
+                          Charge per order (৳)
+                        </label>
+                        <input
+                          id="charge_amount"
+                          className="form_input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={chargeAmount}
+                          onChange={(e) => setChargeAmount(e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="quantity_limit">Quantity limit</label>
+                        <input
+                          id="quantity_limit"
+                          className="form_input"
+                          type="number"
+                          min="0.01"
+                          step="any"
+                          value={quantityLimit}
+                          onChange={(e) => setQuantityLimit(e.target.value)}
+                          placeholder="100"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="form_grid mt-5">
                     <div>
                       <label
@@ -726,10 +744,6 @@ function AddPackage(props) {
                           GamersPay
                         </option>
                       </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Pick how the order should be dispatched on placement.
-                        More types will be added over time.
-                      </p>
 
                       {(botType === "uc-bot" ||
                         botType === "shell-bot" ||
@@ -758,14 +772,6 @@ function AddPackage(props) {
 
                       {botType === "shell-bot" && (
                         <div className="form_grid">
-                          <div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Shell value is sent in the bot's <code>code</code>{" "}
-                              field. The bot is fired once per tag, with the tag
-                              value in <code>pacakge</code>/<code>package</code>
-                              .
-                            </p>
-                          </div>
                           <div>
                             <label htmlFor="shell_value">Shell value</label>
                             <input
@@ -841,10 +847,6 @@ function AddPackage(props) {
                             </div>
                           </div>
                           <div className="form_grid">
-                            {/* `sm:col-span-2` makes the SKU field span both
-                                grid columns so the dropdown is wide enough
-                                to read long item names like
-                                "PUBG Mobile 660 UC — $10". */}
                             <div className="sm:col-span-2">
                               <label htmlFor="pubg_sku">SKU</label>
                               <select
@@ -879,11 +881,6 @@ function AddPackage(props) {
                               )}
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Player ID comes from the customer's order. SKUs
-                            are pulled from GamersPay using the API key
-                            above — change the game to refresh the list.
-                          </p>
                         </>
                       )}
 
@@ -942,9 +939,6 @@ function AddPackage(props) {
                         </div>
                       )}
 
-                      {/* Mapped voucher packages — shell-only auto-delivery
-                          doesn't draw from voucher pools, so the mapping UI is
-                          hidden when "Is shell" is on to keep the form tidy. */}
                       {autoDeliveryOn && !isShell && (
                         <div className="mt-3 border border-gray-200 rounded p-3 bg-gray-50">
                           <div className="flex items-center justify-between mb-2">
@@ -995,7 +989,6 @@ function AddPackage(props) {
                     </div>
                   </div>
 
-                  {/* Custom inputs override --- Start --- */}
                   <div className="my-4 p-3 border border-indigo-100 bg-indigo-50 rounded">
                     <label className="inline-flex items-center cursor-pointer select-none font-semibold text-indigo-900">
                       <input
@@ -1006,11 +999,6 @@ function AddPackage(props) {
                       />
                       Override product inputs for this package
                     </label>
-                    <p className="text-xs text-indigo-800 mt-1">
-                      When on, the storefront shows the inputs defined below
-                      (instead of the product-level inputs) once a customer
-                      picks this package on the topup page.
-                    </p>
 
                     {hasCustomInputs && (
                       <div className="mt-3">
@@ -1024,14 +1012,9 @@ function AddPackage(props) {
                             + Add input
                           </button>
                         </div>
-                        <div className="mb-2 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded p-2">
-                          <strong>Reserved keyword:</strong> "{PLAYER_ID_TITLE}". Using
-                          it as a title enables verification options below. Only
-                          one input per package may use it.
-                        </div>
                         {packageInputs.length === 0 && (
                           <p className="text-sm text-gray-500 italic">
-                            No inputs yet. Click "Add input" to define one.
+                            No inputs yet.
                           </p>
                         )}
                         {packageInputs.map((row, idx) => {
@@ -1055,11 +1038,6 @@ function AddPackage(props) {
                                       updatePkgInputAt(idx, { title: e.target.value })
                                     }
                                   />
-                                  {reserved && (
-                                    <p className="text-[11px] text-amber-700 mt-1">
-                                      Reserved title — verify options below apply.
-                                    </p>
-                                  )}
                                 </div>
                                 <div className="flex items-end justify-end gap-2">
                                   <button
@@ -1097,16 +1075,6 @@ function AddPackage(props) {
 
                                   {row.verify_type === "dynamic" && (
                                     <div className="mt-2">
-                                      <div className="mb-2 text-xs bg-blue-50 border border-blue-200 rounded p-2">
-                                        <strong className="text-blue-800">
-                                          Required tag:
-                                        </strong>{" "}
-                                        the Verify URL <em>must</em> include{" "}
-                                        <code className="bg-white px-1 rounded border border-blue-200 text-blue-700">
-                                          &#123;value&#125;
-                                        </code>{" "}
-                                        where the entered ID should go.
-                                      </div>
                                       <label className="text-xs text-gray-600 block mb-1">
                                         Verify URL
                                       </label>
@@ -1122,11 +1090,7 @@ function AddPackage(props) {
                                         }
                                       />
                                       <label className="text-xs text-gray-600 block mb-1 mt-2">
-                                        API Token{" "}
-                                        <span className="text-gray-400">
-                                          (sent as{" "}
-                                          <code>Authorization: Bearer &lt;token&gt;</code>)
-                                        </span>
+                                        API Token
                                       </label>
                                       <input
                                         type="text"
@@ -1182,10 +1146,7 @@ function AddPackage(props) {
                                         ))}
                                       </select>
                                       <label className="text-xs text-gray-600 block mb-1 mt-2">
-                                        API key{" "}
-                                        <span className="text-gray-400">
-                                          (sent as <code>X-API-Key</code>)
-                                        </span>
+                                        API key
                                       </label>
                                       <input
                                         type="text"
@@ -1208,15 +1169,9 @@ function AddPackage(props) {
                       </div>
                     )}
                   </div>
-                  {/* Custom inputs override --- End --- */}
-
                   <div className="my-4">
                     <label className="block mb-2 font-semibold">
-                      Description{" "}
-                      <span className="text-xs font-normal text-gray-500">
-                        (shown as a tooltip when users hover the package card —
-                        inline images supported)
-                      </span>
+                      Description
                     </label>
                     <TextEditor
                       value={descriptionHtml}

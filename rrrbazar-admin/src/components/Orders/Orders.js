@@ -3,7 +3,7 @@ import { makeOrdersTableColumns } from "../../utils/reactTableColumns";
 import Table from "../react-table/Table";
 import { toast } from "react-toastify";
 import axiosInstance from "../../common/axios";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import SearchOrder from "./SearchOrder";
 import ViewOrderModal from "./ViewOrderModal";
@@ -213,11 +213,47 @@ function Orders() {
     },
   };
 
-  const orderColumns = makeOrdersTableColumns(reloadTable);
-  const columnsWithSelection = selectionMode
-    ? [selectionColumn, ...orderColumns, actionMenu]
-    : [...orderColumns, actionMenu];
-  const withActionMenu = columnsWithSelection;
+  const orderColumns = useMemo(
+    () => makeOrdersTableColumns(reloadTable),
+    // reloadTable closes over a ref; the function identity is stable for the
+    // life of the component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const withActionMenu = useMemo(
+    () =>
+      selectionMode
+        ? [selectionColumn, ...orderColumns, actionMenu]
+        : [...orderColumns, actionMenu],
+    // selectionColumn / actionMenu close over selectionMode-derived state
+    // (selectedIds), so we deliberately rebuild them when those change too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectionMode, orderColumns, selectedIds],
+  );
+
+  // Stable Table callbacks — these used to be inline arrow functions, which
+  // changed identity on every render. Table.js memoises `dataFetcher` over
+  // `selectData` / `selectError`, so a new identity each render invalidates
+  // the memo and re-fires the data-fetch effect in a loop.
+  const selectData = useCallback((res) => {
+    const orders = res.data.data.orders || [];
+    setTotalDataCount(res.data.data.order_count);
+    currentPageOrdersRef.current = orders;
+    return {
+      data: orders,
+      total: res.data.data.order_count,
+    };
+  }, []);
+  const selectError = useCallback((err) => getErrors(err, true)[0], []);
+  const customGlobalSearch = useCallback(
+    ({ addSearchParam, removeSearchParam }) => (
+      <SearchOrder
+        addSearchParam={addSearchParam}
+        removeSearchParam={removeSearchParam}
+      />
+    ),
+    [],
+  );
 
   const openChangeStatusModal = async (order_id) => {
     // Build the saved-comment picker. The brief note is now a
@@ -418,12 +454,7 @@ function Orders() {
           )}
         </div>
         <Table
-          customGlobalSearch={({ addSearchParam, removeSearchParam }) => (
-            <SearchOrder
-              addSearchParam={addSearchParam}
-              removeSearchParam={removeSearchParam}
-            />
-          )}
+          customGlobalSearch={customGlobalSearch}
           reloadRefFunc={reloadRefFunc}
           tableTitle="Product Orders"
           tableSubTitle={
@@ -432,18 +463,10 @@ function Orders() {
           globalSearchPlaceholder="Product id or user id"
           tableId="order_table"
           url="/admin/orders"
-          selectData={(res) => {
-            const orders = res.data.data.orders || [];
-            setTotalDataCount(res.data.data.order_count);
-            currentPageOrdersRef.current = orders;
-            return {
-              data: orders,
-              total: res.data.data.order_count,
-            };
-          }}
+          selectData={selectData}
           queryString="order_id"
           disableGlobalSearch
-          selectError={(err) => getErrors(err, true)[0]}
+          selectError={selectError}
           columns={withActionMenu}
         />
       </div>

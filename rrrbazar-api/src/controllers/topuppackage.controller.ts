@@ -168,6 +168,8 @@ class TopupPackageController {
       bot_url,
       auto_delivery,
       allow_quantity,
+      charge_amount,
+      quantity_limit,
       stock_tracking,
       stock_quantity,
       is_shell,
@@ -254,6 +256,18 @@ class TopupPackageController {
         // consumer that still reads them keeps working.
         auto_delivery: isAutoOn ? 1 : 0,
         allow_quantity: allow_quantity == 1 ? 1 : 0,
+        // Charge / limit are only meaningful when allow_quantity is on,
+        // but we keep their values even if it's off so toggling the
+        // checkbox back on later restores the previous configuration.
+        // Limit clamps to a positive minimum so a saved 0 can't render
+        // the storefront input unusable.
+        charge_amount: Math.max(0, Number(charge_amount) || 0),
+        quantity_limit:
+          quantity_limit === undefined ||
+          quantity_limit === null ||
+          quantity_limit === ""
+            ? 100
+            : Math.max(0.01, Number(quantity_limit) || 100),
         stock_tracking: stock_tracking == 1 ? 1 : 0,
         stock_quantity:
           stock_tracking == 1 ? Math.max(0, Number(stock_quantity) || 0) : 0,
@@ -298,6 +312,8 @@ class TopupPackageController {
       bot_url,
       auto_delivery,
       allow_quantity,
+      charge_amount,
+      quantity_limit,
       stock_tracking,
       stock_quantity,
       is_shell,
@@ -374,6 +390,20 @@ class TopupPackageController {
       }
       if (allow_quantity !== undefined) {
         topupPackage.allow_quantity = allow_quantity == 1 ? 1 : 0;
+      }
+      if (charge_amount !== undefined) {
+        (topupPackage as any).charge_amount = Math.max(
+          0,
+          Number(charge_amount) || 0,
+        );
+      }
+      if (quantity_limit !== undefined) {
+        // Empty/null/zero collapse to the historical default (100) so the
+        // storefront never sees a non-positive ceiling.
+        (topupPackage as any).quantity_limit =
+          quantity_limit === null || quantity_limit === ""
+            ? 100
+            : Math.max(0.01, Number(quantity_limit) || 100);
       }
       if (stock_tracking !== undefined) {
         topupPackage.stock_tracking = stock_tracking == 1 ? 1 : 0;

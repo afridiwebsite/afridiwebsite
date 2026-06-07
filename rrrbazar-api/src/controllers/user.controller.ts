@@ -1220,19 +1220,45 @@ class UserController {
       // Voucher products still emit N codes from the pool inside
       // handleVoucherProduct; non-voucher quantity orders just record the
       // unit count on the order and let the existing fulfilment flow (bot
-      // or admin-manual) run once per order. Clamp to a sane upper bound
-      // so an accidental bulk order can't run the wallet/stock checks
-      // against a runaway number.
+      // or admin-manual) run once per order.
+      //
+      // Quantity is now DECIMAL — packages billed in fractional units
+      // (e.g. 0.5 hours, 2.5 dollars of credit) need parseFloat. The
+      // legacy 100-unit clamp is replaced by the per-package
+      // `quantity_limit`, defaulting to 100 so existing rows behave the
+      // same. `charge_amount` is a flat add-on persisted on the order so
+      // refunds restore the exact total even if the package's charge
+      // changes later.
       const isVoucherProduct = (product as any).is_voucher == 1;
       const quantityAllowed =
         Number((topupPackage as any).allow_quantity) === 1;
+      const packageLimit = Math.max(
+        0.01,
+        Number((topupPackage as any).quantity_limit) || 100,
+      );
+      const packageCharge = Math.max(
+        0,
+        Number((topupPackage as any).charge_amount) || 0,
+      );
+      let parsedQty = parseFloat(String(rawQuantity || "1"));
+      if (!Number.isFinite(parsedQty) || parsedQty <= 0) parsedQty = 1;
+      if (quantityAllowed && parsedQty > packageLimit) {
+        response.message = `Quantity exceeds the package limit (${packageLimit}). Reduce quantity and try again.`;
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      // Voucher products iterate quantity as a loop counter (one code
+      // per unit) — fractional values don't make sense there, so we
+      // ceil to the next whole unit when the parent product is a
+      // voucher pool. Non-voucher quantity orders keep the float.
       const quantity = quantityAllowed
-        ? Math.min(
-            Math.max(parseInt(String(rawQuantity || "1"), 10) || 1, 1),
-            100,
-          )
+        ? isVoucherProduct
+          ? Math.max(1, Math.ceil(parsedQty))
+          : parsedQty
         : 1;
-      let amount = unitPrice * quantity;
+      const chargeApplied = quantityAllowed ? packageCharge : 0;
+      let amount = unitPrice * quantity + chargeApplied;
       let bprice = unitBprice * quantity;
       if (product.is_active == 0) {
         response.message = "TopupProduct is not available for order";
@@ -1245,11 +1271,14 @@ class UserController {
       const stockTracking = Number((topupPackage as any).stock_tracking) === 1;
       const stockBefore = Number((topupPackage as any).stock_quantity) || 0;
       if (stockTracking) {
+        // Float quantities consume whole stock units (see the decrement
+        // below), so the availability check uses ceil for consistency.
+        const stockNeeded = Math.ceil(quantity);
         if (stockBefore <= 0) {
           response.message = "This package is out of stock.";
           return res.status(400).send(response.response);
         }
-        if (stockBefore < quantity) {
+        if (stockBefore < stockNeeded) {
           response.message = `Only ${stockBefore} unit(s) available — reduce quantity and try again.`;
           return res.status(400).send(response.response);
         }
@@ -1348,6 +1377,7 @@ class UserController {
         amount,
         bprice,
         quantity,
+        charge_amount: chargeApplied,
       };
 
       if (payment_mathod === "pay") {
@@ -1383,6 +1413,7 @@ class UserController {
           amount,
           bprice,
           quantity,
+          charge_amount: chargeApplied,
         };
 
         const meta_data = {
@@ -1434,10 +1465,16 @@ class UserController {
       // pool exhaustion no longer destroys the order — it just parks it in
       // "pending" for manual fulfilment, so we don't need to restore the
       // count on those branches either.
+      //
+      // stock_quantity is still INT on the column; a fractional quantity
+      // (non-voucher service-style package) consumes whole stock units —
+      // we ceil the deduction so callers can't game the count by ordering
+      // sub-unit slices.
       if (stockTracking) {
+        const stockDeduction = Math.ceil(quantity);
         (topupPackage as any).stock_quantity = Math.max(
           0,
-          stockBefore - quantity,
+          stockBefore - stockDeduction,
         );
         await (topupPackage as any).save();
       }

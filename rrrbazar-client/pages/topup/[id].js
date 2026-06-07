@@ -42,6 +42,17 @@ import {
 } from "../../helpers/helpers";
 import { globalContext } from "../_app";
 
+// Render a quantity number compactly: integers stay integer ("3" not
+// "3.00"), fractions trim trailing zeros so 2.5 stays "2.5" rather than
+// "2.50". Used by the breakdown rows and the "max N" hint so the same
+// number style shows everywhere on the page.
+const fmtQuantity = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "1";
+  if (Number.isInteger(num)) return String(num);
+  return String(parseFloat(num.toFixed(2)));
+};
+
 function TopupOrderPage() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
@@ -373,21 +384,49 @@ function TopupOrderPage() {
                         }
                       }
 
-                      // Quantity gate: either the product-level master
-                      // switch OR the per-package switch is enough. Mirrors
-                      // the render path + the submit payload below so the
-                      // modal can't disagree with what the user saw.
-                      const confirmQuantity =
-                        selectedpackage &&
-                        (productInfo?.allow_quantity == 1 ||
-                          selectedpackage?.allow_quantity == 1)
-                          ? Math.max(1, Number(values.quantity) || 1)
-                          : 1;
-                      const confirmTotal =
+                      // Quantity gate: only the per-package switch matters.
+                      // Mirrors the render path + the submit payload below
+                      // so the modal can't disagree with what the user saw.
+                      // Quantity is now a float — fractional units are
+                      // allowed when the package opts in.
+                      const qtyEnabled =
+                        selectedpackage?.allow_quantity == 1;
+                      const rawQty = Number(values.quantity);
+                      const confirmQuantity = qtyEnabled
+                        ? Number.isFinite(rawQty) && rawQty > 0
+                          ? rawQty
+                          : 1
+                        : 1;
+                      const confirmLimit = qtyEnabled
+                        ? Math.max(
+                            0.01,
+                            Number(selectedpackage?.quantity_limit) || 100,
+                          )
+                        : 100;
+                      if (qtyEnabled && confirmQuantity > confirmLimit) {
+                        setServerError(
+                          `Quantity exceeds the package limit (${fmtQuantity(
+                            confirmLimit,
+                          )}). Lower it and try again.`,
+                        );
+                        scrollTopWindow();
+                        return;
+                      }
+                      const confirmCharge = qtyEnabled
+                        ? Math.max(0, Number(selectedpackage?.charge_amount) || 0)
+                        : 0;
+                      const confirmUnitTotal =
                         Number(selectedpackage?.price || 0) * confirmQuantity;
+                      const confirmTotal = confirmUnitTotal + confirmCharge;
                       const confirmBreakdown =
-                        confirmQuantity > 1
-                          ? ` <span class="text-xs text-gray-500">(${confirmQuantity} × ৳${selectedpackage?.price})</span>`
+                        confirmQuantity !== 1 || confirmCharge > 0
+                          ? ` <span class="text-xs text-gray-500">(${fmtQuantity(
+                              confirmQuantity,
+                            )} × ৳${selectedpackage?.price}${
+                              confirmCharge > 0
+                                ? ` + ৳${confirmCharge.toFixed(2)} charge`
+                                : ""
+                            })</span>`
                           : "";
 
                       // Info-only products (no packages) skip the Swal
@@ -455,10 +494,17 @@ function TopupOrderPage() {
                               // Quantity is honoured per-package: the selected
                               // package must have `allow_quantity = 1`.
                               // Server re-checks the same flag as a
-                              // safety net.
+                              // safety net. Float-safe — the package's
+                              // quantity_limit caps it; bottom-end snaps
+                              // to ≥ the smallest allowed step.
                               quantity:
                                 values.selectedpackage?.allow_quantity == 1
-                                  ? Math.max(1, Number(values.quantity) || 1)
+                                  ? (() => {
+                                      const q = Number(values.quantity);
+                                      return Number.isFinite(q) && q > 0
+                                        ? q
+                                        : 1;
+                                    })()
                                   : 1,
                             })
                             .then(async (order_res) => {
@@ -491,12 +537,14 @@ function TopupOrderPage() {
                                     "Your order has been placed successfully.",
                                   );
                                 }
-                                // Wallet was debited server-side for "pay"
-                                // orders. Invalidate + refetch the cached
-                                // user-profile so the navbar balance updates
-                                // before we navigate away. The useEffect
-                                // already wired up to userProfileData pushes
-                                // the fresh value into globalContext.
+                                // Wallet was debited server-side. Refresh the
+                                // cached user-profile so the navbar updates
+                                // before we navigate away. Unwrap the axios
+                                // response manually — fetchQuery skips the
+                                // global `select` (reactQueryConfig.js) that
+                                // useQuery would apply, so the raw response
+                                // shape would otherwise overwrite authUser
+                                // and blank out wallet / avatar / username.
                                 try {
                                   await queryClient.invalidateQueries(
                                     "user-profile",
@@ -505,7 +553,8 @@ function TopupOrderPage() {
                                     "user-profile",
                                     getUserProfile,
                                   );
-                                  if (fresh) updateAuthUserInfo(fresh);
+                                  const freshUser = fresh?.data?.data;
+                                  if (freshUser) updateAuthUserInfo(freshUser);
                                 } catch (e) {
                                   /* navbar will refresh on next page load */
                                 }
@@ -558,15 +607,41 @@ function TopupOrderPage() {
                       //const isPaymentError = errors['payment_mathod'] && touched['payment_mathod'];
 
                       // Quantity-enabled packages are gated by the
-                      // per-package `allow_quantity` flag. Anything else
-                      // uses quantity 1 implicitly.
-                      const orderQuantity =
-                        values.selectedpackage?.allow_quantity == 1
-                          ? Math.max(1, Number(values.quantity) || 1)
-                          : 1;
-                      const totalCost =
+                      // per-package `allow_quantity` flag. Quantity is a
+                      // float — packages can opt-in to fractional units
+                      // (e.g. "0.5 hours", "2.5 dollars of credit") and
+                      // the per-package `quantity_limit` caps how high
+                      // the customer can go (default 100). A flat
+                      // `charge_amount` is added on top of unit × qty so
+                      // the admin can model a service fee without
+                      // inflating the listed price.
+                      const qtyEnabledForOrder =
+                        values.selectedpackage?.allow_quantity == 1;
+                      const rawOrderQty = Number(values.quantity);
+                      const orderQuantity = qtyEnabledForOrder
+                        ? Number.isFinite(rawOrderQty) && rawOrderQty > 0
+                          ? rawOrderQty
+                          : 1
+                        : 1;
+                      const orderCharge = qtyEnabledForOrder
+                        ? Math.max(
+                            0,
+                            Number(values.selectedpackage?.charge_amount) || 0,
+                          )
+                        : 0;
+                      const orderQtyLimit = qtyEnabledForOrder
+                        ? Math.max(
+                            0.01,
+                            Number(values.selectedpackage?.quantity_limit) ||
+                              100,
+                          )
+                        : 100;
+                      const orderUnitSubtotal =
                         Number(values.selectedpackage?.price || 0) *
                         orderQuantity;
+                      const totalCost = orderUnitSubtotal + orderCharge;
+                      const quantityOverLimit =
+                        qtyEnabledForOrder && rawOrderQty > orderQtyLimit;
                       const isNotEnoughMoney =
                         totalCost > Number(authUser?.wallet || 0);
 
@@ -890,63 +965,124 @@ function TopupOrderPage() {
                                         quantity tracking for the package so
                                         non-tracked packages stay unchanged. */}
 
-                                    {/* Quantity input — only when the
-                                        SELECTED package has
+                                    {/* Quantity panel — only renders when
+                                        the SELECTED package has
                                         `allow_quantity = 1`. The legend
                                         is re-skinned per product via
                                         `quantity_prefix` (e.g.
                                         "Dollars"); blank ⇒ default
-                                        "Quantity". Plain number input —
-                                        no +/− buttons. */}
+                                        "Quantity". Quantity is float —
+                                        the input uses step="any" and a
+                                        per-package `quantity_limit`
+                                        caps how high the customer can
+                                        go (default 100). When the
+                                        package has a `charge_amount`,
+                                        the breakdown surfaces it so the
+                                        customer sees what they're paying
+                                        for. */}
                                     {values.selectedpackage?.allow_quantity ==
                                       1 && (
-                                      <div className="topup-quantity-row mt-4 flex items-center gap-3 flex-wrap">
-                                        <label
-                                          htmlFor="topup-quantity"
-                                          className="text-sm font-semibold text-gray-700"
-                                        >
-                                          {String(
-                                            productInfo?.quantity_prefix || "",
-                                          ).trim() || "Quantity"}
-                                        </label>
-                                        <input
-                                          id="topup-quantity"
-                                          type="number"
-                                          min="1"
-                                          inputMode="numeric"
-                                          value={values.quantity || 1}
-                                          onChange={(e) => {
-                                            // Allow temporarily-empty input
-                                            // while the user is typing —
-                                            // submit clamps to ≥ 1.
-                                            const raw = e.target.value;
-                                            if (raw === "") {
-                                              setFieldValue("quantity", "");
-                                              return;
-                                            }
-                                            setFieldValue(
-                                              "quantity",
-                                              Math.max(
-                                                1,
-                                                parseInt(raw, 10) || 1,
-                                              ),
-                                            );
-                                          }}
-                                          onBlur={(e) => {
-                                            // Snap back to ≥ 1 if the
-                                            // input ended blank.
-                                            if (!e.target.value) {
-                                              setFieldValue("quantity", 1);
-                                            }
-                                          }}
-                                          className="w-24 border border-gray-300 rounded px-3 py-1 focus:outline-none focus:border-blue-500"
-                                        />
-                                        <span className="text-sm text-gray-600">
-                                          Total:{" "}
-                                          <strong className="text-gray-900">
-                                            ৳ {totalCost.toFixed(2)}
-                                          </strong>
-                                        </span>
+                                      <div className="topup-quantity-panel mt-4">
+                                        <div className="topup-quantity-row flex items-center gap-3 flex-wrap">
+                                          <label
+                                            htmlFor="topup-quantity"
+                                            className="text-sm font-semibold text-gray-700"
+                                          >
+                                            {String(
+                                              productInfo?.quantity_prefix ||
+                                                "",
+                                            ).trim() || "Quantity"}
+                                          </label>
+                                          <input
+                                            id="topup-quantity"
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            inputMode="decimal"
+                                            max={orderQtyLimit}
+                                            value={values.quantity ?? 1}
+                                            onChange={(e) => {
+                                              const raw = e.target.value;
+                                              // Allow temporarily-empty
+                                              // input while typing — submit
+                                              // snaps to ≥ smallest step.
+                                              if (raw === "") {
+                                                setFieldValue("quantity", "");
+                                                return;
+                                              }
+                                              const parsed = parseFloat(raw);
+                                              if (!Number.isFinite(parsed)) {
+                                                setFieldValue("quantity", raw);
+                                                return;
+                                              }
+                                              setFieldValue("quantity", parsed);
+                                            }}
+                                            onBlur={(e) => {
+                                              const raw = e.target.value;
+                                              const parsed = parseFloat(raw);
+                                              if (
+                                                !raw ||
+                                                !Number.isFinite(parsed) ||
+                                                parsed <= 0
+                                              ) {
+                                                setFieldValue("quantity", 1);
+                                              }
+                                            }}
+                                            className={`w-28 border rounded px-3 py-1 focus:outline-none ${
+                                              quantityOverLimit
+                                                ? "border-red-500 focus:border-red-600"
+                                                : "border-gray-300 focus:border-blue-500"
+                                            }`}
+                                          />
+                                          <span className="text-xs text-gray-500">
+                                            (max {fmtQuantity(orderQtyLimit)})
+                                          </span>
+                                        </div>
+                                        {quantityOverLimit && (
+                                          <p className="text-xs text-red-600 mt-2">
+                                            Quantity exceeds the package limit
+                                            of {fmtQuantity(orderQtyLimit)}.
+                                            Lower it to continue.
+                                          </p>
+                                        )}
+                                        {/* Cost breakdown — always shown for
+                                            quantity packages so the customer
+                                            sees how the total is composed.
+                                            Charge row only renders when the
+                                            package has a non-zero charge. */}
+                                        <div className="topup-cost-breakdown mt-3 border border-gray-200 rounded-lg bg-gradient-to-br from-gray-50 to-white p-3 text-sm">
+                                          <div className="flex justify-between items-center py-1">
+                                            <span className="text-gray-600">
+                                              {fmtQuantity(orderQuantity)} ×{" "}
+                                              ৳{values.selectedpackage.price}
+                                            </span>
+                                            <span className="text-gray-800 font-medium">
+                                              ৳ {orderUnitSubtotal.toFixed(2)}
+                                            </span>
+                                          </div>
+                                          {orderCharge > 0 && (
+                                            <div className="flex justify-between items-center py-1 border-t border-gray-100">
+                                              <span className="text-gray-600 flex items-center gap-1">
+                                                <FaInfo
+                                                  className="text-[10px] text-amber-500"
+                                                  title="Service charge"
+                                                />
+                                                Charge
+                                              </span>
+                                              <span className="text-gray-800 font-medium">
+                                                ৳ {orderCharge.toFixed(2)}
+                                              </span>
+                                            </div>
+                                          )}
+                                          <div className="flex justify-between items-center py-2 mt-1 border-t border-gray-200">
+                                            <span className="text-gray-900 font-semibold">
+                                              Total
+                                            </span>
+                                            <strong className="text-base text-emerald-700">
+                                              ৳ {totalCost.toFixed(2)}
+                                            </strong>
+                                          </div>
+                                        </div>
                                       </div>
                                     )}
 
@@ -1211,10 +1347,15 @@ function TopupOrderPage() {
                                     </span>
                                     <strong className="topup-pay-info-value">
                                       ৳ {totalCost.toFixed(2)}
-                                      {orderQuantity > 1 && (
+                                      {(orderQuantity !== 1 ||
+                                        orderCharge > 0) && (
                                         <span className="text-xs font-normal text-gray-500 ml-1">
-                                          ({orderQuantity} ×{" "}
-                                          {values.selectedpackage.price})
+                                          ({fmtQuantity(orderQuantity)} ×{" "}
+                                          {values.selectedpackage.price}
+                                          {orderCharge > 0
+                                            ? ` + ৳${orderCharge.toFixed(2)} charge`
+                                            : ""}
+                                          )
                                         </span>
                                       )}
                                     </strong>
@@ -1295,6 +1436,9 @@ function TopupOrderPage() {
                                     selectedPaymentMethod != "auto_payment") ||
                                   (isNotEnoughMoney &&
                                     selectedPaymentMethod != "auto_payment") ||
+                                  // Float-quantity limit gate — mirrors
+                                  // the inline warning under the input.
+                                  quantityOverLimit ||
                                   // GamersPay gate — same rule as the
                                   // onSubmit guard above so the button
                                   // visually reflects what'll happen on
