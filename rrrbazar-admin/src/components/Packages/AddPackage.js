@@ -33,37 +33,17 @@ function AddPackage(props) {
   const [chargeAmount, setChargeAmount] = useState(0);
   const [quantityLimit, setQuantityLimit] = useState(100);
 
-  // Re-order limit: 0 = none, 1 = once forever per player ID, 2 = once/day
-  // per player ID. Server enforces by playerid; this is also relayed back
-  // through myOrderedOncePackages so the storefront grays the card out.
   const [orderLimit, setOrderLimit] = useState(0);
 
-  // Quantity-tracked stock. When `stockTracking` is on, each order decrements
-  // `stockQuantity` server-side and the storefront treats the package as
-  // out-of-stock once it hits 0.
   const [stockTracking, setStockTracking] = useState(false);
   const [stockQuantity, setStockQuantity] = useState(0);
 
-  // Reward shape per package. 'coin' = legacy coin_value reward, 'money'
-  // = BDT cashback (cashbackAmount) credited to user.wallet on completion.
-  // The two modes are mutually exclusive in the UI; the server zeros out
-  // whichever field doesn't match the picked mode to keep the DB clean.
-  // resellerCashback is independent and pays out to reseller users in
-  // addition to whatever reward the package is configured for.
   const [rewardType, setRewardType] = useState("coin");
   const [cashbackAmount, setCashbackAmount] = useState(0);
   const [resellerCashback, setResellerCashback] = useState(0);
 
   const [selectedProductId, setSelectedProductId] = useState(productId || "");
 
-  // Bot type — replaces the legacy Auto-delivery + Is-shell checkboxes
-  // with a single dropdown. Each value enables a different config slice
-  // below:
-  //   none      — no auto bot, admin fulfils manually
-  //   uc-bot    — voucher-pool auto-delivery (was Auto-delivery)
-  //   shell-bot — single shell value sent per tag (was Auto + Is-shell)
-  //   like-bot  — Free Fire likes; URL built from key + server + uid
-  //   pubg-bot  — placeholder, disabled until implemented
   const [botType, setBotType] = useState("none");
   const autoDeliveryOn = botType === "uc-bot" || botType === "shell-bot";
   const isShell = botType === "shell-bot";
@@ -74,28 +54,14 @@ function AddPackage(props) {
     setTags((prev) => prev.map((v, i) => (i === idx ? value : v)));
   const removeTag = (idx) =>
     setTags((prev) => prev.filter((_, i) => i !== idx));
-  // Like-bot config — admin supplies the endpoint URL (in `bot_url`) and
-  // the API key (in `bot_config.key`). `uid` is appended from the
-  // customer's Player ID at order time. `server_name` is no longer sent
-  // from us — if the upstream needs it, the admin puts it directly in
-  // the URL.
   const [likeBotKey, setLikeBotKey] = useState("");
-  // PUBG-bot config — admin supplies an API key + picks a game and SKU.
-  // The orders endpoint URL is hardcoded server-side; the SKU dropdown
-  // is populated by proxying GamersPay's product catalogue through
-  // /admin/pubg-bot/products. `player_id` is filled from the customer's
-  // input at order time. No server field — game IDs already encode
-  // region for FF, and PUBG's API doesn't require a server slug here.
   const [pubgKey, setPubgKey] = useState("");
   const [pubgGame, setPubgGame] = useState("pubg");
   const [pubgSku, setPubgSku] = useState("");
-  const [pubgSkus, setPubgSkus] = useState([]); // [{ sku, price, display }]
+  const [pubgSkus, setPubgSkus] = useState([]);
   const [pubgSkusLoading, setPubgSkusLoading] = useState(false);
   const [pubgSkusError, setPubgSkusError] = useState(null);
 
-  // Fetch the SKU catalogue whenever the admin types/changes the key or
-  // picks a different game. Debounced 500ms so typing the key doesn't
-  // hammer the upstream — the request only fires once they pause.
   useEffect(() => {
     if (botType !== "pubg-bot") return undefined;
     const game = String(pubgGame || "").trim();
@@ -128,7 +94,7 @@ function AddPackage(props) {
     }, 500);
     return () => clearTimeout(handle);
   }, [botType, pubgGame, pubgKey]);
-  const [mappings, setMappings] = useState([]); // [{ voucher_package_id, voucher_package_name, voucher_product_name }]
+  const [mappings, setMappings] = useState([]);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [voucherProducts] = useGet(`admin/voucher-products-with-packages`);
   const [pickedProductId, setPickedProductId] = useState("");
@@ -152,9 +118,6 @@ function AddPackage(props) {
       return;
     }
     const pid = Number(pickedPackageId);
-    // Duplicates are allowed: each row counts as another voucher to emit on
-    // order, so an admin who wants two of the same voucher just adds the
-    // mapping twice.
     const pack = availablePackages.find((p) => p.id === pid);
     setMappings((prev) => [
       ...prev,
@@ -169,13 +132,8 @@ function AddPackage(props) {
   const removeMapping = (idx) =>
     setMappings((prev) => prev.filter((_, i) => i !== idx));
 
-  // Rich-text package description — admin-facing HTML.
   const [descriptionHtml, setDescriptionHtml] = useState("");
 
-  // Per-package dynamic inputs. Same shape as the product-level inputs but
-  // gated on a checkbox — when on, these rows override the product inputs on
-  // the storefront's order form. Same validation rules: at most one Player ID
-  // input, every input needs a title, etc.
   const PLAYER_ID_TITLE = "Player ID";
   const isPlayerIdTitle = (t) =>
     String(t || "").trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
@@ -272,7 +230,6 @@ function AddPackage(props) {
         return;
       }
     }
-    // Per-package input validation — only enforced when the override is on.
     if (hasCustomInputs) {
       const playerIdRows = packageInputs.filter((it) => isPlayerIdTitle(it.title));
       if (playerIdRows.length > 1) {
@@ -333,9 +290,6 @@ function AddPackage(props) {
         bprice: buy_price.current.value,
         serial: serial.current.value,
         logo: path,
-        // Reward fields. The two sides of the picker are mutually
-        // exclusive — zero out whichever the admin didn't pick so the
-        // backend never sees stale data from a previous shape.
         reward_type: rewardType,
         coin_value:
           rewardType === "coin"
@@ -354,8 +308,6 @@ function AddPackage(props) {
             : Math.max(0.01, Number(quantityLimit) || 100),
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
-        // Legacy flags — server derives these from bot_type too, but
-        // keep sending them for backward compat.
         auto_delivery: autoDeliveryOn ? 1 : 0,
         stock_tracking: stockTracking ? 1 : 0,
         stock_quantity: stockTracking
@@ -380,10 +332,6 @@ function AddPackage(props) {
         has_custom_inputs: hasCustomInputs ? 1 : 0,
       })
       .then(async (res) => {
-        // Persist voucher-map rows once we know the new package id. Maps
-        // only matter for uc-bot (the voucher-pool dispatcher) — other
-        // bot types ignore them, so we always push an empty list when
-        // bot_type != uc-bot to clear stale entries.
         const newId = res?.data?.data?.id;
         if (newId) {
           try {
@@ -400,9 +348,6 @@ function AddPackage(props) {
             /* package is already saved; ignore */
           }
 
-          // Persist per-package dynamic inputs. We push an empty list when
-          // the override is off so any stale rows from a previous edit are
-          // cleared server-side.
           try {
             await axiosInstance.post(
               `/admin/topup-package/${newId}/inputs`,
@@ -525,9 +470,6 @@ function AddPackage(props) {
                     </div>
                   </div>
 
-                  {/* Reward picker — admin picks money vs coin and the
-                      matching input renders. Reseller cashback is
-                      independent and always renders below. */}
                   <div className="form_grid">
                     <div>
                       <label htmlFor="reward_type">Reward type</label>

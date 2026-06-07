@@ -169,6 +169,13 @@ class VerificationController {
       // Convenience flags the storefront uses to decide what to show.
       const step1Verified =
         byStep["1"] && (byStep["1"] as any).status === "verified";
+      // Phone verification is now decoupled from the admin review of
+      // step 1. A user proves phone ownership via the standalone OTP
+      // page, which stamps `phone` + `phone_verified_at` into the step-1
+      // placeholder row. Ordering is gated on THAT, not on the admin
+      // marking step 1 `verified`.
+      const step1Data = (byStep["1"] as any)?.data || {};
+      const phoneVerified = !!(step1Data.phone && step1Data.phone_verified_at);
       const stepCounts = {
         verified: (submissions as any[]).filter((s) => s.status === "verified").length,
         under_review: (submissions as any[]).filter((s) => s.status === "under_review").length,
@@ -180,10 +187,15 @@ class VerificationController {
         enabled,
         steps: STEP_DEFINITIONS,
         submissions: byStep,
+        // Whether the user's phone is verified (drives the auto-fill on
+        // step 1 and unlocks ordering). Always reported as `false` when
+        // the module is off so the storefront stays consistent.
+        phone_verified: enabled ? phoneVerified : false,
+        phone: phoneVerified ? step1Data.phone : null,
         // Whether the order block currently applies to this user.
-        // Module off → never. Module on → applies until step 1 is
-        // verified.
-        order_blocked: enabled && !step1Verified,
+        // Module off → never. Module on → applies until the phone is
+        // verified via the standalone OTP page.
+        order_blocked: enabled && !phoneVerified,
         all_verified:
           enabled && stepCounts.verified === STEP_DEFINITIONS.length,
         counts: stepCounts,
@@ -524,14 +536,18 @@ export async function userCanOrder(user_id: number): Promise<{
   if (!settings || Number((settings as any).verification_enabled) !== 1) {
     return { ok: true };
   }
+  // Ordering is gated solely on phone verification now — NOT on the
+  // admin marking step 1 `verified`. The OTP-verify endpoint stamps
+  // `phone` + `phone_verified_at` into the step-1 placeholder row; that's
+  // all we require here.
   const step1 = await VerificationSubmission.findOne({
     where: { user_id, step: 1 },
   });
-  if (!step1 || (step1 as any).status !== "verified") {
+  const data = (step1 as any)?.data || {};
+  if (!data.phone || !data.phone_verified_at) {
     return {
       ok: false,
-      reason:
-        "Complete and verify step 1 of your account verification before placing an order.",
+      reason: "Verify your phone number before placing an order.",
     };
   }
   return { ok: true };

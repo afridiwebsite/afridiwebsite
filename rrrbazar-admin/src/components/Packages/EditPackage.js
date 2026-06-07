@@ -44,14 +44,6 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
-  // Re-order limit:
-  //   0 = none
-  //   1 = once forever per Player ID
-  //   2 = once/day per Player ID
-  //   3 = once forever per User account
-  //   4 = once/day per User account
-  // Hydrated from the saved package below; unknown values fall back to 0
-  // so a future-added mode never selects a no-longer-valid radio here.
   const [orderLimit, setOrderLimit] = useState(0);
   useEffect(() => {
     if (data?.order_once == null) return;
@@ -60,7 +52,6 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
-  // Quantity-tracked stock — hydrated from the saved package.
   const [stockTracking, setStockTracking] = useState(false);
   const [stockQuantity, setStockQuantity] = useState(0);
   useEffect(() => {
@@ -70,9 +61,6 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
-  // Reward picker state — hydrated below from data.reward_type. Legacy
-  // packages saved before this field existed will fall through to 'coin'
-  // so their existing coin_value keeps paying out unchanged.
   const [rewardType, setRewardType] = useState("coin");
   const [cashbackAmount, setCashbackAmount] = useState(0);
   const [resellerCashback, setResellerCashback] = useState(0);
@@ -85,17 +73,11 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
-  // Tracks the selected product so the "Allow quantity" checkbox only
-  // renders for voucher-type products. Hydrated from the package's
-  // product_id once the package finishes loading.
   const [selectedProductId, setSelectedProductId] = useState("");
   useEffect(() => {
     if (data?.product_id) setSelectedProductId(String(data.product_id));
   }, [data?.id, data?.product_id]);
 
-  // Bot type — single dropdown replaces the legacy Auto-delivery +
-  // Is-shell checkboxes. Per-type config sections render below based on
-  // the selected value.
   const [botType, setBotType] = useState("none");
   const autoDeliveryOn = botType === "uc-bot" || botType === "shell-bot";
   const isShell = botType === "shell-bot";
@@ -106,14 +88,7 @@ function EditPackage(props) {
     setTags((prev) => prev.map((v, i) => (i === idx ? value : v)));
   const removeTag = (idx) =>
     setTags((prev) => prev.filter((_, i) => i !== idx));
-  // Like-bot config — admin supplies URL in `bot_url` and key in
-  // `bot_config.key`. `server_name` is no longer sent; if the upstream
-  // needs it, the admin puts it directly in the URL.
   const [likeBotKey, setLikeBotKey] = useState("");
-  // PUBG-bot config — admin supplies API key + picks game/SKU. The
-  // orders URL is hardcoded server-side and the SKU dropdown is
-  // populated by proxying GamersPay's catalogue. Hydrated from
-  // bot_config below.
   const [pubgKey, setPubgKey] = useState("");
   const [pubgGame, setPubgGame] = useState("pubg");
   const [pubgSku, setPubgSku] = useState("");
@@ -121,10 +96,6 @@ function EditPackage(props) {
   const [pubgSkusLoading, setPubgSkusLoading] = useState(false);
   const [pubgSkusError, setPubgSkusError] = useState(null);
 
-  // Mirrors AddPackage — debounced 500ms so typing the API key doesn't
-  // hammer the upstream. On Edit the saved sku stays in `pubgSku` even
-  // if the fetched list hasn't arrived yet; the dropdown render below
-  // injects it so the user always sees what's persisted.
   useEffect(() => {
     if (botType !== "pubg-bot") return undefined;
     const game = String(pubgGame || "").trim();
@@ -160,8 +131,6 @@ function EditPackage(props) {
 
   useEffect(() => {
     if (!data) return;
-    // Resolve bot_type with legacy fallback so packages saved before
-    // this field existed still hydrate correctly.
     const explicit = String(data.bot_type || "")
       .toLowerCase()
       .trim();
@@ -190,7 +159,6 @@ function EditPackage(props) {
         : [],
     );
 
-    // Hydrate like-bot config (key + server_name) from the JSON column.
     let cfg = {};
     try {
       const raw = data.bot_config;
@@ -200,8 +168,6 @@ function EditPackage(props) {
       cfg = {};
     }
     setLikeBotKey(String(cfg.key || ""));
-    // PUBG-bot shares `key` with like-bot in bot_config (mutually
-    // exclusive per package). game/sku/server are pubg-only.
     setPubgKey(String(cfg.key || ""));
     setPubgGame(String(cfg.game || "pubg"));
     setPubgSku(String(cfg.sku || ""));
@@ -246,9 +212,6 @@ function EditPackage(props) {
       return;
     }
     const pid = Number(pickedPackageId);
-    // Duplicates are allowed: each row counts as another voucher to emit on
-    // order, so an admin who wants two of the same voucher just adds the
-    // mapping twice.
     const pack = availablePackages.find((p) => p.id === pid);
     setMappings((prev) => [
       ...prev,
@@ -269,9 +232,6 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
-  // Per-package dynamic inputs override. Same UI/UX as AddPackage; hydrated
-  // from the package's has_custom_inputs flag + the /inputs sub-endpoint
-  // (fetched separately so unmodified packages don't pay the cost).
   const PLAYER_ID_TITLE = "Player ID";
   const isPlayerIdTitle = (t) =>
     String(t || "")
@@ -336,9 +296,6 @@ function EditPackage(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
-  // Fetch the saved input rows once the package id is known. We always
-  // fetch — even when has_custom_inputs is off — so toggling the checkbox
-  // re-surfaces a previous configuration without an extra round trip.
   useEffect(() => {
     if (!packageId) return;
     let cancelled = false;
@@ -407,7 +364,6 @@ function EditPackage(props) {
         return;
       }
     }
-    // Per-package input validation — mirrors AddPackage.
     if (hasCustomInputs) {
       const playerIdRows = packageInputs.filter((it) =>
         isPlayerIdTitle(it.title),
@@ -470,9 +426,6 @@ function EditPackage(props) {
         bprice: buy_price.current.value,
         serial: serial.current.value,
         logo: path || data?.logo,
-        // Reward fields. Same exclusivity rule as AddPackage — the
-        // unselected mode's value is zeroed so a stale legacy coin_value
-        // doesn't keep paying out after the admin switches to money.
         reward_type: rewardType,
         coin_value:
           rewardType === "coin" ? Number(coin_value.current?.value || 0) : 0,
@@ -489,8 +442,6 @@ function EditPackage(props) {
             : Math.max(0.01, Number(quantityLimit) || 100),
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
-        // Legacy flags — server derives these from bot_type too, but
-        // keep sending them for backward compat.
         auto_delivery: autoDeliveryOn ? 1 : 0,
         stock_tracking: stockTracking ? 1 : 0,
         stock_quantity: stockTracking
@@ -515,8 +466,6 @@ function EditPackage(props) {
         has_custom_inputs: hasCustomInputs ? 1 : 0,
       })
       .then(async () => {
-        // Replace voucher-map rows. Only uc-bot uses voucher mappings;
-        // every other bot type gets an empty list to clear stale rows.
         try {
           await axiosInstance.post(
             `/admin/topup-package/${packageId}/voucher-maps`,
@@ -531,8 +480,6 @@ function EditPackage(props) {
           /* package update already saved; ignore */
         }
 
-        // Replace per-package dynamic inputs. Push an empty list when the
-        // override is off so stale rows from a previous save are cleared.
         try {
           await axiosInstance.post(`/admin/topup-package/${packageId}/inputs`, {
             inputs: hasCustomInputs
@@ -662,11 +609,6 @@ function EditPackage(props) {
                     </div>
                   </div>
 
-                  {/* Reward picker — mirrors AddPackage. The coin_value
-                      ref still hydrates from data so legacy packages keep
-                      their saved coin reward visible even after switching
-                      to money mode (admin can switch back without losing
-                      the number). */}
                   <div className="form_grid">
                     <div>
                       <label htmlFor="reward_type">Reward type</label>
@@ -730,10 +672,6 @@ function EditPackage(props) {
                         onChange={(e) => setResellerCashback(e.target.value)}
                         placeholder="0"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Paid to users marked as Reseller, in addition to the
-                        regular reward above. Credited on completion only.
-                      </p>
                     </div>
                     <div>
                       <label class="inline-flex items-center mt-6">
@@ -761,11 +699,6 @@ function EditPackage(props) {
                         />
                         <span className="ml-2">Track stock quantity</span>
                       </label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        When on, each order deducts from the count and the
-                        storefront shows the package as out of stock once it
-                        hits 0.
-                      </p>
                     </div>
                     {stockTracking && (
                       <div>
@@ -811,12 +744,6 @@ function EditPackage(props) {
                           </label>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Modes 1 & 2 are scoped by Player ID (no effect on
-                        products without a Player ID input). Modes 3 & 4 are
-                        scoped by user account and apply regardless of whether
-                        the product asks for a Player ID.
-                      </p>
                     </div>
                   </div>
 
@@ -872,9 +799,6 @@ function EditPackage(props) {
                     </div>
                   )}
 
-                  {/* Bot type — single dropdown replaces the legacy
-                      Auto-delivery + Is-shell checkboxes. Per-type config
-                      sections render below based on the selected value. */}
                   <div className="form_grid mt-5">
                     <div>
                       <label
@@ -895,10 +819,6 @@ function EditPackage(props) {
                         <option value="like-bot">Like-bot</option>
                         <option value="pubg-bot">GamersPay</option>
                       </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Pick how the order should be dispatched on placement.
-                        More types will be added over time.
-                      </p>
 
                       {(botType === "uc-bot" ||
                         botType === "shell-bot" ||
@@ -929,14 +849,6 @@ function EditPackage(props) {
 
                       {botType === "shell-bot" && (
                         <div className="form_grid">
-                          <div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Shell value is sent in the bot's <code>code</code>{" "}
-                              field. The bot is fired once per tag, with the tag
-                              value in <code>pacakge</code>/<code>package</code>
-                              .
-                            </p>
-                          </div>
                           <div>
                             <label htmlFor="shell_value">Shell value</label>
                             <input
@@ -1010,10 +922,6 @@ function EditPackage(props) {
                             </div>
                           </div>
                           <div className="form_grid">
-                            {/* `sm:col-span-2` makes the SKU field span both
-                                grid columns so the dropdown is wide enough
-                                to read long item names like
-                                "PUBG Mobile 660 UC — $10". */}
                             <div className="sm:col-span-2">
                               <label htmlFor="pubg_sku">SKU</label>
                               <select
@@ -1034,13 +942,6 @@ function EditPackage(props) {
                                       ? "Enter API key to load SKUs"
                                       : "-- Select SKU --"}
                                 </option>
-                                {/*
-                                  Hydration safety: if the saved SKU isn't
-                                  in the fetched list (catalogue changed,
-                                  or fetch hasn't returned yet) we still
-                                  surface it so it stays selected after a
-                                  re-save.
-                                */}
                                 {pubgSku &&
                                   !pubgSkus.some(
                                     (it) => it.sku === pubgSku,
@@ -1065,11 +966,6 @@ function EditPackage(props) {
                               )}
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Player ID comes from the customer's order. SKUs are
-                            pulled from GamersPay using the API key above —
-                            change the game to refresh the list.
-                          </p>
                         </>
                       )}
 
@@ -1128,9 +1024,6 @@ function EditPackage(props) {
                         </div>
                       )}
 
-                      {/* Mapped voucher packages — shell-only auto-delivery
-                          doesn't draw from voucher pools, so the mapping UI is
-                          hidden when "Is shell" is on to keep the form tidy. */}
                       {autoDeliveryOn && !isShell && (
                         <div className="mt-3 border border-gray-200 rounded p-3 bg-gray-50">
                           <div className="flex items-center justify-between mb-2">
@@ -1152,8 +1045,7 @@ function EditPackage(props) {
                           )}
                           {!mapsLoading && mappings.length === 0 && (
                             <p className="text-xs text-gray-500 italic">
-                              No voucher packages mapped yet. Click "Add new" to
-                              pick one.
+                              No voucher packages mapped yet.
                             </p>
                           )}
                           {mappings.length > 0 && (
@@ -1186,7 +1078,6 @@ function EditPackage(props) {
                     </div>
                   </div>
 
-                  {/* Custom inputs override --- Start --- */}
                   <div className="my-4 p-3 border border-indigo-100 bg-indigo-50 rounded">
                     <label className="inline-flex items-center cursor-pointer select-none font-semibold text-indigo-900">
                       <input
@@ -1197,11 +1088,6 @@ function EditPackage(props) {
                       />
                       Override product inputs for this package
                     </label>
-                    <p className="text-xs text-indigo-800 mt-1">
-                      When on, the storefront shows the inputs defined below
-                      (instead of the product-level inputs) once a customer
-                      picks this package on the topup page.
-                    </p>
 
                     {hasCustomInputs && (
                       <div className="mt-3">
@@ -1217,14 +1103,9 @@ function EditPackage(props) {
                             + Add input
                           </button>
                         </div>
-                        <div className="mb-2 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded p-2">
-                          <strong>Reserved keyword:</strong> "{PLAYER_ID_TITLE}
-                          ". Using it as a title enables verification options
-                          below. Only one input per package may use it.
-                        </div>
                         {packageInputs.length === 0 && (
                           <p className="text-sm text-gray-500 italic">
-                            No inputs yet. Click "Add input" to define one.
+                            No inputs yet.
                           </p>
                         )}
                         {packageInputs.map((row, idx) => {
@@ -1250,12 +1131,6 @@ function EditPackage(props) {
                                       })
                                     }
                                   />
-                                  {reserved && (
-                                    <p className="text-[11px] text-amber-700 mt-1">
-                                      Reserved title — verify options below
-                                      apply.
-                                    </p>
-                                  )}
                                 </div>
                                 <div className="flex items-end justify-end gap-2">
                                   <button
@@ -1293,16 +1168,6 @@ function EditPackage(props) {
 
                                   {row.verify_type === "dynamic" && (
                                     <div className="mt-2">
-                                      <div className="mb-2 text-xs bg-blue-50 border border-blue-200 rounded p-2">
-                                        <strong className="text-blue-800">
-                                          Required tag:
-                                        </strong>{" "}
-                                        the Verify URL <em>must</em> include{" "}
-                                        <code className="bg-white px-1 rounded border border-blue-200 text-blue-700">
-                                          &#123;value&#125;
-                                        </code>{" "}
-                                        where the entered ID should go.
-                                      </div>
                                       <label className="text-xs text-gray-600 block mb-1">
                                         Verify URL
                                       </label>
@@ -1318,14 +1183,7 @@ function EditPackage(props) {
                                         }
                                       />
                                       <label className="text-xs text-gray-600 block mb-1 mt-2">
-                                        API Token{" "}
-                                        <span className="text-gray-400">
-                                          (sent as{" "}
-                                          <code>
-                                            Authorization: Bearer &lt;token&gt;
-                                          </code>
-                                          )
-                                        </span>
+                                        API Token
                                       </label>
                                       <input
                                         type="text"
@@ -1386,10 +1244,7 @@ function EditPackage(props) {
                                         ))}
                                       </select>
                                       <label className="text-xs text-gray-600 block mb-1 mt-2">
-                                        API key{" "}
-                                        <span className="text-gray-400">
-                                          (sent as <code>X-API-Key</code>)
-                                        </span>
+                                        API key
                                       </label>
                                       <input
                                         type="text"
@@ -1412,15 +1267,10 @@ function EditPackage(props) {
                       </div>
                     )}
                   </div>
-                  {/* Custom inputs override --- End --- */}
 
                   <div className="my-4">
                     <label className="block mb-2 font-semibold">
-                      Description{" "}
-                      <span className="text-xs font-normal text-gray-500">
-                        (shown as a tooltip when users hover the package card —
-                        inline images supported)
-                      </span>
+                      Description
                     </label>
                     <TextEditor
                       value={descriptionHtml}

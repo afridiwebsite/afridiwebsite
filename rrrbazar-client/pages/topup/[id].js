@@ -59,6 +59,11 @@ function TopupOrderPage() {
   const [serverError, setServerError] = useState(null);
   // Pack whose description modal is currently open. null = closed.
   const [descPack, setDescPack] = useState(null);
+  // When the order is refused because the user's phone isn't verified,
+  // the server replies with action "verify_phone". We pop a modal that
+  // links to the standalone OTP page instead of just showing the error
+  // inline. Holds the server's message; null = closed.
+  const [verifyPhoneMsg, setVerifyPhoneMsg] = useState(null);
   const { isAuth, updateAuthUserInfo, authUser, siteSettings } =
     useContext(globalContext);
   const router = useRouter();
@@ -577,6 +582,14 @@ function TopupOrderPage() {
                                 err?.response?.data?.message ||
                                 getErrors(err) ||
                                 "Could not place the order. Please try again.";
+                              // Phone-not-verified block → pop the verify
+                              // modal instead of the inline error bar.
+                              if (
+                                err?.response?.data?.action === "verify_phone"
+                              ) {
+                                setVerifyPhoneMsg(message);
+                                return;
+                              }
                               setServerError(message);
                               scrollTopWindow();
                             });
@@ -1529,6 +1542,48 @@ function TopupOrderPage() {
               </div>
               <div className="topup-desc-modal-body">
                 {ReactHtmlParser(descPack.description)}
+              </div>
+            </div>
+          </div>
+        )}
+        {verifyPhoneMsg && (
+          <div
+            className="topup-desc-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Phone verification required"
+            onClick={() => setVerifyPhoneMsg(null)}
+          >
+            <div
+              className="topup-desc-modal-card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="topup-desc-modal-head">
+                <h4 className="topup-desc-modal-title">
+                  Verify your phone number
+                </h4>
+                <button
+                  type="button"
+                  className="topup-desc-modal-close"
+                  aria-label="Close"
+                  onClick={() => setVerifyPhoneMsg(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="topup-desc-modal-body">
+                <p className="mb-4 text-sm text-gray-700">{verifyPhoneMsg}</p>
+                <Link
+                  href={
+                    routes.phoneVerification.name + addRedirectQuery(router)
+                  }
+                >
+                  <a>
+                    <Button className="primary w-full mt-3">
+                      Verify phone number
+                    </Button>
+                  </a>
+                </Link>
               </div>
             </div>
           </div>

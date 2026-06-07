@@ -1134,12 +1134,14 @@ class UserController {
 
       let user_id = req.user.id;
 
-      // Verification gate. When the master toggle is on and step 1 of
-      // the user's verification isn't `verified`, refuse the order with
-      // a message the storefront surfaces inline. Module off ⇒ no-op.
+      // Verification gate. When the master toggle is on and the user's
+      // phone isn't verified, refuse the order. The `verify_phone`
+      // action lets the storefront pop the OTP modal instead of just
+      // surfacing the message inline. Module off ⇒ no-op.
       const gate = await userCanOrder(user_id);
       if (!gate.ok) {
         response.message = gate.reason || "Account verification required.";
+        response.action = "verify_phone";
         response.status = 403;
         response.success = false;
         return res.status(403).send(response.response);

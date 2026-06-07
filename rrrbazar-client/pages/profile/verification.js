@@ -2,9 +2,11 @@
  *
  * Title: /profile/verification
  * Description: User-facing KYC page. Renders one accordion section per
- * step (4 total), drives the phone OTP flow on step 1, and submits each
- * step's payload independently. Forms are tag-navigable from the
- * profile page — the URL hash `#step-N` opens the matching panel.
+ * step (4 total) and submits each step's payload independently. Phone
+ * verification lives on its own page (/profile/phone-verification); this
+ * page only reflects whether the phone is verified and auto-fills the
+ * number on step 1. Forms are tag-navigable from the profile page — the
+ * URL hash `#step-N` opens the matching panel.
  *
  * The whole page short-circuits to a "Verification is not active" notice
  * when the master toggle in SiteSettings is off, even if there's data
@@ -12,22 +14,22 @@
  *
  */
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaCheck, FaTimes, FaClock, FaCamera, FaIdCard, FaUser, FaBriefcase, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useQuery, useQueryClient } from 'react-query';
 import { toast } from 'react-toastify';
 import {
     getMyVerification,
-    sendVerificationOtp,
     submitVerificationStep,
     uploadVerificationImage,
-    verifyVerificationOtp,
 } from '../../api/api';
 import ActivityIndicator from '../../components/ActivityIndicator';
 import Button from '../../components/Button';
 import { __page_title_end } from '../../config/globalConfig';
 import reactQueryConfig from '../../config/reactQueryConfig';
+import routes from '../../config/routes';
 import { getErrors, hasData, imgPath } from '../../helpers/helpers';
 
 // Per-step icon + tint. Kept here (not on the server) so layout choices
@@ -71,19 +73,20 @@ function StatusPill({ status }) {
     );
 }
 
-// Step 1 has the OTP flow on top of its regular fields, so it gets a
-// dedicated form component. Steps 2/3/4 share `GenericStepForm`.
-function Step1Form({ submission, onSubmitted, disabled }) {
+// Step 1 collects personal info. Phone verification is no longer part of
+// this form — it lives on the standalone /profile/phone-verification page
+// (ordering is gated on the phone alone). Here we just surface the
+// verified number (auto-filled, read-only) or, when it isn't verified
+// yet, a prompt to go verify it.
+function Step1Form({ submission, phoneVerified, verifiedPhone, onSubmitted, disabled }) {
     const data = submission?.data || {};
-    const phoneAlreadyVerified = !!data.phone_verified_at;
     const isVerified = submission?.status === 'verified';
+    // Phone is verified out-of-band; prefer the live flag from the page
+    // payload, fall back to the submission row's own stamp.
+    const phoneOk = phoneVerified || !!data.phone_verified_at;
+    const phone = verifiedPhone || data.phone || '';
 
-    const [phone, setPhone] = useState(data.phone || '');
-    const [otpSent, setOtpSent] = useState(phoneAlreadyVerified);
-    const [otpVerified, setOtpVerified] = useState(phoneAlreadyVerified);
-    const [code, setCode] = useState('');
     const [busy, setBusy] = useState(false);
-
     const [form, setForm] = useState({
         full_name: data.full_name || '',
         father_name: data.father_name || '',
@@ -93,47 +96,10 @@ function Step1Form({ submission, onSubmitted, disabled }) {
         address: data.address || '',
     });
 
-    const handleSendOtp = async () => {
-        const trimmed = String(phone || '').trim();
-        if (!trimmed) {
-            toast.error('Enter a phone number');
-            return;
-        }
-        setBusy(true);
-        try {
-            await sendVerificationOtp(trimmed);
-            setOtpSent(true);
-            toast.success('OTP sent. Check your phone.');
-        } catch (err) {
-            toast.error(getErrors(err, false, true));
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    const handleVerifyOtp = async () => {
-        const trimmedPhone = String(phone || '').trim();
-        const trimmedCode = String(code || '').trim();
-        if (!trimmedCode) {
-            toast.error('Enter the OTP code');
-            return;
-        }
-        setBusy(true);
-        try {
-            await verifyVerificationOtp(trimmedPhone, trimmedCode);
-            setOtpVerified(true);
-            toast.success('Phone verified.');
-        } catch (err) {
-            toast.error(getErrors(err, false, true));
-        } finally {
-            setBusy(false);
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!otpVerified) {
-            toast.error('Verify your phone with OTP first.');
+        if (!phoneOk) {
+            toast.error('Verify your phone number first.');
             return;
         }
         setBusy(true);
@@ -142,7 +108,7 @@ function Step1Form({ submission, onSubmitted, disabled }) {
             toast.success('Submitted. Awaiting admin review.');
             onSubmitted && onSubmitted();
         } catch (err) {
-            toast.error(getErrors(err, false, true));
+            toast.error(getErrors(err));
         } finally {
             setBusy(false);
         }
@@ -154,67 +120,40 @@ function Step1Form({ submission, onSubmitted, disabled }) {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Phone number
                 </label>
-                <div className="flex gap-2">
-                    <input
-                        type="tel"
-                        className="flex-1 border border-gray-300 rounded px-3 py-2"
-                        placeholder="+8801XXXXXXXXX"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        disabled={otpVerified || isVerified || disabled}
-                    />
-                    {!otpVerified && !isVerified && (
-                        <button
-                            type="button"
-                            onClick={handleSendOtp}
-                            disabled={busy || disabled}
-                            className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-60"
+                {phoneOk ? (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="tel"
+                                className="flex-1 border border-gray-300 rounded px-3 py-2 bg-gray-50"
+                                value={phone}
+                                readOnly
+                                disabled
+                            />
+                            <span className="inline-flex items-center gap-1 text-sm text-emerald-700 font-medium whitespace-nowrap">
+                                <FaCheck /> Verified
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Locked once verified — contact support to change it.
+                        </p>
+                    </>
+                ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-900">
+                        <p className="mb-2">
+                            Your phone number isn&apos;t verified yet. Verify it
+                            to unlock ordering and to fill in this step.
+                        </p>
+                        <Link
+                            href={`${routes.phoneVerification.name}?redirect_url=${encodeURIComponent(routes.verification.name)}`}
                         >
-                            {otpSent ? 'Resend OTP' : 'Send OTP'}
-                        </button>
-                    )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                    Verified by SMS code. Locked once step 1 is verified — contact
-                    support to change it.
-                </p>
-            </div>
-
-            {otpSent && !otpVerified && (
-                <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                        OTP code
-                    </label>
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            className="flex-1 border border-gray-300 rounded px-3 py-2 tracking-widest font-mono"
-                            placeholder="6-digit code"
-                            value={code}
-                            onChange={(e) =>
-                                setCode(e.target.value.replace(/\D/g, ''))
-                            }
-                            disabled={disabled}
-                        />
-                        <button
-                            type="button"
-                            onClick={handleVerifyOtp}
-                            disabled={busy || disabled}
-                            className="px-3 py-2 bg-emerald-600 text-white rounded disabled:opacity-60"
-                        >
-                            Verify
-                        </button>
+                            <a className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-semibold">
+                                Verify phone number
+                            </a>
+                        </Link>
                     </div>
-                </div>
-            )}
-
-            {otpVerified && (
-                <div className="text-sm text-emerald-700 flex items-center gap-1">
-                    <FaCheck /> Phone verified
-                </div>
-            )}
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <TextField label="Full name" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} disabled={isVerified || disabled} required />
@@ -230,7 +169,7 @@ function Step1Form({ submission, onSubmitted, disabled }) {
                     type="submit"
                     className="primary w-full"
                     loading={busy}
-                    disabled={!otpVerified || disabled}
+                    disabled={!phoneOk || disabled}
                 >
                     {submission ? 'Resubmit' : 'Submit for review'}
                 </Button>
@@ -472,7 +411,7 @@ function FileField({ label, value, onUpload, uploading, required, disabled, help
 
 // One accordion panel — collapsed by default, expanded when its hash is
 // active or the user clicks the header.
-function StepPanel({ step, submission, isOpen, onToggle, disabled, onSubmitted }) {
+function StepPanel({ step, submission, isOpen, onToggle, disabled, onSubmitted, phoneVerified, verifiedPhone }) {
     const visual = STEP_VISUALS[step.step] || { icon: null, color: '#6b7280' };
     return (
         <section
@@ -517,6 +456,8 @@ function StepPanel({ step, submission, isOpen, onToggle, disabled, onSubmitted }
                     {step.step === 1 ? (
                         <Step1Form
                             submission={submission}
+                            phoneVerified={phoneVerified}
+                            verifiedPhone={verifiedPhone}
                             onSubmitted={onSubmitted}
                             disabled={disabled}
                         />
@@ -552,6 +493,8 @@ function VerificationPage() {
     const submissions = payload?.submissions || {};
     const counts = payload?.counts;
     const allVerified = !!payload?.all_verified;
+    const phoneVerified = !!payload?.phone_verified;
+    const verifiedPhone = payload?.phone || '';
 
     // Open panel state — drives the accordion. Defaults to step 1, but
     // a `#step-N` URL hash from the profile tag links jumps straight to
@@ -608,15 +551,7 @@ function VerificationPage() {
                                 <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
                                     <FaCheck /> Fully verified
                                 </span>
-                            ) : payload?.order_blocked ? (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-100 text-red-800 font-semibold">
-                                    Orders blocked — complete step 1
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 font-semibold">
-                                    Ordering enabled
-                                </span>
-                            )}
+                            ) : <></>}
                         </div>
 
                         <div className="space-y-3">
@@ -625,6 +560,8 @@ function VerificationPage() {
                                     key={step.step}
                                     step={step}
                                     submission={submissions[String(step.step)]}
+                                    phoneVerified={phoneVerified}
+                                    verifiedPhone={verifiedPhone}
                                     isOpen={openStep === step.step}
                                     onToggle={() =>
                                         setOpenStep(openStep === step.step ? -1 : step.step)

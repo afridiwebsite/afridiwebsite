@@ -66,6 +66,10 @@ const routes = Object.freeze({
     auth: true,
     name: '/profile/verification',
   },
+  phoneVerification: {
+    auth: true,
+    name: '/profile/phone-verification',
+  },
 });
 
 export default routes;
