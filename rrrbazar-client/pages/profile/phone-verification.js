@@ -172,7 +172,7 @@ function PhoneVerificationInner() {
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">
                                         Phone number
                                     </label>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 flex-wrap">
                                         <span className="inline-flex items-center px-3 rounded bg-gray-100 text-gray-500">
                                             <FaPhoneAlt size={12} />
                                         </span>
