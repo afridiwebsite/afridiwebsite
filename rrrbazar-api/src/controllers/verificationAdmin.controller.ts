@@ -21,12 +21,17 @@ class VerificationAdminController {
     const response = new responseUtils();
     try {
       const user_id = req.params.user_id;
+      const settings = await SiteSetting.findOne();
+      const enabled =
+        settings && Number((settings as any).verification_enabled) === 1;
+
       const submissions = await VerificationSubmission.findAll({
         where: { user_id },
         order: [["step", "ASC"]],
       });
       response.data = {
-        steps: STEP_DEFINITIONS,
+        enabled,
+        steps: enabled ? STEP_DEFINITIONS : [],
         submissions,
       };
       res.send(response.response);

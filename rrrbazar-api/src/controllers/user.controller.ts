@@ -64,6 +64,7 @@ class UserController {
 
     const query = req.query.q || "";
     const user_type = req.query.user_type as string | undefined;
+    const is_pending_verification = req.query.is_pending_verification === 'true';
 
     const limit: any = parseInt(req.query.limit?.toString() || "20");
     const page: any = parseInt(req.query.page?.toString() || "1");
@@ -83,6 +84,24 @@ class UserController {
       const utl = user_type.toLowerCase();
       if (utl === 'reseller') where.user_type = 'reseller';
       else if (utl === 'normal') where.user_type = { [Op.or]: ['normal', null, ''] };
+    }
+
+    if (is_pending_verification) {
+      // Filter for users who have submitted all 4 steps and have at least
+      // one step pending review.
+      where[Op.and] = [
+        Sequelize.literal(`(
+          SELECT COUNT(*)
+          FROM verification_submissions
+          WHERE verification_submissions.user_id = User.id
+        ) = 4`),
+        Sequelize.literal(`(
+          SELECT COUNT(*)
+          FROM verification_submissions
+          WHERE verification_submissions.user_id = User.id
+          AND verification_submissions.status = 'under_review'
+        ) > 0`),
+      ];
     }
 
     // user_count tracks the filtered slice so the pagination total in

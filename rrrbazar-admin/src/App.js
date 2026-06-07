@@ -78,6 +78,7 @@ function App() {
             <Route path="/order-comments" exact component={OrderComments} />
 
             <Route path="/user" exact component={Users} />
+            <Route path="/user/pending" exact component={Users} />
             <Route path="/user/edit/:id" exact component={EditUser} />
             <Route path="/user/earn-wallet/edit/:id" exact component={EditEarnWallet} />
             <Route path="/resellers" exact component={Resellers} />

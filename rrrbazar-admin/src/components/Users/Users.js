@@ -12,21 +12,22 @@ import axiosInstance from '../../common/axios';
 import { Link } from 'react-router-dom';
 
 function Users() {
+    const isPendingView = window.location.pathname === '/user/pending'
     const [currentPage, setCurrentPage] = useState(1)
     const [listPerPage, setListPerPage] = useState(10)
     const [searchQuery, setSearchQuery] = useState('')
-    const [urlToFetch, setUrlToFetch] = useState(`admin/users?page=${currentPage}&limit=${listPerPage}`)
+    const [urlToFetch, setUrlToFetch] = useState(`admin/users?page=${currentPage}&limit=${listPerPage}${isPendingView ? '&is_pending_verification=true' : ''}`)
     const [uniqueState, setUniqueState] = useState(false)
     const [userData, loading, error] = useGet(urlToFetch, '', uniqueState)
 
 
     useEffect(() => {
-        setUrlToFetch(`admin/users?page=${currentPage}&limit=${listPerPage}&${searchQuery}`)
+        setUrlToFetch(`admin/users?page=${currentPage}&limit=${listPerPage}&${searchQuery}${isPendingView ? '&is_pending_verification=true' : ''}`)
     }, [currentPage, listPerPage])
 
     useEffect(() => {
         setCurrentPage(1)
-        setUrlToFetch(`admin/users?page=${1}&limit=${listPerPage}&${searchQuery}`)
+        setUrlToFetch(`admin/users?page=${1}&limit=${listPerPage}&${searchQuery}${isPendingView ? '&is_pending_verification=true' : ''}`)
     }, [searchQuery])
 
     const deleteUserHandler = (id) => {
@@ -82,7 +83,7 @@ function Users() {
             <div className="bg-white overflow-hidden rounded">
                 <div className="px-6 py-3 border-b border-gray-200 flex flex-wrap items-center justify-between">
                     <h3 className="text-lg font-bold text-black mb-4 md:mb-0">
-                        Users {<span className="text-base ml-2 text-blue-600 font-semibold">Total user {userData?.user_count}</span>}
+                        {isPendingView ? 'Pending Users' : 'Users'} {<span className="text-base ml-2 text-blue-600 font-semibold">Total {isPendingView ? 'pending ' : ''}user {userData?.user_count}</span>}
                     </h3>
                     <SearchUser setSearchQuery={setSearchQuery} />
                 </div>

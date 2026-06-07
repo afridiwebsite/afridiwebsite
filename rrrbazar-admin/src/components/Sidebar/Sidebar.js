@@ -27,6 +27,11 @@ export default function Sidebar({ isOpenSidebar }) {
           icon: "fas fa-tachometer-alt",
         },
         {
+          text: "Pending users",
+          path: "/user/pending",
+          icon: "fas fa-user-clock",
+        },
+        {
           text: "Reseller",
           path: "/resellers",
           icon: "fas fa-user-tag",
@@ -134,7 +139,7 @@ export default function Sidebar({ isOpenSidebar }) {
     {
       text: "SMS Provider",
       path: "/sms-provider",
-      icon: "fas fa-comment-sms",
+      icon: "fas fa-inbox",
     },
     {
       text: "Profile",

@@ -9,12 +9,19 @@
  * Also hosts the moved-in pieces: coin balance card, daily login bonus modal,
  * coin → wallet conversion form, and spin / coin history.
  */
-import Head from 'next/head';
-import Link from 'next/link';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import ReactHtmlParser from 'react-html-parser';
-import { toast } from 'react-toastify';
-import { FaCoins, FaGift, FaHistory } from 'react-icons/fa';
+import Head from "next/head";
+import Link from "next/link";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import ReactHtmlParser from "react-html-parser";
+import { toast } from "react-toastify";
+import { FaCoins, FaGift, FaHistory } from "react-icons/fa";
 import {
   convertCoins,
   doSpin,
@@ -23,11 +30,20 @@ import {
   getSpinHistory,
   getGlobalSpinHistory,
   getSpinOverview,
-} from '../api/api';
-import DailyLoginBonus from '../components/DailyLoginBonus';
-import { globalContext } from './_app';
+} from "../api/api";
+import DailyLoginBonus from "../components/DailyLoginBonus";
+import { globalContext } from "./_app";
 
-const DEFAULT_COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#facc15'];
+const DEFAULT_COLORS = [
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#a855f7",
+  "#ef4444",
+  "#06b6d4",
+  "#ec4899",
+  "#facc15",
+];
 
 function polarToCartesian(cx, cy, r, deg) {
   const rad = ((deg - 90) * Math.PI) / 180.0;
@@ -37,7 +53,7 @@ function polarToCartesian(cx, cy, r, deg) {
 function arcPath(cx, cy, r, startDeg, endDeg) {
   const start = polarToCartesian(cx, cy, r, endDeg);
   const end = polarToCartesian(cx, cy, r, startDeg);
-  const largeArc = endDeg - startDeg <= 180 ? '0' : '1';
+  const largeArc = endDeg - startDeg <= 180 ? "0" : "1";
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y} Z`;
 }
 
@@ -61,27 +77,34 @@ function pickWheelTextStyle(segCount) {
 // strip tags + decode the common entities before truncating. The rich
 // version is still shown in the "You won" banner and the spin history.
 function labelToPlain(label) {
-  return String(label || '')
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<\/(p|div|li)>/gi, ' ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+  return String(label || "")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(p|div|li)>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function truncateLabel(label, maxChars) {
   const s = labelToPlain(label);
   if (s.length <= maxChars) return s;
-  return s.slice(0, Math.max(maxChars - 1, 1)) + '…';
+  return s.slice(0, Math.max(maxChars - 1, 1)) + "…";
 }
 
-function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) {
+function SpinWheel({
+  rewards,
+  rotation,
+  spinning,
+  onSpin,
+  disabled,
+  ctaLabel,
+}) {
   // `size` is the SVG's internal coordinate system (used for radii,
   // label positions, etc.) — NOT the rendered pixel size. The rendered
   // size is driven by CSS clamp() below, which shrinks the wheel on
@@ -104,7 +127,7 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
         viewBox="0 0 56 78"
         aria-hidden="true"
         focusable="false"
-        style={{ width: 'clamp(30px, 7vw, 44px)' }}
+        style={{ width: "clamp(30px, 7vw, 44px)" }}
       >
         <defs>
           <linearGradient id="spin-pointer-body" x1="0" y1="0" x2="0" y2="1">
@@ -133,7 +156,7 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
       </svg>
 
       <div
-        className={`spin-wheel ${spinning ? 'is-spinning' : ''}`}
+        className={`spin-wheel ${spinning ? "is-spinning" : ""}`}
         style={{ transform: `rotate(${rotation}deg)` }}
       >
         {/* Rendered width follows clamp(min, fluid, max):
@@ -146,7 +169,7 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
         <svg
           viewBox={`0 0 ${size} ${size}`}
           className="spin-svg"
-          style={{ width: 'clamp(280px, 88vw, 440px)', height: 'auto' }}
+          style={{ width: "clamp(280px, 88vw, 440px)", height: "auto" }}
         >
           <defs>
             <radialGradient id="spin-hub">
@@ -162,7 +185,8 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
           {rewards.map((reward, i) => {
             const start = i * segAngle;
             const end = start + segAngle;
-            const color = reward.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+            const color =
+              reward.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
             const midAngle = start + segAngle / 2;
             // Labels now run RADIALLY (from hub toward rim) instead of
             // tangentially around the ring. Rotation = midAngle - 90
@@ -174,10 +198,15 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
             const path = arcPath(r, r, r - 6, start, end);
             return (
               <g key={i}>
-                <path d={path} fill={color} stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
+                <path
+                  d={path}
+                  fill={color}
+                  stroke="rgba(255,255,255,0.9)"
+                  strokeWidth="2"
+                />
                 <g
                   transform={`translate(${labelPos.x} ${labelPos.y}) rotate(${midAngle - 90})`}
-                  style={{ pointerEvents: 'none' }}
+                  style={{ pointerEvents: "none" }}
                 >
                   <foreignObject
                     x={-80}
@@ -188,18 +217,18 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
                     <div
                       xmlns="http://www.w3.org/1999/xhtml"
                       style={{
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
                         fontSize: `${fontSize}px`,
-                        fontWeight: '900',
-                        color: '#fff',
-                        lineHeight: '1.1',
-                        textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-                        overflow: 'hidden',
-                        padding: '0 4px',
+                        fontWeight: "900",
+                        color: "#fff",
+                        lineHeight: "1.1",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+                        overflow: "hidden",
+                        padding: "0 4px",
                       }}
                     >
                       {ReactHtmlParser(reward.label)}
@@ -220,7 +249,7 @@ function SpinWheel({ rewards, rotation, spinning, onSpin, disabled, ctaLabel }) 
         type="button"
         onClick={onSpin}
         disabled={disabled}
-        className={`spin-cta ${spinning ? 'is-spinning' : ''}`}
+        className={`spin-cta ${spinning ? "is-spinning" : ""}`}
       >
         <span className="spin-cta-shine" aria-hidden="true" />
         <span className="spin-cta-text">{ctaLabel}</span>
@@ -244,41 +273,44 @@ function SpinPage() {
   const [lastWin, setLastWin] = useState(null);
   const rotationRef = useRef(0); // tracks the wheel's running rotation across spins
 
-  const load = useCallback(async (includeOverview = true) => {
-    if (includeOverview) {
-      try {
-        const res = await getSpinOverview();
-        const data = res?.data?.data;
-        setOverview(data || null);
-        // Sync global state if it differs (e.g. on first load)
-        if (data && updateAuthUserInfo && authUser) {
-          if (data.coins !== authUser.coins) {
-            updateAuthUserInfo({ ...authUser, coins: data.coins });
+  const load = useCallback(
+    async (includeOverview = true) => {
+      if (includeOverview) {
+        try {
+          const res = await getSpinOverview();
+          const data = res?.data?.data;
+          setOverview(data || null);
+          // Sync global state if it differs (e.g. on first load)
+          if (data && updateAuthUserInfo && authUser) {
+            if (data.coins !== authUser.coins) {
+              updateAuthUserInfo({ ...authUser, coins: data.coins });
+            }
           }
+        } catch (e) {
+          /* ignore */
         }
+      }
+      try {
+        const gh = await getGlobalSpinHistory();
+        setSpinHistory(gh?.data?.data || []);
       } catch (e) {
         /* ignore */
       }
-    }
-    try {
-      const gh = await getGlobalSpinHistory();
-      setSpinHistory(gh?.data?.data || []);
-    } catch (e) {
-      /* ignore */
-    }
-    try {
-      const mh = await getSpinHistory();
-      setMySpinHistory(mh?.data?.data || []);
-    } catch (e) {
-      /* ignore */
-    }
-    try {
-      const ch = await getCoinHistory();
-      setCoinHistory(ch?.data?.data || []);
-    } catch (e) {
-      /* ignore */
-    }
-  }, [authUser, updateAuthUserInfo]);
+      try {
+        const mh = await getSpinHistory();
+        setMySpinHistory(mh?.data?.data || []);
+      } catch (e) {
+        /* ignore */
+      }
+      try {
+        const ch = await getCoinHistory();
+        setCoinHistory(ch?.data?.data || []);
+      } catch (e) {
+        /* ignore */
+      }
+    },
+    [authUser, updateAuthUserInfo],
+  );
 
   useEffect(() => {
     load();
@@ -288,11 +320,14 @@ function SpinPage() {
   const segCount = Math.max(rewards.length, 1);
   const segAngle = 360 / segCount;
 
+  console.log(overview);
+
   const cost = overview?.cost || 0;
   const dailyLimit = overview?.daily_limit || 0;
   const spinsToday = overview?.spins_today || 0;
   const coins = authUser?.coins ?? overview?.coins ?? 0;
   const rate = Number(overview?.coin_to_money_rate) || 0;
+  const minConvert = Number(overview?.min_convert_coins) || 0;
   const overLimit = dailyLimit > 0 && spinsToday >= dailyLimit;
   const cannotAfford = cost > 0 && coins < cost;
 
@@ -328,8 +363,8 @@ function SpinPage() {
       // Always rotate forward from the last position so the motion looks
       // natural even if the same segment wins twice in a row.
       const currentMod = ((rotationRef.current % 360) + 360) % 360;
-      const targetMod = ((360 - centre) % 360 + 360) % 360;
-      const delta = ((targetMod - currentMod) + 360) % 360;
+      const targetMod = (((360 - centre) % 360) + 360) % 360;
+      const delta = (targetMod - currentMod + 360) % 360;
       const extraSpins = 6 * 360; // 6 full turns
       const next = rotationRef.current + extraSpins + delta + jitter;
       rotationRef.current = next;
@@ -349,7 +384,9 @@ function SpinPage() {
         }
         setSpinning(false);
         setLastWin(data?.reward);
-        toast.success(<div>{ReactHtmlParser(res?.data?.message || "Spin complete")}</div>);
+        toast.success(
+          <div>{ReactHtmlParser(res?.data?.message || "Spin complete")}</div>,
+        );
         await load(false); // Only reload history, keep balance from response
       }, 4200);
     } catch (e) {
@@ -386,12 +423,13 @@ function SpinPage() {
     }
   };
 
-  const remaining = dailyLimit > 0 ? Math.max(0, dailyLimit - spinsToday) : null;
+  const remaining =
+    dailyLimit > 0 ? Math.max(0, dailyLimit - spinsToday) : null;
   const ctaLabel = spinning
-    ? 'Spinning…'
+    ? "Spinning…"
     : cost > 0
       ? `Spin (-${cost} coins)`
-      : 'SPIN';
+      : "SPIN";
 
   return (
     <>
@@ -409,7 +447,9 @@ function SpinPage() {
         <header className="spin-header animate-fade-in-up">
           <div>
             <h1 className="spin-title">Spin &amp; Win</h1>
-            <p className="spin-sub">Try your luck on the wheel — rewards are funded by the admin.</p>
+            <p className="spin-sub">
+              Try your luck on the wheel — rewards are funded by the admin.
+            </p>
           </div>
           <div className="spin-stats">
             <div className="spin-stat">
@@ -432,10 +472,13 @@ function SpinPage() {
 
         <div className="grid lg:grid-cols-[1fr,360px] gap-7 mt-6">
           {/* Wheel column */}
-          <div className="spin-card animate-fade-in-up" style={{ animationDelay: '60ms' }}>
+          <div
+            className="spin-card animate-fade-in-up"
+            style={{ animationDelay: "60ms" }}
+          >
             {rewards.length === 0 ? (
               <div className="spin-empty">
-                No rewards configured yet. An admin can add some under{' '}
+                No rewards configured yet. An admin can add some under{" "}
                 <strong>Site Settings → Spin Rewards</strong>.
               </div>
             ) : (
@@ -445,7 +488,13 @@ function SpinPage() {
                 spinning={spinning}
                 onSpin={onSpin}
                 disabled={spinning || cannotAfford || overLimit}
-                ctaLabel={overLimit ? 'Come back tomorrow' : cannotAfford ? `Need ${cost} coins` : ctaLabel}
+                ctaLabel={
+                  overLimit
+                    ? "Come back tomorrow"
+                    : cannotAfford
+                      ? `Need ${cost} coins`
+                      : ctaLabel
+                }
               />
             )}
 
@@ -465,9 +514,9 @@ function SpinPage() {
             {lastWin && (
               <div className="spin-last animate-pop-in">
                 <span className="spin-last-emoji">🎉</span>
-                You won{' '}
+                You won{" "}
                 <strong className="spin-last-label">
-                  {ReactHtmlParser(String(lastWin.label || ''))}
+                  {ReactHtmlParser(String(lastWin.label || ""))}
                 </strong>
               </div>
             )}
@@ -477,14 +526,21 @@ function SpinPage() {
               profile layout: golden header with the floating coin, balance,
               and live-preview convert form below). */}
           <aside className="flex flex-col gap-5">
-            <div className="profile-coin-card animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+            <div
+              className="profile-coin-card animate-fade-in-up"
+              style={{ animationDelay: "120ms" }}
+            >
               <div className="profile-coin-banner">
                 <div className="profile-coin-banner-content">
-                  <div className="profile-coin-emoji" aria-hidden="true">🪙</div>
+                  <div className="profile-coin-emoji" aria-hidden="true">
+                    🪙
+                  </div>
                   <div>
                     <p className="profile-coin-banner-label">My Coins</p>
                     <p className="profile-coin-balance">{coins}</p>
-                    <p className="profile-coin-sub">≈ {(coins * rate).toFixed(2)} BDT</p>
+                    <p className="profile-coin-sub">
+                      ≈ {(coins * rate).toFixed(2)} BDT
+                    </p>
                   </div>
                 </div>
               </div>
@@ -492,10 +548,16 @@ function SpinPage() {
                 <p className="profile-convert-title">Convert coins to wallet</p>
                 <p className="profile-convert-rate mb-2">
                   1 coin = <strong>{rate}</strong> BDT
+                  {minConvert > 0 && (
+                    <>
+                      <br />
+                      Minimum: <strong>{minConvert}</strong> coins
+                    </>
+                  )}
                 </p>
                 <input
                   type="number"
-                  min="1"
+                  min={minConvert > 0 ? minConvert : 1}
                   value={convertAmount}
                   onChange={(e) => setConvertAmount(e.target.value)}
                   placeholder="Coins to convert"
@@ -519,26 +581,29 @@ function SpinPage() {
         </div>
 
         {/* History tabs */}
-        <div className="mt-8 animate-fade-in-up" style={{ animationDelay: '180ms' }}>
+        <div
+          className="mt-8 animate-fade-in-up"
+          style={{ animationDelay: "180ms" }}
+        >
           <div className="spin-tabs">
             <button
               type="button"
-              onClick={() => setTab('spin')}
-              className={`spin-tab ${tab === 'spin' ? 'is-active' : ''}`}
+              onClick={() => setTab("spin")}
+              className={`spin-tab ${tab === "spin" ? "is-active" : ""}`}
             >
               <FaHistory /> Spin history
             </button>
             <button
               type="button"
-              onClick={() => setTab('mySpin')}
-              className={`spin-tab ${tab === 'mySpin' ? 'is-active' : ''}`}
+              onClick={() => setTab("mySpin")}
+              className={`spin-tab ${tab === "mySpin" ? "is-active" : ""}`}
             >
               <FaHistory /> My spins
             </button>
             <button
               type="button"
-              onClick={() => setTab('coin')}
-              className={`spin-tab ${tab === 'coin' ? 'is-active' : ''}`}
+              onClick={() => setTab("coin")}
+              className={`spin-tab ${tab === "coin" ? "is-active" : ""}`}
             >
               <FaCoins /> Coin activity
             </button>
@@ -546,7 +611,7 @@ function SpinPage() {
 
           <div className="profile-history-card !rounded-t-none">
             <div className="overflow-x-auto">
-              {tab === 'spin' ? (
+              {tab === "spin" ? (
                 <table className="profile-history-table">
                   <thead>
                     <tr>
@@ -559,24 +624,36 @@ function SpinPage() {
                   </thead>
                   <tbody>
                     {spinHistory.length === 0 && (
-                      <tr><td colSpan={5} className="profile-history-empty">No spins yet.</td></tr>
+                      <tr>
+                        <td colSpan={5} className="profile-history-empty">
+                          No spins yet.
+                        </td>
+                      </tr>
                     )}
                     {spinHistory.map((h, i) => (
-                      <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                      <tr
+                        key={h.id}
+                        className="profile-history-row"
+                        style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                      >
                         <td>{new Date(h.created_at).toLocaleString()}</td>
-                        <td className="text-gray-700">{h.player_name || `User #${h.user_id}`}</td>
+                        <td className="text-gray-700">
+                          {h.player_name || `User #${h.user_id}`}
+                        </td>
                         <td className="font-semibold text-gray-800">
-                          {ReactHtmlParser(String(h.label || ''))}
+                          {ReactHtmlParser(String(h.label || ""))}
                         </td>
                         <td className="capitalize">{h.type}</td>
-                        <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
-                          {h.amount > 0 ? `+${h.amount}` : '—'}
+                        <td
+                          className={`text-right font-bold ${h.amount > 0 ? "text-emerald-600" : "text-gray-500"}`}
+                        >
+                          {h.amount > 0 ? `+${h.amount}` : "—"}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : tab === 'mySpin' ? (
+              ) : tab === "mySpin" ? (
                 <table className="profile-history-table">
                   <thead>
                     <tr>
@@ -588,17 +665,27 @@ function SpinPage() {
                   </thead>
                   <tbody>
                     {mySpinHistory.length === 0 && (
-                      <tr><td colSpan={4} className="profile-history-empty">You haven&apos;t spun yet.</td></tr>
+                      <tr>
+                        <td colSpan={4} className="profile-history-empty">
+                          You haven&apos;t spun yet.
+                        </td>
+                      </tr>
                     )}
                     {mySpinHistory.map((h, i) => (
-                      <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                      <tr
+                        key={h.id}
+                        className="profile-history-row"
+                        style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                      >
                         <td>{new Date(h.created_at).toLocaleString()}</td>
                         <td className="font-semibold text-gray-800">
-                          {ReactHtmlParser(String(h.label || ''))}
+                          {ReactHtmlParser(String(h.label || ""))}
                         </td>
                         <td className="capitalize">{h.type}</td>
-                        <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
-                          {h.amount > 0 ? `+${h.amount}` : '—'}
+                        <td
+                          className={`text-right font-bold ${h.amount > 0 ? "text-emerald-600" : "text-gray-500"}`}
+                        >
+                          {h.amount > 0 ? `+${h.amount}` : "—"}
                         </td>
                       </tr>
                     ))}
@@ -616,16 +703,29 @@ function SpinPage() {
                   </thead>
                   <tbody>
                     {coinHistory.length === 0 && (
-                      <tr><td colSpan={4} className="profile-history-empty">No coin activity yet.</td></tr>
+                      <tr>
+                        <td colSpan={4} className="profile-history-empty">
+                          No coin activity yet.
+                        </td>
+                      </tr>
                     )}
                     {coinHistory.map((h, i) => (
-                      <tr key={h.id} className="profile-history-row" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+                      <tr
+                        key={h.id}
+                        className="profile-history-row"
+                        style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                      >
                         <td>{new Date(h.created_at).toLocaleString()}</td>
                         <td className="capitalize">{h.type}</td>
-                        <td className={`text-right font-bold ${h.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {h.amount > 0 ? '+' : ''}{h.amount}
+                        <td
+                          className={`text-right font-bold ${h.amount > 0 ? "text-emerald-600" : "text-rose-600"}`}
+                        >
+                          {h.amount > 0 ? "+" : ""}
+                          {h.amount}
                         </td>
-                        <td className="text-gray-500">{ReactHtmlParser(String(h.note || ""))}</td>
+                        <td className="text-gray-500">
+                          {ReactHtmlParser(String(h.note || ""))}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

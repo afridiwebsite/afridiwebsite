@@ -126,6 +126,7 @@ function Orders() {
       .then((res) => {
         if (cancelled) return;
         const list = Array.isArray(res?.data?.data) ? res.data.data : [];
+
         setSavedComments(list);
       })
       .catch(() => {
@@ -228,7 +229,7 @@ function Orders() {
     // selectionColumn / actionMenu close over selectionMode-derived state
     // (selectedIds), so we deliberately rebuild them when those change too.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectionMode, orderColumns, selectedIds],
+    [selectionMode, orderColumns, selectedIds, savedComments],
   );
 
   // Stable Table callbacks — these used to be inline arrow functions, which
@@ -369,9 +370,7 @@ function Orders() {
       },
       focusConfirm: false,
       preConfirm: () => {
-        const orderStatus = document.getElementById(
-          "order-status-value",
-        ).value;
+        const orderStatus = document.getElementById("order-status-value").value;
         const note = document.getElementById("order-note");
         // Use innerHTML so saved-template formatting + the toolbar's
         // rich edits all flow through. An empty editor returns "" which

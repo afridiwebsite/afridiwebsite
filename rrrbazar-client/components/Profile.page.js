@@ -200,71 +200,78 @@ function ProfilePage() {
           user at a glance how many of the 4 steps are done. */}
       {verificationEnabled && (
         <div className="container mt-8">
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-              <div>
-                <div className="text-sm text-gray-500">Account verification</div>
-                <div className="text-base font-bold text-gray-800">
-                  {verification?.all_verified ? (
-                    <span className="text-emerald-700">Fully verified ✓</span>
-                  ) : (
-                    <>
-                      {verification?.counts?.verified || 0} of{' '}
-                      {verification?.counts?.total_steps || 4} steps verified
-                    </>
-                  )}
-                </div>
-                {verification?.order_blocked && (
-                  <div className="text-xs text-red-700 mt-1 font-semibold">
-                    Orders are blocked until step 1 is verified.
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push(routes.verification.name)}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded"
-              >
-                Open verification page
-              </button>
-            </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+                    Account verification
+                  </span>
+                  {(() => {
+                    const nextStep = (verification?.steps || []).find(
+                      (s) =>
+                        verification?.submissions?.[String(s.step)]?.status !==
+                        'verified',
+                    )?.step;
+                    const link = nextStep
+                      ? `${routes.verification.name}#step-${nextStep}`
+                      : routes.verification.name;
 
-            {/* Per-step tags. Server already returned a per-step submission
-                map keyed by step number; we walk it to colour each tag.
-                Clicking a tag deep-links to the relevant step form. */}
-            <div className="flex flex-wrap gap-2">
-              {(verification?.steps || []).map((step) => {
-                const sub = verification?.submissions?.[String(step.step)];
-                const status = sub?.status || 'not_started';
-                const styles = {
-                  verified: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                  under_review: 'bg-amber-100 text-amber-800 border-amber-200',
-                  rejected: 'bg-red-100 text-red-800 border-red-200',
-                  not_started: 'bg-gray-100 text-gray-700 border-gray-200',
-                }[status];
-                const label = {
-                  verified: 'Verified',
-                  under_review: 'Under review',
-                  rejected: 'Rejected',
-                  not_started: 'Not started',
-                }[status];
-                return (
-                  <button
-                    type="button"
-                    key={step.step}
-                    onClick={() =>
-                      router.push(`${routes.verification.name}#step-${step.step}`)
-                    }
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${styles}`}
-                    title={`Step ${step.step}: ${step.title}`}
-                  >
-                    <span className="font-bold">#{step.step}</span>
-                    <span>{step.title}</span>
-                    <span className="opacity-60">·</span>
-                    <span>{label}</span>
-                  </button>
-                );
-              })}
+                    return verification?.all_verified ? (
+                      <button
+                        type="button"
+                        onClick={() => router.push(routes.verification.name)}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 hover:bg-emerald-200 transition-colors"
+                      >
+                        ✓ Verified
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => router.push(link)}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border transition-colors ${
+                          (verification?.counts?.verified || 0) > 0
+                            ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200'
+                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                        }`}
+                      >
+                        {verification?.counts?.verified || 0} /{' '}
+                        {verification?.counts?.total_steps || 4}
+                      </button>
+                    );
+                  })()}
+                </div>
+
+                {/* Single progress bar with dynamic coloring */}
+                <div className="h-5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                  <div
+                    className={`h-full transition-all duration-700 ease-out ${
+                      (() => {
+                        const count = verification?.counts?.verified || 0;
+                        if (verification?.all_verified || count >= 4) return 'bg-emerald-500';
+                        if (count === 3) return 'bg-blue-500';
+                        if (count === 2) return 'bg-amber-500';
+                        if (count === 1) return 'bg-rose-500';
+                        return 'bg-gray-300';
+                      })()
+                    }`}
+                    style={{
+                      width: `${
+                        ((verification?.counts?.verified || 0) /
+                          (verification?.counts?.total_steps || 4)) *
+                        100
+                      }%`,
+                    }}
+                  />
+                </div>
+
+                {/* {verification?.order_blocked && !verification?.all_verified && (
+                  <div className="text-[11px] text-rose-600 mt-2 font-medium flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-rose-600 animate-pulse" />
+                    Orders blocked until step 1 is verified
+                  </div>
+                )} */}
+              </div>
             </div>
           </div>
         </div>

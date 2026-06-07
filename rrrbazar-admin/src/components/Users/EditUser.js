@@ -418,7 +418,7 @@ function EditUser(props) {
                     <div>
                       <label
                         className={`inline-flex items-center cursor-pointer select-none mt-2 ${
-                          verification && !step4Verified && !isReseller
+                          verification?.enabled && !step4Verified && !isReseller
                             ? "opacity-60 cursor-not-allowed"
                             : ""
                         }`}
@@ -429,7 +429,7 @@ function EditUser(props) {
                           checked={isReseller}
                           onChange={handleResellerChange}
                           disabled={
-                            verification && !step4Verified && !isReseller
+                            verification?.enabled && !step4Verified && !isReseller
                           }
                         />
                         <span className="ml-2">Reseller</span>
@@ -438,7 +438,7 @@ function EditUser(props) {
                         Resellers earn the per-package Reseller cashback (BDT)
                         on every completed order, on top of the regular
                         coin/cashback reward.
-                        {verification && !step4Verified && (
+                        {verification?.enabled && !step4Verified && (
                           <span className="block text-amber-700 mt-1">
                             Step 4 (Work info) must be verified before this user
                             can be promoted.
@@ -463,7 +463,7 @@ function EditUser(props) {
                       the same imgPath helper as the rest of the admin
                       so uploads from the verification page render
                       inline. */}
-                  {verification && (
+                  {verification?.enabled && (
                     <div className="mt-8 border-t border-gray-200 pt-6">
                       <h4 className="font-bold mb-3">
                         Account verification

@@ -87,7 +87,8 @@ class SpinController {
                 free_spins: freeSpins,
                 coins,
                 coin_to_money_rate: Number(settings.coin_to_money_rate) || 0,
-            };
+                min_convert_coins: Number((settings as any).min_convert_coins) || 0,
+                };
             res.send(response.response);
         } catch (e) {
             console.log(e);

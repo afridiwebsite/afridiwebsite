@@ -90,6 +90,7 @@ class CoinController {
             next_reward: nextReward,
             rewards, // [day1, day2, ..., day7]
             coin_to_money_rate: settings.coin_to_money_rate,
+            min_convert_coins: Number((settings as any).min_convert_coins) || 0,
             // Kept for backward compatibility with the /coins page button label:
             daily_claim_amount: nextReward,
         };
