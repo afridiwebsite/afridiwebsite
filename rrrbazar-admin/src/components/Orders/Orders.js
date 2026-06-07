@@ -17,9 +17,90 @@ const escAttr = (s) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
+// Format a number as a ৳ amount with thousands separators and 2 dp.
+const fmtMoney = (n) =>
+  `৳ ${Number(n || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 function Orders() {
   const [totalDataCount, setTotalDataCount] = useState(null);
   const [savedComments, setSavedComments] = useState([]);
+
+  // "Total Spent" summary card. Mirrors whatever filters are active on the
+  // table below (user id, status, uc/player id, date range) by listening to
+  // the Table's search params. `spentFilters` holds only the filter keys
+  // (pagination is ignored) so paging through results doesn't refetch the
+  // total. `spentRefresh` is bumped after status edits / bulk retries so the
+  // figure stays in step with the rows.
+  const [spentFilters, setSpentFilters] = useState({});
+  const [spentRefresh, setSpentRefresh] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(null);
+  const [spentCount, setSpentCount] = useState(null);
+  const [spentLoading, setSpentLoading] = useState(false);
+  const [spentError, setSpentError] = useState(false);
+
+  const bumpSpent = useCallback(() => setSpentRefresh((n) => n + 1), []);
+
+  // Keep only the spend-relevant filter keys. Return the previous object
+  // when nothing relevant changed (e.g. the admin only flipped the page) so
+  // the fetch effect's identity check skips a redundant request.
+  const onSearchParamsChange = useCallback((params) => {
+    const keys = ["user_id", "order_id", "status", "uc", "start_date", "end_date"];
+    const next = {};
+    keys.forEach((k) => {
+      if (params?.[k]) next[k] = params[k];
+    });
+    setSpentFilters((prev) =>
+      JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+    );
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const qs = Object.entries(spentFilters)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join("&");
+    setSpentLoading(true);
+    setSpentError(false);
+    axiosInstance
+      .get(`/admin/orders/total-spent${qs ? `?${qs}` : ""}`)
+      .then((res) => {
+        if (cancelled) return;
+        const d = res?.data?.data || {};
+        setTotalSpent(Number(d.total_spent || 0));
+        setSpentCount(Number(d.order_count || 0));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSpentError(true);
+        setTotalSpent(null);
+        setSpentCount(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSpentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [spentFilters, spentRefresh]);
+
+  // Human-readable description of the filters the card is summarising.
+  const spentScope = (() => {
+    const parts = [];
+    if (spentFilters.user_id) parts.push(`user #${spentFilters.user_id}`);
+    if (spentFilters.uc) parts.push(`"${spentFilters.uc}"`);
+    if (spentFilters.status) parts.push(spentFilters.status);
+    if (spentFilters.start_date || spentFilters.end_date) {
+      parts.push(
+        `${spentFilters.start_date || "…"} → ${spentFilters.end_date || "…"}`,
+      );
+    }
+    return parts.length
+      ? parts.join(" · ")
+      : "all paid orders (excluding cancelled)";
+  })();
   // Bulk-retry selection mode: when on, each retryable row shows a
   // leading checkbox and a floating action bar surfaces the count + a
   // "Retry selected" button. Only orders that have at least one
@@ -109,6 +190,7 @@ function Orders() {
       );
       exitSelectionMode();
       reloadRefFunc.current && reloadRefFunc.current();
+      bumpSpent();
     } catch (err) {
       toast.error(getErrors(err, false, true), toastDefault);
     } finally {
@@ -137,7 +219,10 @@ function Orders() {
     };
   }, []);
 
-  const reloadTable = () => reloadRefFunc.current && reloadRefFunc.current();
+  const reloadTable = () => {
+    reloadRefFunc.current && reloadRefFunc.current();
+    bumpSpent();
+  };
 
   let actionMenu = {
     id: "edit",
@@ -403,6 +488,7 @@ function Orders() {
           success: {
             render() {
               reloadRefFunc.current && reloadRefFunc.current();
+              bumpSpent();
               return "Order updated successfully";
             },
           },
@@ -414,6 +500,41 @@ function Orders() {
 
   return (
     <div className="md:px-5">
+      {/* Total Spent summary — reflects the filters active on the table
+          below (user id, status, uc/player id, date range). */}
+      <div className="bg-white py-5 mb-5 px-5">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Total Spent
+            </p>
+            <p className="text-3xl font-bold text-gray-800 mt-1">
+              {spentLoading
+                ? "…"
+                : spentError
+                  ? "—"
+                  : fmtMoney(totalSpent)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {spentError ? (
+                "Could not load total"
+              ) : (
+                <>
+                  {spentCount != null && (
+                    <span className="font-medium text-gray-600">
+                      {spentCount} order{spentCount === 1 ? "" : "s"}
+                    </span>
+                  )}{" "}
+                  · {spentScope}
+                </>
+              )}
+            </p>
+          </div>
+          <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl font-bold">
+            ৳
+          </div>
+        </div>
+      </div>
       <div className="bg-white py-5 mb-5 px-5">
         {/* Bulk retry controls live above the table so they don't
                     conflict with the per-row action menu. Enter selection
@@ -467,6 +588,7 @@ function Orders() {
           disableGlobalSearch
           selectError={selectError}
           columns={withActionMenu}
+          onSearchParamsChange={onSearchParamsChange}
         />
       </div>
     </div>

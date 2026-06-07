@@ -42,7 +42,11 @@ function Table({
     hidePrevButton,
     hideNextButton,
     customGlobalSearch,
-    enableLocalSearch
+    enableLocalSearch,
+    // Optional: fired whenever the active search params change (filters or
+    // pagination). Lets an external widget — e.g. the "Total Spent" card on
+    // the Orders page — stay in sync with the table's current filters.
+    onSearchParamsChange
 }) {
     if (!tableId) throw new Error('An unique table id is required');
 
@@ -202,6 +206,16 @@ function Table({
     useEffect(() => {
         reloadRefFunc.current = toggleRefreshFetcher
     }, [])
+
+    // Surface the active search params to an optional parent listener so
+    // sibling widgets can mirror the table's filters. Guarded by a typeof
+    // check; `onSearchParamsChange` must be memoised by the caller (it's
+    // in the dep array) to avoid an effect loop.
+    useEffect(() => {
+        if (typeof onSearchParamsChange === 'function') {
+            onSearchParamsChange(searchParams);
+        }
+    }, [searchParams, onSearchParamsChange])
 
     const tableInstance = useTable(
         {

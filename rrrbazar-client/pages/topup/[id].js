@@ -1004,7 +1004,7 @@ function TopupOrderPage() {
                                             {String(
                                               productInfo?.quantity_prefix ||
                                                 "",
-                                            ).trim() || "Quantity"}
+                                            ).trim() || "$"}
                                           </label>
                                           <input
                                             id="topup-quantity"

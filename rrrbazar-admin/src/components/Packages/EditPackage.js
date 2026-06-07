@@ -747,7 +747,7 @@ function EditPackage(props) {
                     </div>
                   </div>
 
-                  <div className="form_grid">
+                  <div className="form_grid mt-3">
                     <div>
                       <label className="inline-flex items-center cursor-pointer select-none">
                         <input
@@ -759,9 +759,7 @@ function EditPackage(props) {
                           checked={allowQuantityOn}
                           onChange={(e) => setAllowQuantityOn(e.target.checked)}
                         />
-                        <span className="ml-2">
-                          Allow quantity input on storefront
-                        </span>
+                        <span className="ml-2">Dollar input system</span>
                       </label>
                     </div>
                   </div>

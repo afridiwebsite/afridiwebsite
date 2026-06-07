@@ -136,7 +136,9 @@ function AddPackage(props) {
 
   const PLAYER_ID_TITLE = "Player ID";
   const isPlayerIdTitle = (t) =>
-    String(t || "").trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
+    String(t || "")
+      .trim()
+      .toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
   const newInputRow = () => ({
     _key: Math.random().toString(36).slice(2),
     title: "",
@@ -231,7 +233,9 @@ function AddPackage(props) {
       }
     }
     if (hasCustomInputs) {
-      const playerIdRows = packageInputs.filter((it) => isPlayerIdTitle(it.title));
+      const playerIdRows = packageInputs.filter((it) =>
+        isPlayerIdTitle(it.title),
+      );
       if (playerIdRows.length > 1) {
         toast.error(
           `Only one input can use the reserved title "${PLAYER_ID_TITLE}".`,
@@ -292,9 +296,7 @@ function AddPackage(props) {
         logo: path,
         reward_type: rewardType,
         coin_value:
-          rewardType === "coin"
-            ? Number(coin_value.current?.value || 0)
-            : 0,
+          rewardType === "coin" ? Number(coin_value.current?.value || 0) : 0,
         cashback_amount:
           rewardType === "money" ? Number(cashbackAmount) || 0 : 0,
         reseller_cashback: Number(resellerCashback) || 0,
@@ -349,24 +351,21 @@ function AddPackage(props) {
           }
 
           try {
-            await axiosInstance.post(
-              `/admin/topup-package/${newId}/inputs`,
-              {
-                inputs: hasCustomInputs
-                  ? packageInputs.map((it, idx) => ({
-                      title: it.title,
-                      verify_type: it.verify_type || "none",
-                      verify_player_name:
-                        it.verify_type && it.verify_type !== "none" ? 1 : 0,
-                      verify_url: it.verify_url || "",
-                      verify_game: it.verify_game || "",
-                      api_token: it.api_token || "",
-                      region_lock: it.region_lock || "",
-                      serial: idx,
-                    }))
-                  : [],
-              },
-            );
+            await axiosInstance.post(`/admin/topup-package/${newId}/inputs`, {
+              inputs: hasCustomInputs
+                ? packageInputs.map((it, idx) => ({
+                    title: it.title,
+                    verify_type: it.verify_type || "none",
+                    verify_player_name:
+                      it.verify_type && it.verify_type !== "none" ? 1 : 0,
+                    verify_url: it.verify_url || "",
+                    verify_game: it.verify_game || "",
+                    api_token: it.api_token || "",
+                    region_lock: it.region_lock || "",
+                    serial: idx,
+                  }))
+                : [],
+            });
           } catch (e) {
             /* package is already saved; ignore */
           }
@@ -606,7 +605,7 @@ function AddPackage(props) {
                     </div>
                   </div>
 
-                  <div className="form_grid">
+                  <div className="form_grid mt-3">
                     <div>
                       <label className="inline-flex items-center cursor-pointer select-none">
                         <input
@@ -618,9 +617,7 @@ function AddPackage(props) {
                           checked={allowQuantityOn}
                           onChange={(e) => setAllowQuantityOn(e.target.checked)}
                         />
-                        <span className="ml-2">
-                          Allow quantity input on storefront
-                        </span>
+                        <span className="ml-2">Dollar input system</span>
                       </label>
                     </div>
                   </div>
@@ -673,18 +670,10 @@ function AddPackage(props) {
                         onChange={(e) => setBotType(e.target.value)}
                       >
                         <option value="none">None — manual fulfilment</option>
-                        <option value="uc-bot">
-                          UC-bot 
-                        </option>
-                        <option value="shell-bot">
-                          Shell-bot 
-                        </option>
-                        <option value="like-bot">
-                          Like-bot 
-                        </option>
-                        <option value="pubg-bot">
-                          GamersPay
-                        </option>
+                        <option value="uc-bot">UC-bot</option>
+                        <option value="shell-bot">Shell-bot</option>
+                        <option value="like-bot">Like-bot</option>
+                        <option value="pubg-bot">GamersPay</option>
                       </select>
 
                       {(botType === "uc-bot" ||
@@ -750,9 +739,7 @@ function AddPackage(props) {
                         <>
                           <div className="form_grid">
                             <div>
-                              <label htmlFor="pubg_key">
-                                PUBG-bot API key
-                              </label>
+                              <label htmlFor="pubg_key">PUBG-bot API key</label>
                               <input
                                 id="pubg_key"
                                 type="text"
@@ -945,7 +932,9 @@ function AddPackage(props) {
                     {hasCustomInputs && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between mb-2">
-                          <label className="font-semibold">Order form inputs</label>
+                          <label className="font-semibold">
+                            Order form inputs
+                          </label>
                           <button
                             type="button"
                             onClick={addPkgInputRow}
@@ -977,7 +966,9 @@ function AddPackage(props) {
                                     placeholder='e.g. "Player ID", "Server", "Username"'
                                     value={row.title}
                                     onChange={(e) =>
-                                      updatePkgInputAt(idx, { title: e.target.value })
+                                      updatePkgInputAt(idx, {
+                                        title: e.target.value,
+                                      })
                                     }
                                   />
                                 </div>
@@ -1058,7 +1049,10 @@ function AddPackage(props) {
                                         }
                                       >
                                         {REGION_OPTIONS.map((opt) => (
-                                          <option key={opt.value} value={opt.value}>
+                                          <option
+                                            key={opt.value}
+                                            value={opt.value}
+                                          >
                                             {opt.label}
                                           </option>
                                         ))}
@@ -1080,7 +1074,9 @@ function AddPackage(props) {
                                           })
                                         }
                                       >
-                                        <option value="">— Select game —</option>
+                                        <option value="">
+                                          — Select game —
+                                        </option>
                                         {GAMERSPAY_GAMES.map((g) => (
                                           <option key={g} value={g}>
                                             {g}

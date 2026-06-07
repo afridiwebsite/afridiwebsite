@@ -108,6 +108,9 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/tutorial/delete/:id', method: 'POST' },
     // Bulk / single bot-dispatch retry (admin Orders page action menu).
     { path: '/orders/bot-retry',    method: 'POST' },
+    // Aggregate "Total Spent" card on top of the admin Orders page —
+    // sums order amounts for the current filters (user / date range / status).
+    { path: '/orders/total-spent',  method: 'GET'  },
     // PUBG-bot catalogue proxy — populates the SKU dropdown on the
     // Add/Edit Package form by forwarding to GamersPay's
     // /api/v1/products/{game} with the admin's X-API-Key.

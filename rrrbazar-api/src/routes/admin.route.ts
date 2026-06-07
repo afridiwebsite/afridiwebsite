@@ -30,6 +30,7 @@ const router = express();
 router.get('/publish-permission', auth, adminController.publishPermission)
 //router.get('/mmdatab', authController.getTokenData)
 router.get('/orders', auth, adminController.getOrders) // Get all orders
+router.get('/orders/total-spent', auth, adminController.getOrdersTotalSpent) // Aggregate total spent for the current Orders filters
 router.post('/order/update-order-status/:id', auth, adminController.updateOrderStatus) // Get all orders
 router.post('/orders/bot-retry', auth, adminController.retryBotDispatches) // Retry failed bot dispatches for one or many orders
 router.post('/pubg-bot/products', auth, adminController.getPubgBotProducts) // Proxy GamersPay product catalogue for the Add/Edit Package SKU dropdown

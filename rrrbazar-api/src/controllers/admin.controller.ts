@@ -71,6 +71,75 @@ const htmlToPlain = (html: string) =>
 const PLAYER_ID_TITLE = 'Player ID';
 const isPlayerIdTitle = (t: any) =>
   String(t || '').trim().toLowerCase() === PLAYER_ID_TITLE.toLowerCase();
+
+// Shared admin-orders filter builder. Both the paginated list endpoint
+// (getOrders) and the aggregate total-spent endpoint run off the exact
+// same WHERE clause so the headline figure can never disagree with the
+// rows the admin is looking at. Mirrors the query params accepted by the
+// admin Orders search UI: user_id, order_id, status, uc, start_date,
+// end_date. `payment_status = 1` is always applied so unpaid/abandoned
+// rows never count.
+async function buildAdminOrderFilter(query: any) {
+  const { user_id, order_id, status, uc, start_date, end_date } = query;
+  const filter: any = {};
+
+  filter.payment_status = 1;
+
+  if (user_id) filter.user_id = user_id;
+  if (order_id) filter.id = order_id;
+  if (status) filter.status = status;
+
+  // Date range — both ends inclusive, both optional. The admin filter UI
+  // sends ISO YYYY-MM-DD strings; we anchor end_date to 23:59:59 so the
+  // same-day case (start == end) returns rows from the whole day.
+  if (start_date || end_date) {
+    const range: any = {};
+    if (start_date) {
+      const s = new Date(String(start_date));
+      if (!isNaN(s.getTime())) {
+        s.setHours(0, 0, 0, 0);
+        range[Op.gte] = s;
+      }
+    }
+    if (end_date) {
+      const e = new Date(String(end_date));
+      if (!isNaN(e.getTime())) {
+        e.setHours(23, 59, 59, 999);
+        range[Op.lte] = e;
+      }
+    }
+    if (Object.getOwnPropertySymbols(range).length > 0) {
+      filter.created_at = range;
+    }
+  }
+
+  if (uc) {
+    // Single search box on the admin orders page: matches the legacy
+    // `Order.uc` field, the `Order.playerid` field, OR a voucher code on
+    // the joined Voucher table. Pre-resolving the matching voucher
+    // order_ids keeps the filter compatible with `Order.count` (which
+    // can't OR across joined columns directly).
+    const voucherOrderIds = (
+      await Voucher.findAll({
+        where: { data: { [Op.like]: `%${uc}%` } },
+        attributes: ['order_id'],
+        raw: true,
+      })
+    )
+      .map((v: any) => v.order_id)
+      .filter((id: any) => id != null);
+    const orClauses: any[] = [
+      { uc: { [Op.like]: `%${uc}%` } },
+      { playerid: { [Op.like]: `%${uc}%` } },
+    ];
+    if (voucherOrderIds.length) {
+      orClauses.push({ id: { [Op.in]: voucherOrderIds } });
+    }
+    filter[Op.or] = orClauses;
+  }
+
+  return filter;
+}
 /******************************************************************************
  *                              User Controller
  ******************************************************************************/
@@ -84,70 +153,7 @@ class AdminController {
   async getOrders(req: express.Request, res: express.Response) {
     const response = new responseUtils()
     try {
-      const { user_id, order_id, status, uc, start_date, end_date } = req.query;
-      const filter: any = {};
-
-      filter.payment_status = 1
-
-      if (user_id) {
-        filter.user_id = user_id
-      }
-      if (order_id) {
-        filter.id = order_id
-      }
-
-      if (status) {
-        filter.status = status
-      }
-
-      // Date range — both ends inclusive, both optional. The admin filter
-      // UI sends ISO YYYY-MM-DD strings; we anchor end_date to 23:59:59 so
-      // the same-day case (start == end) returns rows from the whole day.
-      if (start_date || end_date) {
-        const range: any = {};
-        if (start_date) {
-          const s = new Date(String(start_date));
-          if (!isNaN(s.getTime())) {
-            s.setHours(0, 0, 0, 0);
-            range[Op.gte] = s;
-          }
-        }
-        if (end_date) {
-          const e = new Date(String(end_date));
-          if (!isNaN(e.getTime())) {
-            e.setHours(23, 59, 59, 999);
-            range[Op.lte] = e;
-          }
-        }
-        if (Object.getOwnPropertySymbols(range).length > 0) {
-          filter.created_at = range;
-        }
-      }
-
-      if (uc) {
-        // Single search box on the admin orders page: matches the legacy
-        // `Order.uc` field, the `Order.playerid` field, OR a voucher code
-        // on the joined Voucher table. Pre-resolving the matching voucher
-        // order_ids keeps the filter compatible with `Order.count` (which
-        // can't OR across joined columns directly).
-        const voucherOrderIds = (
-          await Voucher.findAll({
-            where: { data: { [Op.like]: `%${uc}%` } },
-            attributes: ['order_id'],
-            raw: true,
-          })
-        )
-          .map((v: any) => v.order_id)
-          .filter((id: any) => id != null);
-        const orClauses: any[] = [
-          { uc: { [Op.like]: `%${uc}%` } },
-          { playerid: { [Op.like]: `%${uc}%` } },
-        ];
-        if (voucherOrderIds.length) {
-          orClauses.push({ id: { [Op.in]: voucherOrderIds } });
-        }
-        filter[Op.or] = orClauses;
-      }
+      const filter = await buildAdminOrderFilter(req.query);
 
       // Pending orders always surface first; within each group, newest first.
       let order_by_str = sequelize.literal(
@@ -205,6 +211,56 @@ class AdminController {
 
 
       response.data = { orders, order_count: orderCount };
+
+      res.send(response.getResponse())
+    } catch (error) {
+      console.log(error);
+      response.message = 'Internal Error! Try again';
+      response.status = 400;
+      response.success = false
+      return res.status(400).send(response.response);
+    }
+  }
+
+  // GET /admin/orders/total-spent
+  //
+  // Aggregate companion to getOrders: returns the summed `amount` (what
+  // was debited from the user's wallet) plus a matching order count for
+  // the same filter set the Orders page exposes — user_id, date range,
+  // status, uc/playerid. Powers the "Total Spent" card on top of the
+  // admin Orders page so an admin can see, e.g., how much a single user
+  // spent in a date range.
+  //
+  // Cancelled orders are excluded by default because their amount was
+  // refunded to the wallet on cancel and therefore isn't money actually
+  // spent. If the admin explicitly filters by `status` (including
+  // `cancel`), we honour that instead so the card always agrees with the
+  // table below it.
+  async getOrdersTotalSpent(req: express.Request, res: express.Response) {
+    const response = new responseUtils()
+    try {
+      const filter = await buildAdminOrderFilter(req.query);
+
+      if (!req.query.status) {
+        filter.status = { [Op.ne]: 'cancel' };
+      }
+
+      const result: any = await Order.findOne({
+        where: filter,
+        attributes: [
+          [
+            sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('amount')), 0),
+            'total_spent',
+          ],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'order_count'],
+        ],
+        raw: true,
+      });
+
+      response.data = {
+        total_spent: Number(result?.total_spent || 0),
+        order_count: Number(result?.order_count || 0),
+      };
 
       res.send(response.getResponse())
     } catch (error) {

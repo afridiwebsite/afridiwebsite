@@ -167,16 +167,7 @@ function OrderPage() {
                           label honours the product's quantity_prefix so a
                           bulk-dollar order reads "Dollars: 50" instead of
                           a generic "Quantity: 50". */}
-                      {Number(order?.quantity) > 1 && (
-                        <p className="_subtitle1">
-                          <span className="font-semibold mr-1.5">
-                            {String(product?.quantity_prefix || "").trim() ||
-                              "Quantity"}
-                            :
-                          </span>{" "}
-                          {order.quantity}
-                        </p>
-                      )}
+
                       {order?.playerid && (
                         <p className="_subtitle1">
                           <span className="font-semibold mr-1.5">
@@ -190,6 +181,8 @@ function OrderPage() {
                           Package Name:
                         </span>{" "}
                         {order?.name}
+                        &nbsp;
+                        {Number(order?.quantity) > 1 && <>{order.quantity}</>}
                       </p>
 
                       {hasVouchers && (
