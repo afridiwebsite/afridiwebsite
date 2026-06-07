@@ -547,7 +547,7 @@ export async function userCanOrder(user_id: number): Promise<{
   if (!data.phone || !data.phone_verified_at) {
     return {
       ok: false,
-      reason: "Verify your phone number before placing an order.",
+      reason: "অর্ডার করার আগে আপনার মোবাইল নম্বরটি যাচাই করুন।",
     };
   }
   return { ok: true };
