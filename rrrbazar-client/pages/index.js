@@ -10,6 +10,7 @@ import api from "../api/api";
 import ActivityIndicator from "../components/ActivityIndicator";
 import Game from "../components/game";
 import MarqueeTicker from "../components/MarqueeTicker";
+import SEO from "../components/SEO";
 import { hasData, imgPath } from "../helpers/helpers";
 
 function SectionTitle({ children }) {
@@ -305,6 +306,10 @@ function Home({
 
   return (
     <div className="mb-20">
+      <SEO
+        canonicalPath="/"
+        description="Bangladesh’s #1 game top-up shop. Instantly buy Free Fire diamonds, PUBG Mobile UC, Mobile Legends diamonds, gift cards and game credits with bKash, Nagad & Rocket. Fast delivery across Bangladesh — Dhaka, Chattogram, Sylhet & more."
+      />
       {renderNotice()}
 
       {hasData(banners) && (

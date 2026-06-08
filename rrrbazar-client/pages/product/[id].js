@@ -1,4 +1,3 @@
-import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
@@ -10,7 +9,8 @@ import api, { getUserProfile } from "../../api/api";
 import ActivityIndicator from "../../components/ActivityIndicator";
 import Alert from "../../components/Alert";
 import Button from "../../components/Button";
-import { __page_title_end } from "../../config/globalConfig";
+import SEO from "../../components/SEO";
+import { SITE_URL } from "../../config/seoConfig";
 import reactQueryConfig from "../../config/reactQueryConfig";
 import routes from "../../config/routes";
 import toastifyConfig from "../../config/toastifyConfig";
@@ -93,13 +93,45 @@ function SingleProductPage({ product }) {
       }
     });
   };
+  // Plain-text, length-capped description for the meta/OG tags.
+  const metaDescription = product?.description
+    ? String(product.description)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 160)
+    : `Buy ${product?.name || "game top-up"} instantly in Bangladesh with bKash, Nagad & Rocket on RRR-Bazar. Fast, secure delivery.`;
+
+  const productImage = product?.image ? imgPath(product.image) : undefined;
+
+  const productJsonLd = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        description: metaDescription,
+        image: productImage,
+        brand: { "@type": "Brand", name: "RRR-Bazar" },
+        offers: {
+          "@type": "Offer",
+          price: product.sale_price,
+          priceCurrency: "BDT",
+          availability: "https://schema.org/InStock",
+          url: `${SITE_URL}/product/${product.id}`,
+          areaServed: { "@type": "Country", name: "Bangladesh" },
+        },
+      }
+    : undefined;
+
   return (
     <>
-      <Head>
-        <title>
-          {product?.name} {__page_title_end}
-        </title>
-      </Head>
+      <SEO
+        title={product?.name}
+        description={metaDescription}
+        image={productImage}
+        type="product"
+        jsonLd={productJsonLd}
+      />
       {serverError && (
         <div className="container py-5 border-b border-gray-200">
           <Alert type="error" title={serverError} />

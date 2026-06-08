@@ -1,0 +1,19 @@
+# robots.txt — RRR-Bazar (https://rrrbazar.com)
+User-agent: *
+Allow: /
+
+# Private / authenticated areas — keep out of search results
+Disallow: /profile
+Disallow: /settings
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /add-money
+Disallow: /withdraw-earn-wallet
+Disallow: /spin
+Disallow: /api/
+
+# On-site search result pages (avoid thin/duplicate indexing)
+Disallow: /search
+
+Sitemap: https://rrrbazar.com/sitemap.xml

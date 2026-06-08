@@ -21,6 +21,12 @@ import {
   __site_name_2,
   __site_name_label,
 } from "../config/globalConfig";
+import {
+  geoConfig,
+  organizationJsonLd,
+  seoConfig,
+  websiteJsonLd,
+} from "../config/seoConfig";
 import routes from "../config/routes";
 import {
   getLocal,
@@ -247,6 +253,61 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
         <title>
           {__site_name_2} | {__site_name_label}
         </title>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        />
+
+        {/* Site-wide SEO defaults. Pages render <SEO /> with matching `key`
+            props, so any of these get overridden per page when provided. */}
+        <meta name="description" content={seoConfig.description} key="description" />
+        <meta name="keywords" content={seoConfig.keywords} key="keywords" />
+        <meta name="robots" content="index, follow" key="robots" />
+
+        {/* Open Graph defaults */}
+        <meta property="og:type" content="website" key="og:type" />
+        <meta property="og:site_name" content={seoConfig.siteName} key="og:site_name" />
+        <meta property="og:title" content={seoConfig.defaultTitle} key="og:title" />
+        <meta property="og:description" content={seoConfig.description} key="og:description" />
+        <meta property="og:image" content={seoConfig.ogImage} key="og:image" />
+        <meta property="og:locale" content={seoConfig.locale} key="og:locale" />
+        <meta
+          property="og:locale:alternate"
+          content={seoConfig.localeAlternate}
+          key="og:locale:alternate"
+        />
+
+        {/* Twitter defaults */}
+        <meta name="twitter:card" content="summary_large_image" key="twitter:card" />
+        <meta name="twitter:site" content={seoConfig.twitterHandle} key="twitter:site" />
+        <meta name="twitter:title" content={seoConfig.defaultTitle} key="twitter:title" />
+        <meta name="twitter:description" content={seoConfig.description} key="twitter:description" />
+        <meta name="twitter:image" content={seoConfig.ogImage} key="twitter:image" />
+
+        {/* Geo / location — Bangladesh */}
+        <meta name="geo.region" content={geoConfig.region} key="geo.region" />
+        <meta name="geo.placename" content={geoConfig.placename} key="geo.placename" />
+        <meta
+          name="geo.position"
+          content={`${geoConfig.latitude};${geoConfig.longitude}`}
+          key="geo.position"
+        />
+        <meta
+          name="ICBM"
+          content={`${geoConfig.latitude}, ${geoConfig.longitude}`}
+          key="ICBM"
+        />
+
+        {/* Structured data — storefront + on-site search */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+
         <link rel="manifest" href="/manifest.json" />
         <link rel="shortcut icon" href={"/favico.ico"} />
         <link rel="icon" href={"/favico.ico"} />
