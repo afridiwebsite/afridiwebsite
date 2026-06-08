@@ -1306,7 +1306,7 @@ function TopupOrderPage() {
                                     Wallet Pay
                                   </div>
                                 </button>
-                                <button
+                                {/* <button
                                   type="button"
                                   className={`topup-pay-card ${
                                     selectedPaymentMethod === "auto_payment"
@@ -1336,7 +1336,7 @@ function TopupOrderPage() {
                                   <div className="topup-pay-card-cta">
                                     Instant Pay
                                   </div>
-                                </button>
+                                </button> */}
                               </div>
 
                               {/* Account-balance + required-amount info rows
