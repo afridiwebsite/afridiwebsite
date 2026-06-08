@@ -174,6 +174,7 @@ class AdminController {
         include: [
           {
             model: Admin,
+            required: false,
             attributes: ['first_name', 'last_name']
           },
           {
@@ -963,16 +964,12 @@ class AdminController {
 
       const bindPackageIdInArray = packagesForAdmin.map(pack => pack.topup_package_id.toString())
 
-      if (bindPackageIdInArray.length <= 0) {
-        response.message = 'No order found';
-        response.status = 400;
-        response.success = true;
-        return res.status(400).send(response.response);
-      }
-
       const orderCount = await Order.count({
         where: {
-          topuppackage_id: bindPackageIdInArray,
+          [Op.or]: [
+            { topuppackage_id: bindPackageIdInArray },
+            { topuppackage_id: null }
+          ],
           ...filter
         },
       })
@@ -981,7 +978,10 @@ class AdminController {
         offset: (page - 1) * limit,
         limit: limit,
         where: {
-          topuppackage_id: bindPackageIdInArray,
+          [Op.or]: [
+            { topuppackage_id: bindPackageIdInArray },
+            { topuppackage_id: null }
+          ],
           ...filter
         },
         order: [
@@ -990,8 +990,28 @@ class AdminController {
         include: [
           {
             model: Admin,
+            required: false,
             attributes: ['first_name', 'last_name']
-          }
+          },
+          {
+            model: Voucher,
+            required: false,
+            attributes: ['id', 'data', 'is_used'],
+          },
+          {
+            model: TopupPackage,
+            required: false,
+            attributes: ['id', 'name', 'is_shell', 'shell', 'tags'],
+          },
+          {
+            model: BotDispatch,
+            required: false,
+            attributes: [
+              'id', 'voucher_id', 'voucher_package_id', 'tag', 'code',
+              'package_name_sent', 'bot_url', 'status', 'error_reason',
+              'attempt_count', 'last_attempted_at', 'created_at', 'updated_at',
+            ],
+          },
         ]
       })
 
