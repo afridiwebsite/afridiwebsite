@@ -2816,106 +2816,104 @@ class UserController {
               status: order.status,
             });
 
-            // Voucher-pool product? Emit a code and complete the order
-            // before falling into the UC/bot branch below. No refund path
-            // here — payment is already captured; on empty pool the order
-            // is left pending with a brief note so admin can intervene.
-            try {
-              const orderProduct = await TopupProduct.findByPk(
-                order.product_id,
-              );
-              if (orderProduct && (orderProduct as any).is_voucher == 1) {
-                // Single-unit emit (webhook metadata has no quantity).
-                const voucher = await Voucher.findOne({
-                  where: {
-                    is_used: 0,
-                    package_id: order.topuppackage_id,
-                  },
-                  order: [["id", "ASC"]],
-                });
-                if (voucher) {
-                  voucher.is_used = 1;
-                  voucher.order_id = order.id;
-                  await voucher.save();
-                  order.status = "completed";
-                  order.brief_note = `Voucher: ${voucher.data}`;
-                  await order.save();
-                } else {
-                  (order as any).details =
-                    "<span style='color:red;'><strong>Voucher pool empty</strong> — needs manual fulfilment</span>";
-                  await order.save();
-                }
-              }
-            } catch (e) {
-              console.error("webhook voucher emit failed", e);
-            }
-
-            // Coin reward is deferred to checkOrder (awarded only after the
-            // bot confirms delivery). Continue with the bot dispatch below.
+            // Fulfil the order exactly like the wallet ("pay") path does, so
+            // auto_payment orders dispatch to the SAME bot the package is
+            // configured for (uc-bot / shell-bot / like-bot / pubg-bot /
+            // legacy UniPin) instead of only the legacy UniPin branch this
+            // webhook used to handle. Payment is already captured here, so we
+            // never reject — dispatchOrder()/handleVoucherProduct() soft-fail
+            // (park the order pending with a note) on bad config or empty
+            // pools, matching the storefront behaviour.
             try {
               const topupPackage = await TopupPackage.findByPk(
                 order.topuppackage_id,
               );
-              if (topupPackage) {
-                // AUTO BOT SET IN CODE START
-                if (order.status == "pending" && topupPackage.uc > 0) {
-                  const store_unipin_auto = await StoreUnipin.findOne({
-                    where: {
-                      status: 1,
-                      uc: topupPackage.uc,
-                    },
-                    order: Sequelize.literal("RAND()"),
-                  });
-                  if (store_unipin_auto) {
-                    const myunipincode = store_unipin_auto.code;
-                    store_unipin_auto.status = order.id;
-                    await store_unipin_auto.save();
+              const orderProduct = await TopupProduct.findByPk(
+                order.product_id,
+              );
 
-                    const tagsHere = parseTags((topupPackage as any).tags);
-                    const shellValueHere = String(
-                      (topupPackage as any).shell || "",
-                    ).trim();
-                    const shellActiveHere =
-                      Number((topupPackage as any).is_shell) === 1 &&
-                      shellValueHere.length > 0 &&
-                      tagsHere.length > 0;
-                    const dispatchList = shellActiveHere ? tagsHere : [""];
-                    let botStatus: any = null;
-                    for (let i = 0; i < dispatchList.length; i++) {
-                      const tagValue = dispatchList[i];
-                      const { ok } = await createAndSendDispatch({
-                        order_id: order.id,
-                        player_id: order.playerid,
-                        uc: topupPackage.uc,
-                        bot_url: (topupPackage as any).bot_url || "",
-                        code: shellActiveHere ? shellValueHere : myunipincode,
-                        package_name_sent: shellActiveHere
-                          ? tagValue
-                          : topupPackage.name,
-                        tag: shellActiveHere ? tagValue : null,
-                      });
-                      botStatus = ok;
-                      if (!ok) break;
-                    }
-                    if (botStatus) {
-                      order.status = "In Progress";
-                      order.uc = myunipincode;
-                      order.ingamepassword = botStatus;
-                    } else {
-                      // Bot rejected — return the voucher and reset the order
-                      // to pending so it can be retried or refunded.
-                      store_unipin_auto.status = 1;
-                      await store_unipin_auto.save();
-                      order.status = "pending";
-                      order.uc = "";
-                    }
+              if (!topupPackage) {
+                console.error(
+                  "[uddoktaPay webhook] package not found — cannot fulfil",
+                  { order_id: order.id, topuppackage_id: order.topuppackage_id },
+                );
+              } else {
+                const isVoucherProduct =
+                  !!orderProduct && (orderProduct as any).is_voucher == 1;
+                const quantity = Math.max(
+                  1,
+                  Number((order as any).quantity) || 1,
+                );
+
+                // Mirror the wallet path's tracked-stock decrement (the
+                // webhook previously skipped this, so auto_payment orders
+                // never reduced stock). Whole-unit deduction, floored at 0.
+                if (Number((topupPackage as any).stock_tracking) === 1) {
+                  const stockNow = Number((topupPackage as any).stock_quantity) || 0;
+                  (topupPackage as any).stock_quantity = Math.max(
+                    0,
+                    stockNow - Math.ceil(quantity),
+                  );
+                  await (topupPackage as any).save();
+                }
+
+                // Orders that complete inline at creation (type=2 / UniPin
+                // direct) get their coin + cashback reward now — they never
+                // reach the checkOrder callback. Idempotent helpers.
+                if (order.status === "completed") {
+                  await syncOrderCoinsForStatus(order, "completed");
+                  await syncOrderCashbackForStatus(order, "completed");
+                  const rewardHtml = buildRewardNoteHtml({
+                    rewardType: (topupPackage as any).reward_type,
+                    coinValue: (topupPackage as any).coin_value,
+                    cashbackAmount: (topupPackage as any).cashback_amount,
+                    resellerCashback: (topupPackage as any).reseller_cashback,
+                    isReseller:
+                      String((user as any)?.user_type || "").toLowerCase() ===
+                      "reseller",
+                    quantity,
+                  });
+                  if (rewardHtml) {
+                    order.brief_note =
+                      stripRewardNote(order.brief_note) + rewardHtml;
                     await order.save();
                   }
                 }
-                // AUTO BOT SET IN CODE END
+
+                if (isVoucherProduct) {
+                  // Voucher-pool product — emit `quantity` codes from the
+                  // pool and complete the order inline (handles exhaustion).
+                  const { responseMessage } = await handleVoucherProduct({
+                    order,
+                    topupPackage,
+                    user,
+                    quantity,
+                  });
+                  console.log("[uddoktaPay webhook] voucher order fulfilled", {
+                    order_id: order.id,
+                    order_status: order.status,
+                    response_message: responseMessage,
+                  });
+                } else {
+                  // Per-bot dispatch — routes to the package's configured bot.
+                  const { responseMessage } = await dispatchOrder({
+                    order,
+                    topupPackage,
+                    playerid: order.playerid,
+                  });
+                  console.log("[uddoktaPay webhook] order dispatched to bot", {
+                    order_id: order.id,
+                    topuppackage_id: order.topuppackage_id,
+                    order_status: order.status,
+                    response_message: responseMessage,
+                  });
+                }
               }
             } catch (e) {
-              console.error("Error in webhook order processing (coins/bot)", e);
+              console.error("[uddoktaPay webhook] fulfilment failed", {
+                order_id: order.id,
+                err: (e as any)?.message || e,
+              });
             }
           } else {
             console.error("Webhook Error: order data is invalid", orderData);
