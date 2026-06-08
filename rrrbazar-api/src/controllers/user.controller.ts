@@ -1418,10 +1418,18 @@ class UserController {
         // payment is confirmed. To keep UddoktaPay's metadata flat (some
         // providers truncate or mishandle nested objects on the callback) we
         // JSON-stringify the order payload into a single `order` field.
+        // IMPORTANT: keep this in sync with `user_order_data` (the wallet
+        // path above). The webhook builds the order straight from this blob,
+        // so anything missing here is missing on the auto_payment order.
+        // `name` (the package name) and `payment_status` were previously
+        // omitted, which is why webhook-created orders showed up with no
+        // package info.
         const orderPayload = {
           topuppackage_id,
           product_id,
+          name: topupPackage.name,
           accounttype,
+          payment_status: 1,
           ingameid,
           ingamepassword,
           playerid,
