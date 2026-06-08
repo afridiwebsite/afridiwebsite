@@ -90,6 +90,13 @@ function TopupOrderPage() {
 
   const userWallet = authUser?.wallet;
 
+  // Instant Pay (the auto_payment gateway flow) currently breaks the order,
+  // so it's temporarily gated to a single tester account while we debug it.
+  // Only this username sees the option for now — everyone else just gets
+  // Wallet Pay. Remove this gate once the gateway order flow is fixed.
+  const canUseInstantPay =
+    String(authUser?.username || "").trim().toLowerCase() === "sksohanpc";
+
   const {
     data: productData,
     isLoading,
@@ -1306,37 +1313,39 @@ function TopupOrderPage() {
                                     Wallet Pay
                                   </div>
                                 </button>
-                                {/* <button
-                                  type="button"
-                                  className={`topup-pay-card ${
-                                    selectedPaymentMethod === "auto_payment"
-                                      ? "is-selected"
-                                      : ""
-                                  } ${
-                                    isPaymentError &&
-                                    selectedPaymentMethod !== "auto_payment"
-                                      ? "is-error"
-                                      : ""
-                                  }`}
-                                  onClick={() => {
-                                    setSelectedPaymentMethod("auto_payment");
-                                    setFieldValue(
-                                      "payment_mathod",
-                                      "auto_payment",
-                                    );
-                                  }}
-                                >
-                                  <div className="topup-pay-card-body">
-                                    <img
-                                      src="/auto_payment.jpeg"
-                                      alt=""
-                                      className="topup-pay-card-img"
-                                    />
-                                  </div>
-                                  <div className="topup-pay-card-cta">
-                                    Instant Pay
-                                  </div>
-                                </button> */}
+                                {canUseInstantPay && (
+                                  <button
+                                    type="button"
+                                    className={`topup-pay-card ${
+                                      selectedPaymentMethod === "auto_payment"
+                                        ? "is-selected"
+                                        : ""
+                                    } ${
+                                      isPaymentError &&
+                                      selectedPaymentMethod !== "auto_payment"
+                                        ? "is-error"
+                                        : ""
+                                    }`}
+                                    onClick={() => {
+                                      setSelectedPaymentMethod("auto_payment");
+                                      setFieldValue(
+                                        "payment_mathod",
+                                        "auto_payment",
+                                      );
+                                    }}
+                                  >
+                                    <div className="topup-pay-card-body">
+                                      <img
+                                        src="/auto_payment.jpeg"
+                                        alt=""
+                                        className="topup-pay-card-img"
+                                      />
+                                    </div>
+                                    <div className="topup-pay-card-cta">
+                                      Instant Pay
+                                    </div>
+                                  </button>
+                                )}
                               </div>
 
                               {/* Account-balance + required-amount info rows

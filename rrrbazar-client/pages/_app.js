@@ -75,24 +75,96 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   // Sync user profile on mount to ensure wallet balance and other data is
   // fresh, even after a refresh.
   useEffect(() => {
+    // ---- PWA install detection ------------------------------------------
+    // The banner kept reappearing after install because:
+    //   1. on iOS we showed it whenever Safari wasn't in standalone mode —
+    //      but opening the *installed* PWA's URL in a Safari tab is never
+    //      standalone, so it nagged forever;
+    //   2. there was no `appinstalled` listener and nothing persisted, so a
+    //      successful install was immediately forgotten on the next load.
+    //
+    // Fixes: bail out entirely when running as an installed app, remember a
+    // completed install in localStorage, and actively probe the browser's
+    // install state via `appinstalled` + getInstalledRelatedApps().
+
+    // Running as the installed PWA (Android/desktop standalone, iOS
+    // navigator.standalone, or TWA via the android-app referrer).
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true ||
+      document.referrer.startsWith("android-app://");
+
+    const markInstalled = () => {
+      try {
+        localStorage.setItem("pwa_installed", "1");
+      } catch (e) {
+        /* localStorage may be unavailable (private mode) — non-fatal */
+      }
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    };
+
+    // If it's already installed (running standalone or remembered from a
+    // previous session), never show the banner and skip wiring listeners.
+    let alreadyInstalled = isStandalone;
+    try {
+      if (localStorage.getItem("pwa_installed") === "1") alreadyInstalled = true;
+    } catch (e) {
+      /* ignore */
+    }
+    if (alreadyInstalled) {
+      setShowInstallBanner(false);
+    }
+
     const handleBeforeInstallPrompt = (e) => {
-      // Prevent the mini-infobar from appearing on mobile
+      // beforeinstallprompt only fires when the app is installable AND not
+      // already installed, so reaching here means we can safely offer it.
       e.preventDefault();
       // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
       setShowInstallBanner(true);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    // Fired by the browser the moment the PWA finishes installing. Hide the
+    // banner immediately and remember it so it doesn't come back next load.
+    const handleAppInstalled = () => {
+      markInstalled();
+    };
 
-    // Detect if the app is already installed or running in standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    
-    // Custom check for iOS (Safari)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    
-    if (isIOS && !isStandalone) {
-      setShowInstallBanner(true);
+    if (!alreadyInstalled) {
+      window.addEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+      window.addEventListener("appinstalled", handleAppInstalled);
+
+      // Chrome/Android: directly ask whether our app is already installed.
+      // Covers the case where it was installed in a previous session, so
+      // beforeinstallprompt never fires again to tell us.
+      if (typeof navigator.getInstalledRelatedApps === "function") {
+        navigator
+          .getInstalledRelatedApps()
+          .then((apps) => {
+            if (Array.isArray(apps) && apps.length > 0) markInstalled();
+          })
+          .catch(() => {});
+      }
+
+      // iOS Safari has no beforeinstallprompt / appinstalled and no install
+      // API, so we can only show the manual "Add to Home Screen" hint — and
+      // only when it isn't already installed (standalone is handled above)
+      // and the user hasn't dismissed it before.
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      let dismissed = false;
+      try {
+        dismissed = localStorage.getItem("pwa_banner_dismissed") === "1";
+      } catch (e) {
+        /* ignore */
+      }
+      if (isIOS && !dismissed) {
+        setShowInstallBanner(true);
+      }
     }
 
     if ("serviceWorker" in navigator) {
@@ -112,7 +184,11 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
@@ -225,6 +301,14 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   };
 
   const closeInstallBanner = () => {
+    // Persist the dismissal so the banner doesn't nag on every load. On iOS
+    // (no appinstalled event) this is the only way to make "Later" stick.
+    try {
+      localStorage.setItem("pwa_banner_dismissed", "1");
+    } catch (e) {
+      /* localStorage unavailable — fall back to in-session hide */
+    }
+    setShowInstallBanner(false);
     setDeferredPrompt(null);
   };
 
@@ -405,7 +489,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
 
                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                   <button
-                    onClick={() => setShowInstallBanner(false)}
+                    onClick={closeInstallBanner}
                     style={{
                       padding: "8px 12px",
                       fontSize: "13px",
