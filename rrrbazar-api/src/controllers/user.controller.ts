@@ -1450,6 +1450,35 @@ class UserController {
         const webhookUrl = `${process.env.API_URL || "https://api.rrrbazar.com"}/api/v1/webhook`;
         const redirectUrl = `${process.env.CLIENT_URL || "https://rrrbazar.com"}/profile/order`;
 
+        // The gateway endpoint fastPay() will POST to (kept in sync with the
+        // default inside ../helpers/fastpay.ts).
+        const checkoutUrl =
+          process.env.UDDOKTAPAY_CHECKOUT_URL ||
+          "https://pay.rrrbazar.com/api/checkout";
+
+        // Debug: trace the full auto_payment (UddoktaPay) handoff. The order
+        // is NOT persisted here — the webhook creates it after payment — so
+        // these are the only server-side breadcrumbs until the callback
+        // fires. `token` is the API key, so it's omitted from the metadata
+        // dump (fastPay logs a redacted version separately).
+        const { token: _omitToken, ...metaForLog } = meta_data;
+        console.log("[topupPackageOrder] auto_payment → starting checkout", {
+          user_id,
+          email: user.email,
+          topuppackage_id,
+          product_id,
+          package_name: topupPackage.name,
+          amount,
+          quantity,
+          charge_applied: chargeApplied,
+          hold_unipin_id,
+          checkout_endpoint: checkoutUrl,
+          webhook_url: webhookUrl,
+          redirect_url: redirectUrl,
+          metadata: metaForLog,
+          order_payload: orderPayload,
+        });
+
         try {
           const fastPayData = await fastPay({
             full_name: user.email,
@@ -1459,6 +1488,16 @@ class UserController {
             redirect_url: redirectUrl,
             cancel_url: redirectUrl,
             webhook_url: webhookUrl,
+          });
+
+          console.log("[topupPackageOrder] auto_payment ← checkout session", {
+            user_id,
+            topuppackage_id,
+            amount,
+            checkout_endpoint: checkoutUrl,
+            payment_url:
+              fastPayData?.payment_url || fastPayData?.checkout_url || null,
+            response: fastPayData,
           });
 
           response.data = fastPayData;
@@ -2636,6 +2675,31 @@ class UserController {
         }
       }
 
+      // Debug: trace the inbound UddoktaPay callback. This is where the
+      // checkout session started in topupPackageOrder's auto_payment branch
+      // lands once the user pays. `token` (api key) and the raw `order`
+      // blob are stripped from the metadata dump — the order is logged in
+      // full when it's created below.
+      const metaSafe =
+        metadataObj && typeof metadataObj === "object"
+          ? (() => {
+              const { token: _t, order: _o, ...rest } = metadataObj as any;
+              return rest;
+            })()
+          : metadataObj;
+      console.log("[uddoktaPay webhook] callback received", {
+        invoice_id,
+        transaction_id,
+        status,
+        amount,
+        payment_method,
+        sender_number,
+        paymentmethod,
+        email,
+        has_order: !!(metadataObj && (metadataObj as any).order),
+        metadata: metaSafe,
+      });
+
       if (!metadataObj || !metadataObj.id) {
         console.error(
           "Webhook Error: User metadata not found or invalid",
@@ -2734,6 +2798,15 @@ class UserController {
 
           if (typeof orderData === "object" && orderData !== null) {
             const order = await Order.create(orderData);
+
+            console.log("[uddoktaPay webhook] order created from paid checkout", {
+              order_id: order.id,
+              user_id: metadataObj.id,
+              topuppackage_id: order.topuppackage_id,
+              product_id: order.product_id,
+              amount: order.amount,
+              status: order.status,
+            });
 
             // Voucher-pool product? Emit a code and complete the order
             // before falling into the UC/bot branch below. No refund path
@@ -2850,6 +2923,14 @@ class UserController {
           }
         }
       }
+
+      console.log("[uddoktaPay webhook] processed", {
+        transaction_id: (createTransaction as any)?.id,
+        user_id: metadataObj.id,
+        status: String(status).toLowerCase(),
+        amount,
+        wallet_topup: !metadataObj?.order,
+      });
 
       response.data = createTransaction;
       return res.send(response.data);
