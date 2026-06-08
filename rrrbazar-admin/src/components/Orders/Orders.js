@@ -502,7 +502,7 @@ function Orders() {
     <div className="md:px-5">
       {/* Total Spent summary — reflects the filters active on the table
           below (user id, status, uc/player id, date range). */}
-      <div className="bg-white py-5 mb-5 px-5">
+      {/* <div className="bg-white py-5 mb-5 px-5">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -534,12 +534,23 @@ function Orders() {
             ৳
           </div>
         </div>
-      </div>
+      </div> */}
       <div className="bg-white py-5 mb-5 px-5">
         {/* Bulk retry controls live above the table so they don't
                     conflict with the per-row action menu. Enter selection
                     mode → checkboxes appear → action bar surfaces. */}
-        <div className="flex items-center justify-end gap-2 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="text-sm text-gray-600">
+ {spentLoading
+                ? "…"
+                : spentError
+                  ? "—"
+                  : fmtMoney(totalSpent)}
+                  </div>
+
+
+        
+        
           {!selectionMode ? (
             <button
               type="button"

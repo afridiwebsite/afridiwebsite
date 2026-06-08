@@ -57,6 +57,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   const [accessToken, setAccessToken] = useState(access_token);
   const [isAuth, setIsAuth] = useState(authUser && accessToken ? true : false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   // Seed siteSettings from the SSR-resolved value so the favicon `<link>`
   // tags ship in the initial HTML. Most browsers lock onto whatever
@@ -73,9 +74,20 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       e.preventDefault();
       // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
+      setShowInstallBanner(true);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    // Detect if the app is already installed or running in standalone mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    // Custom check for iOS (Safari)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
+    if (isIOS && !isStandalone) {
+      setShowInstallBanner(true);
+    }
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
@@ -93,6 +105,12 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       });
     }
 
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  useEffect(() => {
     if (isAuth && accessToken) {
       getUserProfile()
         .then((res) => {
@@ -200,6 +218,10 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     }
   };
 
+  const closeInstallBanner = () => {
+    setDeferredPrompt(null);
+  };
+
   const glovalContextData = {
     authUser,
     accessToken,
@@ -252,6 +274,131 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
               <Component {...pageProps} />
             )}
             {!isDisabledMobileAppBar && <MobileAppBar />}
+
+            {showInstallBanner && (
+              <div
+                className="pwa-install-banner"
+                style={{
+                  position: "fixed",
+                  bottom: !isDisabledMobileAppBar
+                    ? "calc(80px + env(safe-area-inset-bottom, 0px))"
+                    : "20px",
+                  left: "15px",
+                  right: "15px",
+                  zIndex: 9999,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "12px 16px",
+                  background: "#ffffff",
+                  borderRadius: "16px",
+                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.2)",
+                  border: "1px solid rgba(0, 0, 0, 0.05)",
+                  animation: "banner-slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "42px",
+                    height: "42px",
+                   
+                   
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src="/logo-app.jpeg"
+                    alt="App Icon"
+                    style={{ width: "28px", height: "28px", objectFit: "contain" }}
+                  />
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      color: "#1e293b",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    Install {siteSettings?.site_name || __site_name_2}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#64748b",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream 
+                      ? "Tap Share > Add to Home Screen" 
+                      : "Add to home screen for fast access"}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button
+                    onClick={() => setShowInstallBanner(false)}
+                    style={{
+                      padding: "8px 12px",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      color: "#94a3b8",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Later
+                  </button>
+                  {deferredPrompt && (
+                    <button
+                      onClick={installPWA}
+                      style={{
+                        padding: "8px 16px",
+                        fontSize: "13px",
+                        fontWeight: "700",
+                        color: "#fff",
+                        background: "var(--theme-primary, #3b82f6)",
+                        border: "none",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        boxShadow: "0 4px 10px rgba(59, 130, 246, 0.2)",
+                      }}
+                    >
+                      Install
+                    </button>
+                  )}
+                </div>
+
+                <style jsx>{`
+                  @keyframes banner-slide-up {
+                    from {
+                      transform: translateY(100px);
+                      opacity: 0;
+                    }
+                    to {
+                      transform: translateY(0);
+                      opacity: 1;
+                    }
+                  }
+                  @media (min-width: 768px) {
+                    .pwa-install-banner {
+                      max-width: 400px;
+                      left: auto !important;
+                      right: 20px !important;
+                      bottom: 20px !important;
+                    }
+                  }
+                `}</style>
+              </div>
+            )}
           </Layout>
         </QueryClientProvider>
       </globalContext.Provider>

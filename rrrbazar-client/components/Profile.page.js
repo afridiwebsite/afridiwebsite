@@ -42,9 +42,19 @@ function ProfilePage() {
 
   // Refresh server-side user profile on visit (keeps wallet/coins in sync).
   const { data } = useQuery('user-profile', getUserProfile, reactQueryConfig);
+
   useEffect(() => {
     if (data) updateAuthUserInfo(data);
   }, [data, updateAuthUserInfo]);
+
+      const nextStep = (verification?.steps || []).find(
+                      (s) =>
+                        verification?.submissions?.[String(s.step)]?.status !==
+                        'verified',
+                    )?.step;
+                    const link = nextStep
+                      ? `${routes.verification.name}#step-${nextStep}`
+                      : routes.verification.name;
 
   // Verification snapshot — fetches per-step status + counts in one shot.
   // `reactQueryConfig.select` already unwraps res.data.data, so `data` is
@@ -199,7 +209,8 @@ function ProfilePage() {
           rejected / not started). A summary chip on the left tells the
           user at a glance how many of the 4 steps are done. */}
       {verificationEnabled && (
-        <div className="container mt-8">
+              <div  className='container mt-8 hover:cursor-pointer' onClick={() => router.push(link)}>
+      
           <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex-1 min-w-[200px]">
@@ -208,14 +219,7 @@ function ProfilePage() {
                     Account verification
                   </span>
                   {(() => {
-                    const nextStep = (verification?.steps || []).find(
-                      (s) =>
-                        verification?.submissions?.[String(s.step)]?.status !==
-                        'verified',
-                    )?.step;
-                    const link = nextStep
-                      ? `${routes.verification.name}#step-${nextStep}`
-                      : routes.verification.name;
+                
 
                     return verification?.all_verified ? (
                       <button
@@ -228,7 +232,6 @@ function ProfilePage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => router.push(link)}
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border transition-colors ${
                           (verification?.counts?.verified || 0) > 0
                             ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200'
@@ -241,6 +244,7 @@ function ProfilePage() {
                     );
                   })()}
                 </div>
+               
 
                 {/* Single progress bar with dynamic coloring */}
                 <div className="h-5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
@@ -274,7 +278,8 @@ function ProfilePage() {
               </div>
             </div>
           </div>
-        </div>
+      
+</div>
       )}
 
       {/* Stats — five cards in a 5-col grid on lg, wrapping on smaller. */}
