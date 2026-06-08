@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Navbar from "../components/Navbars/AuthNavbar.js";
 import Footer from "../components/Footers/Footer.js";
 import useGet from "../hooks/useGet";
@@ -6,6 +6,7 @@ import axios from "../common/axios";
 import { imgPath, toastDefault } from "../utils/handler.utils";
 import { toast } from "react-toastify";
 import { getLocal, getSession, setLocal, setSession } from "../utils/localStorage.utils";
+import defaultTeamImage from "../assets/img/team-2-800x800.jpg";
 
 export default function Profile() {
   const [data, loading, error, refresh] = useGet('admin/profile')
@@ -23,26 +24,49 @@ export default function Profile() {
       const res = await axios.post('v1/upload/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      const fileName = res.data.data.image
+      
+      const fileName = res.data?.data?.image || res.data?.image
+      if (!fileName) throw new Error('No image name returned')
+
       // Save profile after image upload
       await axios.post('admin/profile/update', { image: fileName })
 
       // Update local storage so header reflects changes
       const user = getLocal('user') || getSession('user')
-      if (user) {
-        user.image = fileName
-        if (getLocal('user')) setLocal('user', user)
-        else setSession('user', user)
+      if (user && typeof user === 'object') {
+        const updatedUser = { ...user, image: fileName }
+        if (getLocal('user')) setLocal('user', updatedUser)
+        else setSession('user', updatedUser)
       }
 
       toast.success('Profile image updated', toastDefault)
       refresh()
     } catch (err) {
+      console.error('[Profile] Image upload failed:', err)
       toast.error('Image upload failed', toastDefault)
     } finally {
       setUploading(false)
     }
   }
+
+  if (loading) {
+      return (
+          <div className="flex items-center justify-center min-h-screen">
+              <div className="text-xl font-bold">Loading Profile...</div>
+          </div>
+      )
+  }
+
+  if (error) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen">
+            <div className="text-xl font-bold text-red-600">Error loading profile</div>
+            <button onClick={refresh} className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded">Retry</button>
+        </div>
+    )
+  }
+
+  const profileImg = data?.image ? imgPath(data.image) : (defaultTeamImage?.default || defaultTeamImage);
 
   return (
     <>
@@ -89,10 +113,8 @@ export default function Profile() {
                   <div className="w-full lg:w-3/12 px-4 lg:order-2 flex justify-center">
                     <div className="relative group cursor-pointer h-32 w-32 -m-16 -ml-20 lg:-ml-16">
                       <img
-                        alt="..."
-                        src={
-                          data?.image ? imgPath(data.image) : require("../assets/img/team-2-800x800.jpg").default
-                        }
+                        alt="Admin Profile"
+                        src={profileImg}
                         className="shadow-xl rounded-full h-32 w-32 object-cover align-middle border-none absolute inset-0 max-w-150-px"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -136,15 +158,15 @@ export default function Profile() {
                 </div>
                 <div className="text-center mt-12">
                   <h3 className="text-4xl font-semibold leading-normal mb-2 text-blueGray-700 mb-2">
-                    {data?.first_name} {data?.last_name}
+                    {data?.first_name || 'Admin'} {data?.last_name || ''}
                   </h3>
                   <div className="text-sm leading-normal mt-0 mb-2 text-blueGray-400 font-bold uppercase">
                     <i className="fas fa-map-marker-alt mr-2 text-lg text-blueGray-400"></i>{" "}
-                    {data?.username}
+                    {data?.username || 'admin'}
                   </div>
                   <div className="mb-2 text-blueGray-600 mt-10">
                     <i className="fas fa-envelope mr-2 text-lg text-blueGray-400"></i>
-                    {data?.email}
+                    {data?.email || ''}
                   </div>
                 </div>
                 <div className="mt-10 py-10 border-t border-blueGray-200 text-center">

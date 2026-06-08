@@ -79,71 +79,91 @@ export async function sendOtpSms(opts: SendSmsOptions): Promise<SendSmsResult> {
     return { ok: false, error: "SMS message body is empty." };
   }
 
-  // Form-encoded POST is the lowest-common-denominator shape across the
-  // simple gateways we care about (sms.net.bd, mim.net.bd, MIM-like
-  // local providers). If a future gateway insists on JSON we'll branch
-  // here on hostname/contentType rather than forcing the call site to
-  // know.
-  const form = new URLSearchParams();
-  form.set("api_key", key);
-  form.set("msg", message);
-  form.set("to", phone);
-  if (senderId) form.set("sender_id", senderId);
+  // MiMSMS requires a JSON body.
+  const payload = {
+    UserName: "sksohanpc@gmail.com",
+    Apikey: key,
+    MobileNumber: phone,
+    CampaignId: "null",
+    SenderName: senderId || "8809643902677",
+    TransactionType: "T",
+    Message: message,
+  };
+
+  console.log(`[SMS] Preparing to send SMS to ${phone}`);
+  console.log(`[SMS] URL: ${url}`);
+  console.log(`[SMS] Payload (sanitized):`, { ...payload, Apikey: "REDACTED" });
 
   let timeoutHandle: any;
   try {
     const requestPromise = fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: form.toString(),
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(payload),
     });
+
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(
         () => reject(new Error(`SMS gateway timed out after ${timeoutMs}ms`)),
         timeoutMs,
       );
     });
+
     const response = (await Promise.race([
       requestPromise,
       timeoutPromise,
     ])) as any;
     clearTimeout(timeoutHandle);
 
+    console.log(`[SMS] Response Status: ${response.status} ${response.statusText}`);
+    
     const contentType = response.headers?.get?.("content-type") || "";
     let body: any;
     try {
-      body = contentType.includes("application/json")
-        ? await response.json()
-        : await response.text();
-    } catch {
+      if (contentType.includes("application/json")) {
+        body = await response.json();
+      } else {
+        body = await response.text();
+      }
+    } catch (parseErr) {
+      console.error(`[SMS] Failed to parse response body:`, parseErr);
       body = "(unparseable response)";
     }
 
+    console.log(`[SMS] Response Body:`, body);
+
     if (!response.ok) {
+      const errorMsg = `SMS gateway returned HTTP ${response.status} ${
+        response.statusText || ""
+      }`.trim();
+      console.warn(`[SMS] Request failed: ${errorMsg}`);
       return {
         ok: false,
-        error: `SMS gateway returned HTTP ${response.status} ${
-          response.statusText || ""
-        }`.trim(),
+        error: errorMsg,
         body,
       };
     }
 
-    // sms.net.bd success returns `{"error":0,"msg":"..."}`. Any non-zero
-    // `error` (or `success: false`) on a 200 means delivery was rejected.
+    // MiMSMS success: {"statusCode":"200","status":"Success",...}
+    // Generic fallback for other providers: {"error":0} or {"success":true}
     if (body && typeof body === "object") {
-      const errCode = (body as any).error;
-      const success = (body as any).success;
-      if (
-        (errCode !== undefined && Number(errCode) !== 0) ||
-        success === false
-      ) {
+      const statusCode = String(body.statusCode || "");
+      const status = String(body.status || "").toLowerCase();
+      
+      const isMiMSuccess = statusCode === "200" && (status === "success" || status === "ok");
+      const isGenericError = body.error !== undefined && Number(body.error) !== 0;
+      const isGenericFailure = body.success === false;
+
+      // If it doesn't look like a success, determine the error message
+      if (!isMiMSuccess && (isGenericError || isGenericFailure || (body.status && status !== "success"))) {
+        const gatewayError = body.responseResult || body.msg || body.message || "SMS gateway reported a failure.";
+        console.warn(`[SMS] Gateway reported error: ${gatewayError}`, body);
         return {
           ok: false,
-          error:
-            (body as any).msg ||
-            (body as any).message ||
-            "SMS gateway reported a failure on a 200 response.",
+          error: gatewayError,
           body,
         };
       }
@@ -152,6 +172,7 @@ export async function sendOtpSms(opts: SendSmsOptions): Promise<SendSmsResult> {
     return { ok: true, body };
   } catch (e: any) {
     if (timeoutHandle) clearTimeout(timeoutHandle);
+    console.error(`[SMS] Exception during SMS request:`, e);
     return {
       ok: false,
       error: e?.message || "SMS gateway request failed.",

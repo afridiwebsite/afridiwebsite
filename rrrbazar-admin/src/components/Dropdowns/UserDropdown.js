@@ -3,6 +3,7 @@ import { createPopper } from "@popperjs/core";
 import { imgPath, logOut } from "../../utils/handler.utils";
 import { getLocal, getSession } from "../../utils/localStorage.utils";
 import { Link } from "react-router-dom";
+import defaultTeamImage from "../../assets/img/team-1-800x800.jpg";
 
 const UserDropdown = () => {
   // dropdown props
@@ -19,6 +20,8 @@ const UserDropdown = () => {
     setDropdownPopoverShow(false);
   };
   const user = getLocal('user') || getSession('user')
+  const profileImg = user?.image ? imgPath(user.image) : (defaultTeamImage?.default || defaultTeamImage);
+
   return (
     <>
       <a
@@ -35,7 +38,7 @@ const UserDropdown = () => {
             <img
               alt="..."
               className="w-full h-full object-cover rounded-full align-middle border-none shadow-lg"
-              src={user?.image ? imgPath(user.image) : require("../../assets/img/team-1-800x800.jpg").default}
+              src={profileImg}
             />
           </span>
         </div>

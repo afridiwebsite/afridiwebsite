@@ -40,7 +40,7 @@ function Profile() {
     })
 
     useEffect(() => {
-        if (data) {
+        if (data && !loading) {
             formik.setValues({
                 first_name: data.first_name || '',
                 last_name: data.last_name || '',
@@ -48,7 +48,9 @@ function Profile() {
                 image: data.image || ''
             })
         }
-    }, [data, formik])
+        // We only want to set values when data changes (e.g. after a refresh or initial load)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data, loading])
 
     const handleImageChange = async (e) => {
         const file = e.target.files[0]

@@ -126,7 +126,7 @@ const OTP_MAX_ATTEMPTS = 5;
 // Rate-limit OTP sends: at most 3 codes per phone per 10 minutes so the
 // gateway bill (and the user's annoyance) doesn't get out of hand.
 const OTP_SEND_WINDOW_MS = 10 * 60 * 1000;
-const OTP_SEND_MAX_IN_WINDOW = 3;
+const OTP_SEND_MAX_IN_WINDOW = 10;
 
 function hashCode(code: string): string {
   return crypto.createHash("sha256").update(String(code)).digest("hex");
