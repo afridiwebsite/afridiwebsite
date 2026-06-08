@@ -94,8 +94,9 @@ function TopupOrderPage() {
   // so it's temporarily gated to a single tester account while we debug it.
   // Only this username sees the option for now — everyone else just gets
   // Wallet Pay. Remove this gate once the gateway order flow is fixed.
-  const canUseInstantPay =
-    String(authUser?.username || "").trim().toLowerCase() === "sksohanpc";
+  const canUseInstantPay = true;
+  
+  // const canUseInstantPay = String(authUser?.username || "").trim().toLowerCase() === "sksohanpc"; 
 
   const {
     data: productData,

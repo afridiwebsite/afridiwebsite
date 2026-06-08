@@ -322,6 +322,9 @@ function Orders() {
   // `selectData` / `selectError`, so a new identity each render invalidates
   // the memo and re-fires the data-fetch effect in a loop.
   const selectData = useCallback((res) => {
+    // Ordering ("In Progress" first, then pending, then newest-first within
+    // each group) is handled server-side in the admin getOrders query so it
+    // holds across pagination — no client-side re-sort needed here.
     const orders = res.data.data.orders || [];
     setTotalDataCount(res.data.data.order_count);
     currentPageOrdersRef.current = orders;

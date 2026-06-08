@@ -155,9 +155,13 @@ class AdminController {
     try {
       const filter = await buildAdminOrderFilter(req.query);
 
-      // Pending orders always surface first; within each group, newest first.
+      // Status priority overrides the date sort: "In Progress" orders (e.g.
+      // auto-pay orders that just cleared the webhook and were dispatched to
+      // the bot) surface at the very top, then pending, then everything else.
+      // Within each status group, newest first. This works across pagination
+      // since it's applied in the DB ORDER BY, not on the returned page.
       let order_by_str = sequelize.literal(
-        "CASE WHEN `Order`.`status` = 'pending' THEN 1 ELSE 2 END, `Order`.`created_at` desc, `Order`.`id` desc"
+        "CASE WHEN `Order`.`status` = 'In Progress' THEN 1 WHEN `Order`.`status` = 'pending' THEN 2 ELSE 3 END, `Order`.`created_at` desc, `Order`.`id` desc"
       );
 
 

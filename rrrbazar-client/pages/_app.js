@@ -104,6 +104,20 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       setDeferredPrompt(null);
     };
 
+    // Show the install banner at most once, ever. The first time it would
+    // appear we persist a flag; every later load (this session or future
+    // ones) reads the flag and stays hidden — so the user is nudged a single
+    // time and never nagged again, whether or not they acted on it.
+    const showBannerOnce = () => {
+      try {
+        if (localStorage.getItem("pwa_banner_shown") === "1") return;
+        localStorage.setItem("pwa_banner_shown", "1");
+      } catch (e) {
+        /* localStorage unavailable — fall through and show this once */
+      }
+      setShowInstallBanner(true);
+    };
+
     // If it's already installed (running standalone or remembered from a
     // previous session), never show the banner and skip wiring listeners.
     let alreadyInstalled = isStandalone;
@@ -122,7 +136,8 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       e.preventDefault();
       // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
-      setShowInstallBanner(true);
+      // Only surfaces the banner if it hasn't already been shown once.
+      showBannerOnce();
     };
 
     // Fired by the browser the moment the PWA finishes installing. Hide the
@@ -152,18 +167,12 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
 
       // iOS Safari has no beforeinstallprompt / appinstalled and no install
       // API, so we can only show the manual "Add to Home Screen" hint — and
-      // only when it isn't already installed (standalone is handled above)
-      // and the user hasn't dismissed it before.
+      // only when it isn't already installed (standalone is handled above).
+      // showBannerOnce() keeps it to a single appearance.
       const isIOS =
         /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      let dismissed = false;
-      try {
-        dismissed = localStorage.getItem("pwa_banner_dismissed") === "1";
-      } catch (e) {
-        /* ignore */
-      }
-      if (isIOS && !dismissed) {
-        setShowInstallBanner(true);
+      if (isIOS) {
+        showBannerOnce();
       }
     }
 
