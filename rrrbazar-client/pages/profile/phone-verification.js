@@ -32,6 +32,50 @@ import reactQueryConfig from '../../config/reactQueryConfig';
 import routes from '../../config/routes';
 import { getErrors, hasData } from '../../helpers/helpers';
 
+// Country dial codes for the phone-verification picker. Bangladesh first
+// since it's the primary market. `dial` is the bare country code (no "+")
+// because the SMS provider expects e.g. `8801680793142` — country code
+// immediately followed by the subscriber number.
+const COUNTRY_CODES = [
+    { code: 'BD', label: 'Bangladesh', dial: '880', flag: '🇧🇩' },
+    { code: 'IN', label: 'India', dial: '91', flag: '🇮🇳' },
+    { code: 'PK', label: 'Pakistan', dial: '92', flag: '🇵🇰' },
+    { code: 'MY', label: 'Malaysia', dial: '60', flag: '🇲🇾' },
+    { code: 'SA', label: 'Saudi Arabia', dial: '966', flag: '🇸🇦' },
+    { code: 'AE', label: 'UAE', dial: '971', flag: '🇦🇪' },
+    { code: 'GB', label: 'United Kingdom', dial: '44', flag: '🇬🇧' },
+    { code: 'US', label: 'USA / Canada', dial: '1', flag: '🇺🇸' },
+];
+
+const DEFAULT_DIAL = '880';
+
+// Build the provider-ready number: country code + subscriber number with
+// the national trunk "0" (and any other leading zeros) stripped, so
+// `880` + `01680793142` → `8801680793142` rather than `880001680793142`.
+function composePhone(dial, local) {
+    const localDigits = String(local || '')
+        .replace(/\D/g, '')
+        .replace(/^0+/, '');
+    return `${dial}${localDigits}`;
+}
+
+// Split a stored full number (e.g. `8801680793142`) back into a dial code
+// and local part so the form re-hydrates correctly. Longest dial match wins
+// so `880` is preferred over the shorter `88`/`1` codes.
+function parseStoredPhone(stored) {
+    const digits = String(stored || '').replace(/\D/g, '');
+    if (!digits) return { dial: DEFAULT_DIAL, local: '' };
+    const byLength = [...COUNTRY_CODES].sort(
+        (a, b) => b.dial.length - a.dial.length,
+    );
+    for (const c of byLength) {
+        if (digits.startsWith(c.dial)) {
+            return { dial: c.dial, local: digits.slice(c.dial.length) };
+        }
+    }
+    return { dial: DEFAULT_DIAL, local: digits };
+}
+
 function PhoneVerificationInner() {
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -50,28 +94,40 @@ function PhoneVerificationInner() {
     const alreadyVerified = !!payload?.phone_verified;
     const verifiedPhone = payload?.phone || '';
 
+    const [dialCode, setDialCode] = useState(DEFAULT_DIAL);
     const [phone, setPhone] = useState('');
     const [otpSent, setOtpSent] = useState(false);
     const [otpVerified, setOtpVerified] = useState(false);
     const [code, setCode] = useState('');
     const [busy, setBusy] = useState(false);
 
-    // Seed the input from the server state once it loads.
+    // Seed the input from the server state once it loads, splitting the
+    // stored full number back into its dial code + local parts.
     useEffect(() => {
-        if (verifiedPhone) setPhone(verifiedPhone);
+        if (verifiedPhone) {
+            const { dial, local } = parseStoredPhone(verifiedPhone);
+            setDialCode(dial);
+            setPhone(local);
+        }
     }, [verifiedPhone]);
 
     const isVerified = alreadyVerified || otpVerified;
 
+    // Full, provider-ready number (e.g. `8801680793142`) used everywhere we
+    // talk to the API or show the verified value.
+    const fullPhone = composePhone(dialCode, phone);
+
     const handleSendOtp = async () => {
-        const trimmed = String(phone || '').trim();
-        if (!trimmed) {
+        // Validate against the subscriber digits only, so a lone country
+        // code doesn't count as a valid number.
+        const localDigits = String(phone || '').replace(/\D/g, '').replace(/^0+/, '');
+        if (!localDigits) {
             toast.error('Enter a phone number');
             return;
         }
         setBusy(true);
         try {
-            await sendVerificationOtp(trimmed);
+            await sendVerificationOtp(fullPhone);
             setOtpSent(true);
             toast.success('OTP sent. Check your phone.');
         } catch (err) {
@@ -82,7 +138,6 @@ function PhoneVerificationInner() {
     };
 
     const handleVerifyOtp = async () => {
-        const trimmedPhone = String(phone || '').trim();
         const trimmedCode = String(code || '').trim();
         if (!trimmedCode) {
             toast.error('Enter the OTP code');
@@ -90,7 +145,7 @@ function PhoneVerificationInner() {
         }
         setBusy(true);
         try {
-            await verifyVerificationOtp(trimmedPhone, trimmedCode);
+            await verifyVerificationOtp(fullPhone, trimmedCode);
             setOtpVerified(true);
             toast.success('Phone verified.');
             // Refresh the shared verification cache so the step-1 form
@@ -149,7 +204,7 @@ function PhoneVerificationInner() {
                                             Phone verified
                                         </div>
                                         <div className="text-sm text-gray-600">
-                                            {phone || verifiedPhone}
+                                            +{fullPhone || verifiedPhone}
                                         </div>
                                     </div>
                                 </div>
@@ -176,13 +231,37 @@ function PhoneVerificationInner() {
                                         <span className="inline-flex items-center px-3 rounded bg-gray-100 text-gray-500">
                                             <FaPhoneAlt size={12} />
                                         </span>
+                                        <select
+                                            value={dialCode}
+                                            onChange={(e) =>
+                                                setDialCode(e.target.value)
+                                            }
+                                            className="border border-gray-300 rounded px-2 py-2 bg-white"
+                                            aria-label="Country code"
+                                        >
+                                            {COUNTRY_CODES.map((c) => (
+                                                <option
+                                                    key={c.code}
+                                                    value={c.dial}
+                                                >
+                                                    {c.flag} {c.label} (+
+                                                    {c.dial})
+                                                </option>
+                                            ))}
+                                        </select>
                                         <input
                                             type="tel"
-                                            className="flex-1 border border-gray-300 rounded px-3 py-2"
-                                            placeholder="+8801XXXXXXXXX"
+                                            inputMode="numeric"
+                                            className="flex-1 border border-gray-300 rounded px-3 py-2 min-w-[8rem]"
+                                            placeholder="1XXXXXXXXX"
                                             value={phone}
                                             onChange={(e) =>
-                                                setPhone(e.target.value)
+                                                setPhone(
+                                                    e.target.value.replace(
+                                                        /\D/g,
+                                                        '',
+                                                    ),
+                                                )
                                             }
                                         />
                                         <button
@@ -195,7 +274,11 @@ function PhoneVerificationInner() {
                                         </button>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        We&apos;ll send a 6-digit code by SMS.
+                                        We&apos;ll send a 6-digit code by SMS to{' '}
+                                        <span className="font-mono">
+                                            +{fullPhone}
+                                        </span>
+                                        . A leading 0 is removed automatically.
                                     </p>
                                 </div>
 
