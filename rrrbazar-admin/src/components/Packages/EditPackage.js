@@ -49,7 +49,7 @@ function EditPackage(props) {
   useEffect(() => {
     if (data?.order_once == null) return;
     const v = Number(data.order_once);
-    setOrderLimit([0, 1, 2, 3, 4].includes(v) ? v : 0);
+    setOrderLimit([0, 1, 2, 3, 4, 5].includes(v) ? v : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
@@ -742,6 +742,7 @@ function EditPackage(props) {
                           { value: 2, label: "Order once a day per player" },
                           { value: 3, label: "Order once per user" },
                           { value: 4, label: "Order once a day per user" },
+                          { value: 5, label: "Order once per 24 hours" },
                         ].map((opt) => (
                           <label
                             key={opt.value}

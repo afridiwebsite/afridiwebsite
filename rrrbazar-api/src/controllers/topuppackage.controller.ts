@@ -250,7 +250,7 @@ class TopupPackageController {
         //   0 = none, 1/2 = Player-scoped (forever/daily),
         //   3/4 = User-scoped (forever/daily). Anything else collapses to
         //   0 so a malformed payload can't store an unsupported mode.
-        order_once: [1, 2, 3, 4].includes(Number(order_once))
+        order_once: [1, 2, 3, 4, 5].includes(Number(order_once))
           ? Number(order_once)
           : 0,
         bot_url: String(bot_url || "").trim(),
@@ -389,7 +389,7 @@ class TopupPackageController {
       }
       if (order_once !== undefined) {
         // See createTopupPackage above for mode meanings (0–4).
-        topupPackage.order_once = [1, 2, 3, 4].includes(Number(order_once))
+        topupPackage.order_once = [1, 2, 3, 4, 5].includes(Number(order_once))
           ? Number(order_once)
           : 0;
       }

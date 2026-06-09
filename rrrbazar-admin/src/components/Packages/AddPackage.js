@@ -598,6 +598,7 @@ function AddPackage(props) {
                           { value: 2, label: "Order once a day per player" },
                           { value: 3, label: "Order once per user" },
                           { value: 4, label: "Order once a day per user" },
+                          { value: 5, label: "Order once per 24 hours" },
                         ].map((opt) => (
                           <label
                             key={opt.value}

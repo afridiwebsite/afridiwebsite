@@ -832,7 +832,7 @@ class UserController {
     try {
       const user_id = req.user.id;
       const limitedPacks = await TopupPackage.findAll({
-        where: { order_once: { [Op.in]: [1, 2, 3, 4] } },
+        where: { order_once: { [Op.in]: [1, 2, 3, 4, 5] } },
         attributes: ["id", "order_once"],
         raw: true,
       });
@@ -848,6 +848,11 @@ class UserController {
         .map((p) => p.id);
       const dailyIds = (limitedPacks as any[])
         .filter((p) => Number(p.order_once) === 2 || Number(p.order_once) === 4)
+        .map((p) => p.id);
+      // Mode 5 = rolling 24h window (user-scoped), handled separately from the
+      // calendar-day bucket above.
+      const rolling24Ids = (limitedPacks as any[])
+        .filter((p) => Number(p.order_once) === 5)
         .map((p) => p.id);
 
       const blocked = new Set<number>();
@@ -872,6 +877,22 @@ class UserController {
             user_id,
             topuppackage_id: { [Op.in]: dailyIds },
             created_at: { [Op.gte]: startOfToday },
+          },
+          attributes: ["topuppackage_id"],
+          raw: true,
+        });
+        for (const o of orders as any[]) blocked.add(o.topuppackage_id);
+      }
+
+      if (rolling24Ids.length > 0) {
+        // Rolling 24h reset — block packs ordered within the last 24 hours
+        // (measured from now), matching the order endpoint's mode-5 check.
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const orders = await Order.findAll({
+          where: {
+            user_id,
+            topuppackage_id: { [Op.in]: rolling24Ids },
+            created_at: { [Op.gte]: since },
           },
           attributes: ["topuppackage_id"],
           raw: true,
@@ -1154,14 +1175,17 @@ class UserController {
         return res.status(400).send(response.response);
       }
 
-      // Enforce per-package re-order limit. Four modes:
+      // Enforce per-package re-order limit. Modes:
       //   1 = once forever per Player ID  (needs Player ID input)
       //   2 = once/day per Player ID      (needs Player ID input)
       //   3 = once forever per user account
       //   4 = once/day per user account
+      //   5 = once per rolling 24h per user account
       // Modes 1 & 2 silently no-op when the product has no Player ID input
-      // (nothing to scope against). Modes 3 & 4 always apply since every
-      // request carries a user_id.
+      // (nothing to scope against). Modes 3, 4 & 5 always apply since every
+      // request carries a user_id. Modes 2 & 4 reset at local midnight
+      // (calendar day); mode 5 is a rolling 24h window measured from the
+      // user's last order, and reports the exact time left when it blocks.
       const orderOnceMode = Number((topupPackage as any).order_once);
       if (orderOnceMode === 1 || orderOnceMode === 2) {
         const playerIdInputCount = await TopupProductInput.count({
@@ -1214,6 +1238,43 @@ class UserController {
             orderOnceMode === 4
               ? "আপনি আজ ইতোমধ্যে এই প্যাকেজটি নিয়েছেন — মধ্যরাতের পরে আবার চেষ্টা করুন।"
               : "আপনি ইতোমধ্যে এই প্যাকেজটি নিয়েছেন — প্রতি অ্যাকাউন্ট থেকে শুধুমাত্র একবার নেওয়া যাবে।";
+          return res.status(400).send(response.response);
+        }
+      } else if (orderOnceMode === 5) {
+        // Rolling 24-hour window, user-scoped. Unlike modes 2/4 (which reset
+        // at local midnight), this blocks for exactly 24h from the user's
+        // most recent order of this package and reports the precise time
+        // remaining so the storefront can show a countdown.
+        const WINDOW_MS = 24 * 60 * 60 * 1000;
+        const since = new Date(Date.now() - WINDOW_MS);
+        const lastOrder = await Order.findOne({
+          where: {
+            user_id,
+            topuppackage_id,
+            created_at: { [Op.gte]: since },
+          },
+          order: [["created_at", "DESC"]],
+          attributes: ["id", "created_at"],
+        });
+        if (lastOrder) {
+          const lastAt = new Date((lastOrder as any).created_at).getTime();
+          const nextAllowedAt = new Date(lastAt + WINDOW_MS);
+          const msLeft = Math.max(0, nextAllowedAt.getTime() - Date.now());
+          // Round up to the next whole minute so we never tell the user a
+          // smaller wait than the real one.
+          const totalMinutes = Math.ceil(msLeft / 60_000);
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          const human =
+            hours > 0
+              ? `${hours} ঘণ্টা ${minutes} মিনিট`
+              : `${minutes} মিনিট`;
+          response.message = `আপনি ইতোমধ্যে এই প্যাকেজটি নিয়েছেন — প্রতি ২৪ ঘণ্টায় একবার নেওয়া যাবে। ${human} পর আবার চেষ্টা করুন।`;
+          // Structured fields so the client can render its own countdown.
+          response.data = {
+            retry_after_seconds: Math.ceil(msLeft / 1000),
+            next_allowed_at: nextAllowedAt.toISOString(),
+          };
           return res.status(400).send(response.response);
         }
       }
