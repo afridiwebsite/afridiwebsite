@@ -198,7 +198,7 @@ class AdminController {
             // shell-mode auto-delivery orders (which don't carry a voucher).
             model: TopupPackage,
             required: false,
-            attributes: ['id', 'name', 'is_shell', 'shell', 'tags'],
+            attributes: ['id', 'name', 'is_shell', 'shell', 'tags', 'seller'],
           },
           {
             // Per-dispatch bot rows so the admin Orders table + modal can
@@ -1005,7 +1005,7 @@ class AdminController {
           {
             model: TopupPackage,
             required: false,
-            attributes: ['id', 'name', 'is_shell', 'shell', 'tags'],
+            attributes: ['id', 'name', 'is_shell', 'shell', 'tags', 'seller'],
           },
           {
             model: BotDispatch,

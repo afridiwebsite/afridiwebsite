@@ -159,6 +159,7 @@ class TopupPackageController {
       name,
       price,
       bprice,
+      seller,
       in_stock,
       serial,
       logo,
@@ -239,6 +240,7 @@ class TopupPackageController {
         name,
         price,
         bprice,
+        seller: String(seller || "").trim(),
         in_stock,
         serial,
         logo,
@@ -303,6 +305,7 @@ class TopupPackageController {
       name,
       price,
       bprice,
+      seller,
       in_stock,
       serial,
       logo,
@@ -338,6 +341,11 @@ class TopupPackageController {
       topupPackage.name = name;
       topupPackage.price = price;
       topupPackage.bprice = bprice;
+      // Only overwrite seller when the caller actually sent it, so a partial
+      // update (e.g. the status-edit modal) can't wipe a saved value.
+      if (seller !== undefined) {
+        (topupPackage as any).seller = String(seller || "").trim();
+      }
       topupPackage.serial = serial;
       topupPackage.logo = logo;
       if (in_stock == 1 || in_stock == 0) {

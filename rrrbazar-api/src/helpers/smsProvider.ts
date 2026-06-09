@@ -23,6 +23,12 @@ export interface SendSmsOptions {
   phone: string;
   message: string;
   providerUrl: string;
+  /**
+   * Gateway account username/login. MiMSMS-style JSON gateways require it
+   * alongside the API key. Sourced from SiteSettings (sms_provider_username)
+   * so no specific account is ever hard-coded here.
+   */
+  userName: string;
   apiKey: string;
   senderId?: string;
   // Default 15s — long enough for a sluggish gateway, short enough that
@@ -59,15 +65,20 @@ export async function sendOtpSms(opts: SendSmsOptions): Promise<SendSmsResult> {
     phone,
     message,
     providerUrl,
+    userName,
     apiKey,
     senderId,
     timeoutMs = 15_000,
   } = opts;
 
   const url = String(providerUrl || "").trim();
+  const user = String(userName || "").trim();
   const key = String(apiKey || "").trim();
   if (!url) {
     return { ok: false, error: "SMS gateway URL is not configured." };
+  }
+  if (!user) {
+    return { ok: false, error: "SMS gateway username is not configured." };
   }
   if (!key) {
     return { ok: false, error: "SMS gateway API key is not configured." };
@@ -79,13 +90,15 @@ export async function sendOtpSms(opts: SendSmsOptions): Promise<SendSmsResult> {
     return { ok: false, error: "SMS message body is empty." };
   }
 
-  // MiMSMS requires a JSON body.
+  // MiMSMS requires a JSON body. Username + Apikey + SenderName all come
+  // from SiteSettings — nothing about a specific account is baked in here.
+  const sender = String(senderId || "").trim();
   const payload = {
-    UserName: "sksohanpc@gmail.com",
+    UserName: user,
     Apikey: key,
     MobileNumber: phone,
     CampaignId: "null",
-    SenderName: senderId || "8809643902677",
+    SenderName: sender,
     TransactionType: "T",
     Message: message,
   };

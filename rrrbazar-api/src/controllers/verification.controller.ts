@@ -269,6 +269,7 @@ class VerificationController {
         phone,
         message,
         providerUrl: (settings as any).sms_provider_url,
+        userName: (settings as any).sms_provider_username,
         apiKey: (settings as any).sms_provider_api_key,
         senderId: (settings as any).sms_provider_sender_id,
       });

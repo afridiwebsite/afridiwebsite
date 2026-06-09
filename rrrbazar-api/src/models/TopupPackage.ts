@@ -15,6 +15,10 @@ export default (sequelize: Sequelize) => {
         public type!: string;
         public price!: string;
         public bprice!: string;
+        // Admin-only free-text label for who supplies/sells this package.
+        // Not shown on the storefront — only surfaced in the admin Orders
+        // → View modal beside the order title.
+        public seller!: string;
         public in_stock!: number;
         public serial!: number;
         public logo!: string;
@@ -127,6 +131,11 @@ export default (sequelize: Sequelize) => {
         bprice: {
             type: DataTypes.STRING,
             allowNull: true
+        },
+        seller: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: ''
         },
         in_stock: {
             type: DataTypes.INTEGER,

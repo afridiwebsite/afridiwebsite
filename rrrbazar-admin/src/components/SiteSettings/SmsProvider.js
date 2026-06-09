@@ -25,6 +25,7 @@ function SmsProvider() {
     const [data, loading] = useGet("admin/site-settings", "", refresh);
 
     const url = useRef(null);
+    const username = useRef(null);
     const apiKey = useRef(null);
     const senderId = useRef(null);
     const template = useRef(null);
@@ -45,6 +46,8 @@ function SmsProvider() {
     useEffect(() => {
         if (!data) return;
         if (url.current) url.current.value = data.sms_provider_url || "";
+        if (username.current)
+            username.current.value = data.sms_provider_username || "";
         if (apiKey.current) apiKey.current.value = data.sms_provider_api_key || "";
         if (senderId.current)
             senderId.current.value = data.sms_provider_sender_id || "";
@@ -60,6 +63,7 @@ function SmsProvider() {
         axiosInstance
             .post("/admin/site-settings/sms-provider", {
                 sms_provider_url: url.current.value,
+                sms_provider_username: username.current.value,
                 sms_provider_api_key: apiKey.current.value,
                 sms_provider_sender_id: senderId.current.value,
                 sms_message_template: template.current.value,
@@ -171,6 +175,23 @@ function SmsProvider() {
 
                                 <div className="form_grid">
                                     <div>
+                                        <label>Account username</label>
+                                        <input
+                                            ref={username}
+                                            className="form_input"
+                                            type="text"
+                                            placeholder="Gateway account login / username"
+                                            autoComplete="off"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Sent as <code>UserName</code> — required by MiMSMS and
+                                            similar JSON gateways alongside the API key.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="form_grid">
+                                    <div>
                                         <label>API key</label>
                                         <input
                                             ref={apiKey}
@@ -180,7 +201,7 @@ function SmsProvider() {
                                             autoComplete="off"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
-                                            Sent as the <code>api_key</code> form field.
+                                            Sent as the <code>Apikey</code> field.
                                         </p>
                                     </div>
                                     <div>

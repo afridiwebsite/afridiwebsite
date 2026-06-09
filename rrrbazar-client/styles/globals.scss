@@ -3473,7 +3473,7 @@ body {
 
 .topup-order-row-main {
   flex: 1;
-  min-width: 0;
+  min-width: 100px;
 }
 .topup-order-row-line {
   display: flex;
@@ -3587,10 +3587,21 @@ body {
 }
 
 @media (max-width: 380px) {
-  .topup-order-row-side {
-    margin-left: 0;
-    width: 100%;
-  }
+.topup-order-row{
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.topup-order-row-user{
+  font-size: 12px;
+  max-width: 130px;
+}
+.topup-order-row-pack{
+  font-size: 11px;
+
+}
+.topup-status-badge{
+  margin-bottom: 0;
+}
 }
 
 .topup-status-badge {

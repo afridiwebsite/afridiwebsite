@@ -83,16 +83,21 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   // fresh, even after a refresh.
   useEffect(() => {
     // ---- PWA install detection ------------------------------------------
-    // The banner kept reappearing after install because:
-    //   1. on iOS we showed it whenever Safari wasn't in standalone mode —
-    //      but opening the *installed* PWA's URL in a Safari tab is never
-    //      standalone, so it nagged forever;
-    //   2. there was no `appinstalled` listener and nothing persisted, so a
-    //      successful install was immediately forgotten on the next load.
+    // Visibility is driven by *live* install state, not a one-time
+    // "shown" flag. Two earlier bugs this avoids:
+    //   1. a permanent `pwa_banner_shown` flag meant the banner could only
+    //      ever appear once — so it was effectively blocked forever;
+    //   2. the persisted `pwa_installed` flag was never cleared, so after
+    //      the user *uninstalled* the app it still looked installed and the
+    //      banner / sidebar button never came back.
     //
-    // Fixes: bail out entirely when running as an installed app, remember a
-    // completed install in localStorage, and actively probe the browser's
-    // install state via `appinstalled` + getInstalledRelatedApps().
+    // The persisted `pwa_installed` flag is now only ever written on
+    // Chromium (via appinstalled / getInstalledRelatedApps) and is
+    // self-correcting there: the same getInstalledRelatedApps probe clears
+    // it the moment the app is no longer installed. iOS never persists it
+    // (no install API), so its banner simply tracks standalone mode and can
+    // never get stuck. Dismissals are session-scoped (see closeInstallBanner)
+    // so "Later" stops the nag for this visit without silencing it forever.
 
     // Running as the installed PWA (Android/desktop standalone, iOS
     // navigator.standalone, or TWA via the android-app referrer).
@@ -105,6 +110,20 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     setIsIOS(isIOSDevice);
 
+    const bannerDismissedThisSession = () => {
+      try {
+        return sessionStorage.getItem("pwa_banner_dismissed") === "1";
+      } catch (e) {
+        return false;
+      }
+    };
+
+    // Show the banner unless the user dismissed it earlier this session.
+    const maybeShowBanner = () => {
+      if (bannerDismissedThisSession()) return;
+      setShowInstallBanner(true);
+    };
+
     const markInstalled = () => {
       try {
         localStorage.setItem("pwa_installed", "1");
@@ -116,74 +135,72 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       setDeferredPrompt(null);
     };
 
-    // Show the install banner at most once, ever. The first time it would
-    // appear we persist a flag; every later load (this session or future
-    // ones) reads the flag and stays hidden — so the user is nudged a single
-    // time and never nagged again, whether or not they acted on it.
-    const showBannerOnce = () => {
+    // Drop the stale "installed" flag — used when the live probe (or a fresh
+    // beforeinstallprompt) tells us the app is no longer installed, e.g. the
+    // user uninstalled it since the last visit.
+    const clearInstalledFlag = () => {
       try {
-        if (localStorage.getItem("pwa_banner_shown") === "1") return;
-        localStorage.setItem("pwa_banner_shown", "1");
+        localStorage.removeItem("pwa_installed");
       } catch (e) {
-        /* localStorage unavailable — fall through and show this once */
+        /* ignore */
       }
-      setShowInstallBanner(true);
+      setIsInstalled(false);
     };
-
-    // If it's already installed (running standalone or remembered from a
-    // previous session), never show the banner and skip wiring listeners.
-    let alreadyInstalled = isStandalone;
-    try {
-      if (localStorage.getItem("pwa_installed") === "1") alreadyInstalled = true;
-    } catch (e) {
-      /* ignore */
-    }
-    if (alreadyInstalled) {
-      setIsInstalled(true);
-      setShowInstallBanner(false);
-    }
 
     const handleBeforeInstallPrompt = (e) => {
-      // beforeinstallprompt only fires when the app is installable AND not
-      // already installed, so reaching here means we can safely offer it.
+      // beforeinstallprompt only fires when the app is installable AND NOT
+      // already installed — so any persisted "installed" flag is stale
+      // (the user uninstalled). Clear it, then offer the install.
       e.preventDefault();
-      // Stash the event so it can be triggered later.
+      clearInstalledFlag();
       setDeferredPrompt(e);
-      // Only surfaces the banner if it hasn't already been shown once.
-      showBannerOnce();
+      maybeShowBanner();
     };
 
-    // Fired by the browser the moment the PWA finishes installing. Hide the
-    // banner immediately and remember it so it doesn't come back next load.
+    // Fired by the browser the moment the PWA finishes installing.
     const handleAppInstalled = () => {
       markInstalled();
     };
 
-    if (!alreadyInstalled) {
-      window.addEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt,
-      );
+    if (isStandalone) {
+      // Definitively running inside the installed app — never nag here.
+      setIsInstalled(true);
+      setShowInstallBanner(false);
+    } else {
+      // Fast-path hint from a previous Chromium install so installed users
+      // don't see a banner flash before the live probe resolves. Only
+      // Chromium ever writes this, and getInstalledRelatedApps below clears
+      // it if the app turns out to be gone.
+      let storedInstalled = false;
+      try {
+        storedInstalled = localStorage.getItem("pwa_installed") === "1";
+      } catch (e) {
+        /* ignore */
+      }
+      if (storedInstalled) setIsInstalled(true);
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.addEventListener("appinstalled", handleAppInstalled);
 
-      // Chrome/Android: directly ask whether our app is already installed.
-      // Covers the case where it was installed in a previous session, so
-      // beforeinstallprompt never fires again to tell us.
+      // Chrome/Android source of truth: ask the browser directly. Non-empty
+      // => installed (persist + hide); empty => not installed, so clear any
+      // stale flag and let the banner/button reappear (uninstall recovery).
       if (typeof navigator.getInstalledRelatedApps === "function") {
         navigator
           .getInstalledRelatedApps()
           .then((apps) => {
             if (Array.isArray(apps) && apps.length > 0) markInstalled();
+            else clearInstalledFlag();
           })
           .catch(() => {});
       }
 
-      // iOS Safari has no beforeinstallprompt / appinstalled and no install
-      // API, so we can only show the manual "Add to Home Screen" hint — and
-      // only when it isn't already installed (standalone is handled above).
-      // showBannerOnce() keeps it to a single appearance.
+      // iOS Safari has no beforeinstallprompt / appinstalled / install API,
+      // so the only signal is standalone mode (handled above). When not
+      // standalone we show the manual "Add to Home Screen" hint; it tracks
+      // live state, so uninstalling and reopening in Safari shows it again.
       if (isIOSDevice) {
-        showBannerOnce();
+        maybeShowBanner();
       }
     }
 
@@ -326,15 +343,18 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   const showInstallInstructions = () => setShowInstallBanner(true);
 
   const closeInstallBanner = () => {
-    // Persist the dismissal so the banner doesn't nag on every load. On iOS
-    // (no appinstalled event) this is the only way to make "Later" stick.
+    // Session-scoped dismissal: "Later" hides the banner for this visit but
+    // it returns on a future session (or after an uninstall/reinstall). This
+    // is deliberately NOT persisted to localStorage — a permanent flag was
+    // what previously blocked the banner from ever showing again.
     try {
-      localStorage.setItem("pwa_banner_dismissed", "1");
+      sessionStorage.setItem("pwa_banner_dismissed", "1");
     } catch (e) {
-      /* localStorage unavailable — fall back to in-session hide */
+      /* sessionStorage unavailable — fall back to in-session hide */
     }
     setShowInstallBanner(false);
-    setDeferredPrompt(null);
+    // Keep deferredPrompt so the sidebar "Install App" button still works
+    // after the banner is dismissed; only the banner is hidden here.
   };
 
   const glovalContextData = {

@@ -39,6 +39,7 @@ class SiteSettingController {
     // the admin SmsProvider page can hydrate its own saved values.
     if (!(req as any).admin) {
       delete json.sms_provider_url;
+      delete json.sms_provider_username;
       delete json.sms_provider_api_key;
       delete json.sms_provider_sender_id;
       delete json.sms_message_template;
@@ -135,6 +136,7 @@ class SiteSettingController {
     const response = new responseUtils();
     const {
       sms_provider_url,
+      sms_provider_username,
       sms_provider_api_key,
       sms_provider_sender_id,
       sms_message_template,
@@ -143,6 +145,8 @@ class SiteSettingController {
     const settings = await getOrCreate();
     if (sms_provider_url !== undefined)
       settings.sms_provider_url = String(sms_provider_url || "").trim().slice(0, 512);
+    if (sms_provider_username !== undefined)
+      settings.sms_provider_username = String(sms_provider_username || "").trim().slice(0, 128);
     if (sms_provider_api_key !== undefined)
       settings.sms_provider_api_key = String(sms_provider_api_key || "").trim().slice(0, 255);
     if (sms_provider_sender_id !== undefined)
@@ -156,6 +160,7 @@ class SiteSettingController {
     // the GET, and avoiding round-trip echoes makes audit logs cleaner.
     response.data = {
       sms_provider_url: settings.sms_provider_url,
+      sms_provider_username: settings.sms_provider_username,
       sms_provider_sender_id: settings.sms_provider_sender_id,
       sms_message_template: settings.sms_message_template,
     };
@@ -185,6 +190,7 @@ class SiteSettingController {
           String(message || "").trim() ||
           "Test SMS from your topup admin panel.",
         providerUrl: settings.sms_provider_url,
+        userName: settings.sms_provider_username,
         apiKey: settings.sms_provider_api_key,
         senderId: settings.sms_provider_sender_id,
       });

@@ -104,7 +104,14 @@ function ViewOrderModal({ order }) {
         }}
       >
         <div className="flex items-center justify-between py-3 px-5 border-b border-gray-200 bg-gray-50 rounded-t-xl">
-          <h2 className="font-bold text-lg text-gray-800">Order #{order.id}</h2>
+          <h2 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+            Order #{order.id}
+            {order?.TopupPackage?.seller ? (
+              <span className="text-xs font-semibold text-gray-600 bg-gray-200 rounded px-2 py-0.5">
+                {order.TopupPackage.seller}
+              </span>
+            ) : null}
+          </h2>
           <button
             type="button"
             onClick={close}

@@ -40,6 +40,7 @@ export default (sequelize: Sequelize) => {
         // without code changes. `sms_message_template` may contain {code}
         // and {minutes} placeholders.
         public sms_provider_url!: string;
+        public sms_provider_username!: string;
         public sms_provider_api_key!: string;
         public sms_provider_sender_id!: string;
         public sms_message_template!: string;
@@ -101,6 +102,10 @@ export default (sequelize: Sequelize) => {
             allowNull: false,
             defaultValue: 'https://api.sms.net.bd/sendsms',
         },
+        // MiMSMS (and similar JSON gateways) authenticate the account with a
+        // username/login alongside the API key. Configurable so we never
+        // hard-code a specific account in the provider helper.
+        sms_provider_username:  { type: DataTypes.STRING(128), allowNull: false, defaultValue: '' },
         sms_provider_api_key:   { type: DataTypes.STRING(255), allowNull: false, defaultValue: '' },
         sms_provider_sender_id: { type: DataTypes.STRING(64),  allowNull: false, defaultValue: '' },
         sms_message_template:   {

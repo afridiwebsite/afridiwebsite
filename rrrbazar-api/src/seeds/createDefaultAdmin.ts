@@ -68,6 +68,8 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     // Admin profile
     { path: '/profile',              method: 'GET'  },
     { path: '/profile/update',       method: 'POST' },
+    // Admin password change (Profile page → "Change password")
+    { path: '/change-password',      method: 'POST' },
     // Topup product dynamic inputs (admin defines the order form per product)
     { path: '/topup-product/:id/inputs',     method: 'POST' },
     { path: '/topup-product/:id/categories', method: 'POST' },

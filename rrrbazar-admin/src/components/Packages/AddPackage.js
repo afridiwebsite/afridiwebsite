@@ -22,6 +22,7 @@ function AddPackage(props) {
   const name = useRef(null);
   const sell_price = useRef(null);
   const buy_price = useRef(null);
+  const seller = useRef(null);
   const in_stock = useRef(null);
   const serial = useRef(null);
   const logo = useRef(null);
@@ -292,6 +293,7 @@ function AddPackage(props) {
         name: name.current.value,
         price: sell_price.current.value,
         bprice: buy_price.current.value,
+        seller: seller.current?.value || "",
         serial: serial.current.value,
         logo: path,
         reward_type: rewardType,
@@ -441,6 +443,16 @@ function AddPackage(props) {
                         type="number"
                         placeholder="Buy price"
                         required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="seller">Seller</label>
+                      <input
+                        ref={seller}
+                        id="seller"
+                        className="form_input"
+                        type="text"
+                        placeholder="Seller"
                       />
                     </div>
                   </div>
