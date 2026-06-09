@@ -100,7 +100,7 @@ export default (sequelize: Sequelize) => {
         sms_provider_url: {
             type: DataTypes.STRING(512),
             allowNull: false,
-            defaultValue: 'https://api.sms.net.bd/sendsms',
+            defaultValue: 'https://api.mimsms.com/api/SmsSending/SMS',
         },
         // MiMSMS (and similar JSON gateways) authenticate the account with a
         // username/login alongside the API key. Configurable so we never

@@ -132,18 +132,18 @@ function SmsProvider() {
 
                         <div className="mb-5 p-3 border border-blue-100 bg-blue-50 rounded text-sm text-blue-900">
                             These credentials power the phone-number OTP step of the
-                            user verification module. The defaults target{" "}
+                            user verification module. They target the{" "}
                             <a
-                                href="https://portal.sms.net.bd/"
+                                href="https://api.mimsms.com/api/SmsSending/SMS"
                                 target="_blank"
                                 rel="noreferrer"
                                 className="underline"
                             >
-                                portal.sms.net.bd
+                                MiMSMS
                             </a>{" "}
-                            but the URL is fully editable — any gateway that accepts
-                            a form-POST with <code>api_key</code>, <code>to</code>,
-                            and <code>msg</code> will work. The module is{" "}
+                            JSON API, which authenticates with{" "}
+                            <code>UserName</code> + <code>Apikey</code> and requires an
+                            approved <code>SenderName</code>. The module is{" "}
                             <strong>disabled</strong> until you flip{" "}
                             <em>Enable verification module</em> on the{" "}
                             <a
@@ -164,11 +164,11 @@ function SmsProvider() {
                                             ref={url}
                                             className="form_input"
                                             type="url"
-                                            placeholder="https://api.sms.net.bd/sendsms"
+                                            placeholder="https://api.mimsms.com/api/SmsSending/SMS"
                                             required
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
-                                            The endpoint that receives the form-POST.
+                                            The endpoint that receives the JSON POST.
                                         </p>
                                     </div>
                                 </div>
@@ -205,16 +205,18 @@ function SmsProvider() {
                                         </p>
                                     </div>
                                     <div>
-                                        <label>Sender ID (optional)</label>
+                                        <label>Sender ID (required)</label>
                                         <input
                                             ref={senderId}
                                             className="form_input"
                                             type="text"
-                                            placeholder="e.g. RRRBAZAR"
+                                            placeholder="e.g. MiM Digital"
+                                            required
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
-                                            Some gateways accept a sender label. Leave blank if
-                                            yours doesn&apos;t require one.
+                                            Sent as <code>SenderName</code> — your MiMSMS-approved
+                                            sender. <strong>Required</strong>: the gateway rejects
+                                            sends without an approved sender.
                                         </p>
                                     </div>
                                 </div>
