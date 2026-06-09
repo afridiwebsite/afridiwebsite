@@ -8,6 +8,10 @@
   "name": "RRRBAZAR",
   "short_name": "RRRBAZAR",
   "description": "Buy Online games credits",
+  "prefer_related_applications": false,
+  "related_applications": [
+    { "platform": "webapp", "url": "https://rrrbazar.com/manifest.json" }
+  ],
   "icons": [
     {
       "src": "/logo-app.jpeg",

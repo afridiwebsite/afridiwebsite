@@ -52,9 +52,9 @@ function ContactUsPage() {
               <p className="contact-card-text">
                 Fastest way to get help with your orders and payments.
               </p>
-              <a href={whatsappLink} target="_blank" rel="noreferrer" className="contact-card-btn">
+              {/* <a href={whatsappLink} target="_blank" rel="noreferrer" className="contact-card-btn">
                 <Button className="primary w-full">Message on WhatsApp</Button>
-              </a>
+              </a> */}
             </div>
 
             {/* Telegram Card */}
@@ -66,11 +66,11 @@ function ContactUsPage() {
               <p className="contact-card-text">
                 Join our telegram group for updates and quick support.
               </p>
-              <a href={telegramLink || '#'} target="_blank" rel="noreferrer" className="contact-card-btn">
+              {/* <a href={telegramLink || '#'} target="_blank" rel="noreferrer" className="contact-card-btn">
                 <Button className="primary w-full" disabled={!telegramLink}>
                   Join Telegram
                 </Button>
-              </a>
+              </a> */}
             </div>
 
             {/* Email Card */}
@@ -82,9 +82,9 @@ function ContactUsPage() {
               <p className="contact-card-text">
                 For business inquiries and formal support requests.
               </p>
-              <a href={`mailto:${supportEmail}`} className="contact-card-btn">
+              {/* <a href={`mailto:${supportEmail}`} className="contact-card-btn">
                 <Button className="outlined w-full">Send Email</Button>
-              </a>
+              </a> */}
             </div>
 
             {/* Social Card */}

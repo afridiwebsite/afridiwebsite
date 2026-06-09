@@ -29,7 +29,7 @@ export const seoConfig = Object.freeze({
   // Appended to page-provided titles, e.g. "Free Fire | RRR-Bazar".
   titleTemplate: `%s | ${__site_name_1}`,
   description:
-    'RRR-Bazar is Bangladesh’s trusted game top-up shop. Instantly buy Free Fire diamonds, PUBG Mobile UC, Mobile Legends, gift cards and online game credits with bKash, Nagad & Rocket. Fast delivery all over Bangladesh.',
+    'RRR-Bazar is Bangladesh’s trusted game top-up shop. Instantly buy Free Fire diamonds, PUBG Mobile UC, Mobile Legends, gift cards and online game credits with bKash, Nagad & Rocket. Fast delivery all over Bangladesh. Buy Free Fire diamonds in Bangladesh instantly using bKash, Nagad, or wallet. Fast, secure and automatic top-up service on TR Bazar for all game credits',
   keywords: [
     'game top up bangladesh',
     'free fire diamond top up bd',

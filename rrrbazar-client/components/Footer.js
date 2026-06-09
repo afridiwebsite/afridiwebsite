@@ -116,7 +116,7 @@ function Footer() {
               <Link href="/terms-condition">
                 <a className="footer-link">Terms &amp; Conditions</a>
               </Link>
-              <Link href="/contact-us">
+              <Link className="disabled" href="/">
                 <a className="footer-link">Contact Us</a>
               </Link>
               <Link href="/privacy-policy">

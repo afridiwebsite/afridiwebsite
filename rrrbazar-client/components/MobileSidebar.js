@@ -18,7 +18,16 @@ import navlinks from '../config/navlinks';
 import { globalContext } from '../pages/_app';
 
 function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
-  const { isAuth, signOut, authUser, deferredPrompt, installPWA } = useContext(globalContext);
+  const {
+    isAuth,
+    signOut,
+    authUser,
+    deferredPrompt,
+    installPWA,
+    isInstalled,
+    isIOS,
+    showInstallInstructions,
+  } = useContext(globalContext);
   const router = useRouter();
 
   // Close Sidebar
@@ -138,11 +147,18 @@ function MobileSidebar({ isOpenSidebar, setIsOPenSidebar }) {
                 </a>
               </Link>
 
-              {deferredPrompt && (
+              {/* Hide once installed. On Android/desktop we trigger the real
+                  install prompt; on iOS (no prompt) we re-open the banner so
+                  the user sees the Share → Add to Home Screen instructions. */}
+              {!isInstalled && (deferredPrompt || isIOS) && (
                 <a
                   onClick={() => {
                     closeSidebarForcely();
-                    installPWA();
+                    if (deferredPrompt) {
+                      installPWA();
+                    } else {
+                      showInstallInstructions();
+                    }
                   }}
                   className="mobile-sidebar-box mobile-sidebar-box--rose cursor-pointer"
                 >

@@ -64,6 +64,13 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   const [isAuth, setIsAuth] = useState(authUser && accessToken ? true : false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  // Best-effort "is the PWA already installed" flag, surfaced via context so
+  // the banner and the sidebar button can both hide reliably. See the install
+  // detection effect below for the signals that feed it.
+  const [isInstalled, setIsInstalled] = useState(false);
+  // iOS has no install API/events, so we track it to fall back to the manual
+  // "Add to Home Screen" hint instead of a (non-existent) install prompt.
+  const [isIOS, setIsIOS] = useState(false);
 
   // Seed siteSettings from the SSR-resolved value so the favicon `<link>`
   // tags ship in the initial HTML. Most browsers lock onto whatever
@@ -94,12 +101,17 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       window.navigator.standalone === true ||
       document.referrer.startsWith("android-app://");
 
+    const isIOSDevice =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(isIOSDevice);
+
     const markInstalled = () => {
       try {
         localStorage.setItem("pwa_installed", "1");
       } catch (e) {
         /* localStorage may be unavailable (private mode) — non-fatal */
       }
+      setIsInstalled(true);
       setShowInstallBanner(false);
       setDeferredPrompt(null);
     };
@@ -127,6 +139,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       /* ignore */
     }
     if (alreadyInstalled) {
+      setIsInstalled(true);
       setShowInstallBanner(false);
     }
 
@@ -169,9 +182,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       // API, so we can only show the manual "Add to Home Screen" hint — and
       // only when it isn't already installed (standalone is handled above).
       // showBannerOnce() keeps it to a single appearance.
-      const isIOS =
-        /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      if (isIOS) {
+      if (isIOSDevice) {
         showBannerOnce();
       }
     }
@@ -309,6 +320,11 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     }
   };
 
+  // Re-open the banner on demand (e.g. iOS user taps "Install App" in the
+  // sidebar). iOS has no install prompt, so the banner's Share→Add-to-Home
+  // hint is the only thing we can offer.
+  const showInstallInstructions = () => setShowInstallBanner(true);
+
   const closeInstallBanner = () => {
     // Persist the dismissal so the banner doesn't nag on every load. On iOS
     // (no appinstalled event) this is the only way to make "Later" stick.
@@ -332,6 +348,9 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     setSiteSettings,
     deferredPrompt,
     installPWA,
+    isInstalled,
+    isIOS,
+    showInstallInstructions,
   };
 
   const isDisabledHeader = Component?.disabledHeader;
@@ -429,7 +448,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
             )}
             {!isDisabledMobileAppBar && <MobileAppBar />}
 
-            {showInstallBanner && (
+            {showInstallBanner && !isInstalled && (
               <div
                 className="pwa-install-banner"
                 style={{
