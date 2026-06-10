@@ -41,9 +41,9 @@ export default (sequelize: Sequelize) => {
         sequelize,
         timestamps: false,
         indexes: [
-            { fields: ['phone'] },
-            { fields: ['user_id'] },
-            { fields: ['expires_at'] },
+            { name: 'idx_phone', fields: ['phone'] },
+            { name: 'idx_user_id', fields: ['user_id'] },
+            { name: 'idx_expires_at', fields: ['expires_at'] },
         ],
         ...config.config,
     });

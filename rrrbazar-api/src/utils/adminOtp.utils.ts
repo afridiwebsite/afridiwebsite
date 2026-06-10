@@ -11,6 +11,7 @@
 import crypto from "crypto";
 import Schema from "../models";
 import { renderOtpMessage, sendOtpSms } from "../helpers/smsProvider";
+import { sendEmail } from "../helpers/emailProvider";
 
 const { SiteSetting } = Schema;
 
@@ -66,4 +67,29 @@ export async function sendAdminOtpSms(
     apiKey: settings?.sms_provider_api_key,
     senderId: settings?.sms_provider_sender_id,
   });
+}
+
+/**
+ * Send an OTP code to an admin's configured `otp_email` via Resend.
+ * Returns the emailProvider result ({ ok, error?, body? }) so callers can
+ * decide whether to surface a delivery failure. Mirrors sendAdminOtpSms.
+ */
+export async function sendAdminOtpEmail(
+  email: string,
+  code: string,
+  minutes: number = ADMIN_OTP_EXPIRY_MINUTES,
+) {
+  const subject = `Your admin verification code: ${code}`;
+  const text =
+    `Your verification code is ${code}. ` +
+    `It expires in ${minutes} minutes.\n\n` +
+    `If you didn't request this, you can ignore this email.`;
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+      <p style="font-size:15px;color:#374151;">Use the verification code below to continue:</p>
+      <p style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#111827;margin:16px 0;">${code}</p>
+      <p style="font-size:13px;color:#6b7280;">This code expires in ${minutes} minutes.</p>
+      <p style="font-size:12px;color:#9ca3af;margin-top:24px;">If you didn't request this, you can safely ignore this email.</p>
+    </div>`;
+  return sendEmail({ to: email, subject, text, html });
 }

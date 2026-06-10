@@ -72,8 +72,9 @@ export default (sequelize: Sequelize) => {
         modelName: 'VerificationSubmission',
         sequelize,
         indexes: [
-            { unique: true, fields: ['user_id', 'step'] },
-            { fields: ['status'] },
+            { name: 'uniq_user_step', unique: true, fields: ['user_id', 'step'] },
+            { name: 'idx_status', fields: ['status'] },
+            { name: 'idx_user_id', fields: ['user_id'] },
         ],
         ...config.config,
     });

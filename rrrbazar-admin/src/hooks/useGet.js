@@ -26,16 +26,16 @@ function useGet(urlToFetch, baseURL, refresh) {
         setLoading(false);
       })
         .catch((err) => {
-          // A dead session returns 401 → bounce to login (mirrors the shared
-          // axios instance's interceptor).
-          if (err?.response?.status === 401) {
+          // A dead session or lack of permissions returns 401/403 → bounce 
+          // to Not Permitted (mirrors the shared axios instance's interceptor).
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
             try {
               localStorage.removeItem("user");
               sessionStorage.removeItem("user");
             } catch (e) { /* ignore */ }
-            const loginUrl = (process.env.REACT_APP_ADMIN_BASENAME || "") + "/login";
-            if (!String(window.location.pathname).endsWith("/login")) {
-              // window.location.href = loginUrl;
+            if (window.location.pathname !== "/not-permitted" && window.location.pathname !== "/not-permitted/") {
+               window.location.href = "/not-permitted";
             }
           }
           setError(err);

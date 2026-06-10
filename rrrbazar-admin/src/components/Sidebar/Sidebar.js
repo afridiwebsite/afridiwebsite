@@ -101,11 +101,11 @@ export default function Sidebar({ isOpenSidebar }) {
         },
       ],
     },
-    {
-      text: "Product Order",
-      path: "/product-order",
-      icon: "fab fa-first-order",
-    },
+    // {
+    //   text: "Product Order",
+    //   path: "/product-order",
+    //   icon: "fab fa-first-order",
+    // },
     {
       text: "Auths",
       path: "/auths",

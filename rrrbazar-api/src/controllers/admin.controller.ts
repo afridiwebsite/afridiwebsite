@@ -1169,12 +1169,13 @@ class AdminController {
         return res.status(400).send(response.response);
       }
 
-      const { first_name, last_name, email, phone, gender, date_of_birth, image } = req.body;
+      const { first_name, last_name, email, phone, otp_email, gender, date_of_birth, image } = req.body;
 
       if (first_name !== undefined) admin.first_name = first_name;
       if (last_name !== undefined) admin.last_name = last_name;
       if (email !== undefined) admin.email = email;
       if (phone !== undefined) admin.phone = phone;
+      if (otp_email !== undefined) admin.otp_email = otp_email;
       if (gender !== undefined) admin.gender = gender;
       if (date_of_birth !== undefined) admin.date_of_birth = date_of_birth;
       if (image !== undefined) admin.image = image;

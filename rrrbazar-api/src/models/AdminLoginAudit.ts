@@ -20,6 +20,7 @@ export default (sequelize: Sequelize) => {
     }
 
     AdminLoginAudit.init({
+        id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
         admin_id: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
         identity: { type: DataTypes.STRING(255), allowNull: true, defaultValue: '' },
         success: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
@@ -37,8 +38,8 @@ export default (sequelize: Sequelize) => {
         sequelize,
         timestamps: false,
         indexes: [
-            { fields: ['admin_id'] },
-            { fields: ['created_at'] },
+            { name: 'idx_admin_login_audits_admin', fields: ['admin_id'] },
+            { name: 'idx_admin_login_audits_created', fields: ['created_at'] },
         ],
         ...config.config,
     });

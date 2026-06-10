@@ -10,18 +10,14 @@ const axiosInstance = axios.create({
     withCredentials: true,
 });
 
-// Respect a secret admin URL prefix (React Router basename) when bouncing to
-// the login screen.
-const LOGIN_URL = (process.env.REACT_APP_ADMIN_BASENAME || "") + "/login";
-
 // 401 = the session is missing / expired / revoked → drop the local UI hint
-// and return to login. 403 = authenticated but not permitted for that route;
-// we deliberately do NOT log out on 403 (the caller surfaces the error).
+// and return to Not Permitted. 403 = authenticated but not permitted for that route;
+// we now redirect both to the Not Permitted page at the root domain.
 axiosInstance.interceptors.response.use(
     (res) => res,
     (error) => {
         const status = error?.response?.status;
-        if (status === 401) {
+        if (status === 401 || status === 403) {
             try {
                 localStorage.removeItem("user");
                 sessionStorage.removeItem("user");
@@ -30,8 +26,8 @@ axiosInstance.interceptors.response.use(
             } catch (e) {
                 /* storage unavailable — ignore */
             }
-            if (!String(window.location.pathname).endsWith("/login")) {
-                window.location.href = LOGIN_URL;
+            if (window.location.pathname !== "/not-permitted" && window.location.pathname !== "/not-permitted/") {
+                window.location.href = "/not-permitted";
             }
         }
         return Promise.reject(error);

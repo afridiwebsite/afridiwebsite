@@ -157,7 +157,12 @@ function App() {
           <Switch>
             <Route path="/login" exact component={Login} />
             <Route path="/forgot-password" exact component={ForgotPassword} />
-            <Redirect from="/" to="/login" />
+            <Route
+              render={() => {
+                window.location.href = "/not-permitted";
+                return null;
+              }}
+            />
           </Switch>
         </BlankLayout>
       )}

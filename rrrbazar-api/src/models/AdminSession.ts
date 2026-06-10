@@ -28,8 +28,9 @@ export default (sequelize: Sequelize) => {
     }
 
     AdminSession.init({
+        id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
         admin_id: { type: DataTypes.INTEGER, allowNull: false },
-        token_hash: { type: DataTypes.STRING(64), allowNull: false, unique: true },
+        token_hash: { type: DataTypes.CHAR(64), allowNull: false },
         user_agent: { type: DataTypes.STRING(512), allowNull: true, defaultValue: '' },
         ip: { type: DataTypes.STRING(64), allowNull: true, defaultValue: '' },
         remember: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
@@ -52,9 +53,9 @@ export default (sequelize: Sequelize) => {
         sequelize,
         timestamps: false,
         indexes: [
-            { unique: true, fields: ['token_hash'] },
-            { fields: ['admin_id'] },
-            { fields: ['expires_at'] },
+            { name: 'uq_admin_sessions_token', unique: true, fields: ['token_hash'] },
+            { name: 'idx_admin_sessions_admin', fields: ['admin_id'] },
+            { name: 'idx_admin_sessions_expiry', fields: ['expires_at'] },
         ],
         ...config.config,
     });

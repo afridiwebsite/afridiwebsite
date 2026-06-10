@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 import express from 'express';
 import urljoin from 'url-join';
+import { Op } from 'sequelize';
 import Schema from '../models';
 import util from '../utils/common.utils';
 import responseUtils from '../utils/response.utils';
@@ -20,7 +21,7 @@ import {
   hashOtp,
   otpExpiry,
   verifyOtp,
-  sendAdminOtpSms,
+  sendAdminOtpEmail,
   ADMIN_OTP_EXPIRY_MINUTES,
 } from '../utils/adminOtp.utils';
 import {
@@ -54,6 +55,32 @@ async function auditAdminLogin(
   } catch (e) {
     console.log('auditAdminLogin failed (non-fatal):', (e as any)?.message || e);
   }
+}
+
+// Mask an email for display in a hint, e.g. "alice@gmail.com" -> "a***@gmail.com".
+// Reveals just enough for the admin to recognise the destination without
+// exposing the full address.
+function maskEmail(email: string): string {
+  const e = String(email || '').trim();
+  const at = e.indexOf('@');
+  if (at <= 0) return '••••';
+  const local = e.slice(0, at);
+  const domain = e.slice(at);
+  const head = local.slice(0, 1);
+  return `${head}${'•'.repeat(Math.max(2, local.length - 1))}${domain}`;
+}
+
+// Resolve the admin that the forgot-password flow targets: the (first) admin
+// who has an otp_email configured. The reset page carries no identity input,
+// so the destination is derived server-side. Returns null when no admin has
+// set an otp_email.
+async function findOtpAdmin() {
+  return Admin.findOne({
+    where: {
+      otp_email: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
+    },
+    order: [['id', 'ASC']],
+  });
 }
 
 // Finalise a successful admin login: mint a revocable server-side session +
@@ -108,6 +135,8 @@ class AuthController {
         email: identity
       }
     })
+
+    console.log(admin,'admin')
     if (!admin) {
       await auditAdminLogin(req, { identity, success: false, reason: 'no_user' })
       response.status = 400
@@ -124,18 +153,18 @@ class AuthController {
       return res.status(400).send(response.getResponse())
     }
 
-    // Two-factor step-up: if the admin has a phone on file, password alone is
-    // not enough — we SMS a one-time code and require it via verify-otp
-    // before issuing any session. Admins without a phone keep the
-    // password-only flow ("OTP only when set").
-    const phone = String(admin.phone || '').trim()
-    if (phone) {
+    // Two-factor step-up: if the admin has an otp_email on file, password
+    // alone is not enough — we email a one-time code and require it via
+    // verify-otp before issuing any session. Admins without an otp_email keep
+    // the password-only flow ("OTP only when set").
+    const otpEmail = String(admin.otp_email || '').trim()
+    if (otpEmail) {
       const code = generateOtpCode()
       admin.login_otp = hashOtp(code)
       admin.login_otp_expires_at = otpExpiry()
       await admin.save()
 
-      const send = await sendAdminOtpSms(phone, code)
+      const send = await sendAdminOtpEmail(otpEmail, code)
       if (!send.ok) {
         await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_failed' })
         response.status = 502
@@ -145,19 +174,19 @@ class AuthController {
       }
 
       await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_sent' })
-      response.message = 'OTP sent to your registered phone.'
+      response.message = 'OTP sent to your registered email.'
       response.data = {
         otp_required: true,
         identity: admin.email,
         // Masked hint so the UI can say where the code went without leaking
-        // the full number.
-        phone_hint: phone.length > 4 ? `••••${phone.slice(-4)}` : '••••',
+        // the full address.
+        email_hint: maskEmail(otpEmail),
         expires_in_minutes: ADMIN_OTP_EXPIRY_MINUTES,
       }
       return res.send(response.getResponse())
     }
 
-    // No phone → password is sufficient. Issue the session immediately.
+    // No otp_email → password is sufficient. Issue the session immediately.
     await auditAdminLogin(req, { admin_id: admin.id, identity, success: true, reason: 'success' })
     return issueAdminLoginSuccess(req, res, admin, remember, response)
   }
@@ -170,6 +199,8 @@ class AuthController {
     const identity = String(req.body.identity || '')
     const otp = String(req.body.otp || '')
     const remember = req.body.remember == 1
+
+    console.log('log',otp)
 
     const admin = await Admin.findOne({ where: { email: identity } })
     if (!admin) {
@@ -198,46 +229,78 @@ class AuthController {
     return issueAdminLoginSuccess(req, res, admin, remember, response)
   }
 
-  // Forgot-password step 1: SMS a reset code to the admin's phone. Always
-  // returns a generic success (and never reveals whether the account exists
-  // or has a phone) to avoid account/phone enumeration.
-  async adminForgotPasswordRequest(req: express.Request, res: express.Response) {
+  // Forgot-password info: tell the (access-gated) reset page whether an OTP
+  // email is configured, and a masked hint of where the code would go. The
+  // reset page has no identity input — the destination is the admin's
+  // otp_email, resolved server-side.
+  async adminForgotPasswordOtpInfo(_req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const identity = String(req.body.identity || '').trim()
-    const generic = 'If an account with a registered phone exists, an OTP has been sent.'
-
     try {
-      const admin = identity
-        ? await Admin.findOne({ where: { email: identity } })
-        : null
-      const phone = String(admin?.phone || '').trim()
-      if (admin && phone) {
-        const code = generateOtpCode()
-        admin.reset_otp = hashOtp(code)
-        admin.reset_otp_expires_at = otpExpiry()
-        await admin.save()
-        // Best-effort send; we still return the generic message either way so
-        // a gateway error doesn't leak that the account exists.
-        const send = await sendAdminOtpSms(phone, code)
-        if (!send.ok) {
-          console.log('adminForgotPasswordRequest SMS failed:', send.error)
-        }
-      }
+      const admin = await findOtpAdmin()
+      const otpEmail = String(admin?.otp_email || '').trim()
+      response.data = otpEmail
+        ? { has_otp_email: true, email_hint: maskEmail(otpEmail) }
+        : { has_otp_email: false, email_hint: '' }
     } catch (e) {
-      console.log('adminForgotPasswordRequest error (non-fatal):', (e as any)?.message || e)
+      console.log('adminForgotPasswordOtpInfo error (non-fatal):', (e as any)?.message || e)
+      response.data = { has_otp_email: false, email_hint: '' }
     }
-
-    response.message = generic
-    response.data = { sent: true, expires_in_minutes: ADMIN_OTP_EXPIRY_MINUTES }
     return res.send(response.getResponse())
   }
 
-  // Forgot-password step 2: verify the reset code + set the new password. On
-  // success every existing session for the admin is revoked, so a leaked
-  // session can't survive a password reset.
+  // Forgot-password step 1: email a reset code to the admin's otp_email. The
+  // target admin is resolved server-side (the one with an otp_email set), so
+  // the reset page sends no identity. Returns a clear result on whether an
+  // OTP email is configured — the page is access-gated, so revealing this is
+  // acceptable here.
+  async adminForgotPasswordRequest(req: express.Request, res: express.Response) {
+    const response = new responseUtils()
+
+    try {
+      const admin = await findOtpAdmin()
+      const otpEmail = String(admin?.otp_email || '').trim()
+      if (!admin || !otpEmail) {
+        response.status = 400
+        response.success = false
+        response.message = 'No OTP email is set. Set one from the admin profile first.'
+        return res.status(400).send(response.getResponse())
+      }
+
+      const code = generateOtpCode()
+      admin.reset_otp = hashOtp(code)
+      admin.reset_otp_expires_at = otpExpiry()
+      await admin.save()
+
+      const send = await sendAdminOtpEmail(otpEmail, code)
+      if (!send.ok) {
+        response.status = 502
+        response.success = false
+        response.message = send.error || 'Could not send the reset code. Try again.'
+        return res.status(502).send(response.getResponse())
+      }
+
+      response.message = `A reset code has been sent to ${maskEmail(otpEmail)}.`
+      response.data = {
+        sent: true,
+        email_hint: maskEmail(otpEmail),
+        expires_in_minutes: ADMIN_OTP_EXPIRY_MINUTES,
+      }
+      return res.send(response.getResponse())
+    } catch (e) {
+      console.log('adminForgotPasswordRequest error (non-fatal):', (e as any)?.message || e)
+      response.status = 502
+      response.success = false
+      response.message = 'Could not send the reset code. Try again.'
+      return res.status(502).send(response.getResponse())
+    }
+  }
+
+  // Forgot-password step 2: verify the reset code + set the new password. The
+  // target admin is the otp_email admin (resolved server-side — no identity
+  // from the client). On success every existing session for the admin is
+  // revoked, so a leaked session can't survive a password reset.
   async adminResetPassword(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const identity = String(req.body.identity || '').trim()
     const otp = String(req.body.otp || '')
     const newPassword = String(req.body.password || '')
 
@@ -248,9 +311,7 @@ class AuthController {
       return res.status(400).send(response.getResponse())
     }
 
-    const admin = identity
-      ? await Admin.findOne({ where: { email: identity } })
-      : null
+    const admin = await findOtpAdmin()
     if (!admin || !verifyOtp(otp, admin.reset_otp, admin.reset_otp_expires_at)) {
       response.status = 400
       response.success = false

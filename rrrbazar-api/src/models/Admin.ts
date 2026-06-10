@@ -17,6 +17,9 @@ export default (sequelize: Sequelize) => {
     public date_of_birth!: Date;
     public image!: string;
     public phone!: string;
+    // Dedicated destination for login/reset OTP codes (kept separate from the
+    // account `email` login identity). See migration 016.
+    public otp_email!: string | null;
     public wallet!: number;
     public password!: string;
     public status!: number;
@@ -75,6 +78,11 @@ export default (sequelize: Sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: '',
+    },
+    otp_email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     wallet: {
       type: DataTypes.DECIMAL(10, 2),
@@ -135,7 +143,7 @@ export default (sequelize: Sequelize) => {
   });
 
   Admin.beforeUpdate(async (admin: Admin, options: any) => {
-    if (admin.changed('password')) {
+    if (admin.changed('password') && typeof admin.password === 'string') {
       admin.password = await bcrypt.hash(admin.password, 8);
     }
   })

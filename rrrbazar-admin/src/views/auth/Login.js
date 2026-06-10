@@ -24,7 +24,7 @@ export default function Login() {
   const [step, setStep] = useState("credentials");
   const [identity, setIdentity] = useState("");
   const [remember, setRemember] = useState(false);
-  const [phoneHint, setPhoneHint] = useState("");
+  const [emailHint, setEmailHint] = useState("");
 
   const passwordRef = useRef(null);
   const otpRef = useRef(null);
@@ -58,7 +58,7 @@ export default function Login() {
       .then((res) => {
         const data = res.data.data || {};
         if (data.otp_required) {
-          setPhoneHint(data.phone_hint || "");
+          setEmailHint(data.email_hint || "");
           setStep("otp");
           setLoading(false);
           return;
@@ -79,6 +79,8 @@ export default function Login() {
     const otp = otpRef.current.value;
     setLoading(true);
     setErrorMsg("");
+
+    console.log('otp',otp)
 
     axios
       .post(
@@ -173,8 +175,8 @@ export default function Login() {
                 ) : (
                   <form onSubmit={submitOtp}>
                     <p className="text-sm text-blueGray-500 mb-3">
-                      We sent a one-time code to your registered phone
-                      {phoneHint ? ` (${phoneHint})` : ""}. Enter it below to
+                      We sent a one-time code to your registered email
+                      {emailHint ? ` (${emailHint})` : ""}. Enter it below to
                       finish signing in.
                     </p>
                     <div className="relative w-full mb-3">

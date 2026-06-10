@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import urljoin from "url-join";
 import Alert from "../../components/Alert/Alert";
@@ -9,46 +9,68 @@ import AccessDenied from "./AccessDenied";
 
 const API = process.env.REACT_APP_API_ENDPOINT;
 
-// SMS-based password reset. Step 1 sends an OTP to the admin's registered
-// phone (the API answers generically so it can't be used to probe which
-// emails exist). Step 2 takes the OTP + a new password. On success every
-// existing session is revoked server-side, so the admin must sign in again.
+// Email-based password reset. The code is always sent to the OTP email
+// configured on the admin profile — this page takes no email input. On mount
+// it asks the API whether an OTP email is set and shows a masked hint of it;
+// step 1 emails the reset code, step 2 takes the OTP + a new password. On
+// success every existing session is revoked server-side, so the admin must
+// sign in again.
 export default function ForgotPassword() {
   const [accessAllowed] = useState(() => evaluateLoginAccess());
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
   const [step, setStep] = useState("request"); // request → reset → done
-  const [identity, setIdentity] = useState("");
+
+  // Whether an OTP email is configured + a masked hint of it. `null` while the
+  // initial lookup is in flight.
+  const [otpEmail, setOtpEmail] = useState(null); // { has_otp_email, email_hint }
 
   const otpRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmRef = useRef(null);
 
+  useEffect(() => {
+    if (!accessAllowed) return;
+    let cancelled = false;
+    axios
+      .get(urljoin(API, "/admin/forgot-password/otp-info"), {
+        withCredentials: true,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        setOtpEmail(res?.data?.data || { has_otp_email: false, email_hint: "" });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setOtpEmail({ has_otp_email: false, email_hint: "" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessAllowed]);
+
   const requestOtp = (e) => {
     e.preventDefault();
-    const id = e.target.identity.value;
     setLoading(true);
     setErrorMsg("");
     setInfoMsg("");
-    setIdentity(id);
 
     axios
       .post(
         urljoin(API, "/admin/forgot-password"),
-        { identity: id },
+        {},
         { withCredentials: true },
       )
       .then((res) => {
-        setInfoMsg(
-          res?.data?.message ||
-            "If an account with a registered phone exists, an OTP has been sent.",
-        );
+        setInfoMsg(res?.data?.message || "A reset code has been sent.");
         setStep("reset");
         setLoading(false);
       })
       .catch((error) => {
-        setErrorMsg(error?.response?.data?.message || "Could not send the code. Try again.");
+        setErrorMsg(
+          error?.response?.data?.message || "Could not send the code. Try again.",
+        );
         setLoading(false);
       });
   };
@@ -69,7 +91,7 @@ export default function ForgotPassword() {
     axios
       .post(
         urljoin(API, "/admin/reset-password"),
-        { identity, otp, password },
+        { otp, password },
         { withCredentials: true },
       )
       .then(() => {
@@ -104,27 +126,31 @@ export default function ForgotPassword() {
               )}
 
               {step === "request" && (
-                <form onSubmit={requestOtp}>
-                  <div className="relative w-full mb-3">
-                    <label className="form_label" htmlFor="fp-email">
-                      Account email
-                    </label>
-                    <input
-                      id="fp-email"
-                      name="identity"
-                      type="email"
-                      className="form_input"
-                      placeholder="Email"
-                      required
-                      defaultValue={identity}
-                    />
-                  </div>
-                  <div className="text-center mt-6">
-                    <button className="form_button" type="submit">
-                      Send code
-                    </button>
-                  </div>
-                </form>
+                <>
+                  {otpEmail === null ? (
+                    <p className="text-sm text-blueGray-500 text-center py-4">
+                      Checking your reset options…
+                    </p>
+                  ) : otpEmail.has_otp_email ? (
+                    <form onSubmit={requestOtp}>
+                      <p className="text-sm text-blueGray-500 mb-4">
+                        We'll send a one-time reset code to your OTP email
+                        {otpEmail.email_hint ? ` (${otpEmail.email_hint})` : ""}.
+                      </p>
+                      <div className="text-center mt-6">
+                        <button className="form_button" type="submit">
+                          Send code
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 mb-3">
+                      No OTP email is set for this admin account, so a reset code
+                      can't be sent. Sign in and set an OTP email from your
+                      profile first.
+                    </p>
+                  )}
+                </>
               )}
 
               {step === "reset" && (

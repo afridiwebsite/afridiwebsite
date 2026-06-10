@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import NotPermitted from "./views/auth/NotPermitted";
 import 'react-toastify/dist/ReactToastify.css';
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./assets/styles/index.css";
@@ -13,9 +14,15 @@ import "./assets/styles/index.css";
 // the API's ADMIN_URL_SECRET slug.
 const BASENAME = process.env.REACT_APP_ADMIN_BASENAME || "/";
 
+const isNotPermittedPath = window.location.pathname === "/not-permitted" || window.location.pathname === "/not-permitted/";
+
 ReactDOM.render(
-  <BrowserRouter basename={BASENAME}>
-    <App />
-  </BrowserRouter>,
+  isNotPermittedPath ? (
+    <NotPermitted />
+  ) : (
+    <BrowserRouter basename={BASENAME}>
+      <App />
+    </BrowserRouter>
+  ),
   document.getElementById("root")
 );
