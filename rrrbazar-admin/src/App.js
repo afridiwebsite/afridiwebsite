@@ -49,7 +49,8 @@ import Dashboard from "./views/admin/Dashboard";
 import Settings from "./views/admin/Settings";
 import Tables from "./views/admin/Tables";
 import Login from "./views/auth/Login";
-import Register from "./views/auth/Register";
+import ForgotPassword from "./views/auth/ForgotPassword";
+import SecuritySessions from "./components/Profile/SecuritySessions";
 import Landing from "./views/Landing";
 import AdminWalletRequest from "./components/AdminWalletRequest/AdminWalletRequest";
 import MyWalletRequest from "./components/AdminWalletRequest/MyWalletRequest";
@@ -132,10 +133,10 @@ function App() {
             <Route path="/auths" exact component={Auths} />
             <Route path="/settings" exact component={Settings} />
             <Route path="/tables" exact component={Tables} />
-            <Route path="/register" exact component={Register} />
             <Route path="/landing" exact component={Landing} />
             <Route path="/profile" exact component={Profile} />
             <Route path="/profile/change-password" exact component={ChangePassword} />
+            <Route path="/security" exact component={SecuritySessions} />
 
             <Route path="/topup-packages" exact component={Packages} />
             <Route path="/topup-package/edit/:id" exact component={EditPackage} />
@@ -155,6 +156,7 @@ function App() {
         <BlankLayout>
           <Switch>
             <Route path="/login" exact component={Login} />
+            <Route path="/forgot-password" exact component={ForgotPassword} />
             <Redirect from="/" to="/login" />
           </Switch>
         </BlankLayout>

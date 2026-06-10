@@ -40,6 +40,8 @@ import Tutorial from './Tutorial'
 import BotDispatch from './BotDispatch'
 import VerificationSubmission from './VerificationSubmission'
 import OtpAttempt from './OtpAttempt'
+import AdminSession from './AdminSession'
+import AdminLoginAudit from './AdminLoginAudit'
 
 
 
@@ -100,4 +102,6 @@ export const Schema = {
   BotDispatch: BotDispatch(sequelize),
   VerificationSubmission: VerificationSubmission(sequelize),
   OtpAttempt: OtpAttempt(sequelize),
+  AdminSession: AdminSession(sequelize),
+  AdminLoginAudit: AdminLoginAudit(sequelize),
 }

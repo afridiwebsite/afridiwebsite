@@ -17,6 +17,7 @@ function Profile() {
             first_name: '',
             last_name: '',
             email: '',
+            phone: '',
             image: ''
         },
         onSubmit: async (values) => {
@@ -45,6 +46,7 @@ function Profile() {
                 first_name: data.first_name || '',
                 last_name: data.last_name || '',
                 email: data.email || '',
+                phone: data.phone || '',
                 image: data.image || ''
             })
         }
@@ -139,6 +141,20 @@ function Profile() {
                                     className="border-0 px-3 py-2 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ease-linear transition-all duration-150"
                                     {...formik.getFieldProps('email')}
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Phone (for login OTP)</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    placeholder="e.g. 8801XXXXXXXXX"
+                                    className="border-0 px-3 py-2 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ease-linear transition-all duration-150"
+                                    {...formik.getFieldProps('phone')}
+                                />
+                                <p className="text-xs text-gray-400 mt-1">
+                                    When set, a one-time SMS code is required at login and
+                                    enables SMS password reset. Leave blank to disable OTP.
+                                </p>
                             </div>
                         </div>
                         <button

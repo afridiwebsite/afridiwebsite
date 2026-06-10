@@ -146,6 +146,11 @@ export default function Sidebar({ isOpenSidebar }) {
       path: "/profile",
       icon: "fas fa-user-circle",
     },
+    {
+      text: "Security",
+      path: "/security",
+      icon: "fas fa-shield-alt",
+    },
   ];
   const [collapseShow, setCollapseShow] = useState(false);
 

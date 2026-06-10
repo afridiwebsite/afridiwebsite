@@ -233,6 +233,13 @@ router.get('/dashboard-stats', auth, adminController.getDashboardStats)
 router.post('/change-password', auth, changePasswordSchema, adminController.changePassword)
 // Change password api ----END----
 
+// Security module: device/session management + login audit ----START----
+router.get('/sessions', auth, adminController.listMySessions) // currently logged-in devices
+router.post('/sessions/revoke/:id', auth, adminController.revokeMySession) // log out a specific device
+router.post('/sessions/revoke-others', auth, adminController.revokeOtherSessions) // log out everywhere else
+router.get('/login-audit', auth, adminController.listMyLoginAudit) // login history (success + failure)
+// Security module ----END----
+
 // Order completed by admin api -----START----
 router.get('/order-completed-by-admin', auth, adminController.orderCompletedByAdmin)
 // Order completed by admin api -----END----

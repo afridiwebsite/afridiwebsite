@@ -1,23 +1,37 @@
+import axios from 'axios';
 import { getLocal, getSession, removeBoth } from '../utils/localStorage.utils';
+
+// Login URL, honouring a secret admin URL prefix (router basename).
+const LOGIN_URL = (process.env.REACT_APP_ADMIN_BASENAME || '') + '/login';
+
+// The real authentication is the httpOnly session cookie, which JS can't
+// read by design. `user` is only a non-sensitive UI hint persisted at login
+// so the shell can render before the first API call; the server is always the
+// source of truth (a stale hint just yields a 401 → redirect to login).
 export const isAuth = () => {
     const isUser = getLocal('user') || getSession('user');
-    const isToken = getLocal('token') || getSession('token');
-
-    if (isUser && isToken) {
-        return {
-            user: isUser,
-            token: isToken,
-        }
+    if (isUser) {
+        return { user: isUser };
     }
-
     return false;
 }
 
 export const logOut = (redirect = true) => {
-    if (removeBoth('user') && removeBoth('token')) {
-        if (redirect) window.location.href = '/login'
-        return true;
+    // Best-effort: tell the API to revoke this device's server session +
+    // clear the cookie. Fire-and-forget so logout is instant even offline.
+    try {
+        axios.post(
+            process.env.REACT_APP_API_ENDPOINT + '/admin/logout',
+            {},
+            { withCredentials: true },
+        ).catch(() => { /* ignore — we clear locally regardless */ });
+    } catch (e) {
+        /* ignore */
     }
+    removeBoth('user');
+    removeBoth('token');
+    if (redirect) window.location.href = LOGIN_URL;
+    return true;
 }
 
 export const getErrors = (error, onlyArray, returnJSX) => {

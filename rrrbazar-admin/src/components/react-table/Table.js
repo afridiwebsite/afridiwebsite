@@ -1,7 +1,6 @@
 import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useColumnOrder, useGlobalFilter, useTable } from 'react-table';
-import { getLocal, getSession } from '../../utils/localStorage.utils';
 import ErrorIndicator from './ErrorIndicator';
 import LoadingIndicator from './LoadingIndicator';
 import NoResultIndicator from './NoResultIndicator';
@@ -12,8 +11,6 @@ import TableHeader from './TableHeader';
 import TableTopBar from './TableTopBar';
 
 export const reactTableContext = React.createContext();
-
-const token = getLocal('token') || getSession('token')
 
 function Table({
     reloadRefFunc,
@@ -168,9 +165,7 @@ function Table({
             result = await fetch(binSearchParams, states);
         } else {
             axios(`${process.env.REACT_APP_API_ENDPOINT + url}?${binSearchParams}`, {
-                headers: {
-                    authorization: token
-                },
+                withCredentials: true,
             }).then((res) => {
                 result = selectData(res)
             }).catch(error => {

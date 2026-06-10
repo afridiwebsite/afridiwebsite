@@ -70,6 +70,15 @@ const ENSURED_ENDPOINTS: Array<{ path: string; method: string }> = [
     { path: '/profile/update',       method: 'POST' },
     // Admin password change (Profile page → "Change password")
     { path: '/change-password',      method: 'POST' },
+    // Security module — device/session management + login audit trail
+    // (Profile → Security: currently logged-in devices, remote logout,
+    // login history). Note: /login, /logout, /login/verify-otp,
+    // /forgot-password and /reset-password are mounted directly on the app
+    // (pre-auth, no permission row needed) so they are intentionally absent.
+    { path: '/sessions',                method: 'GET'  },
+    { path: '/sessions/revoke/:id',     method: 'POST' },
+    { path: '/sessions/revoke-others',  method: 'POST' },
+    { path: '/login-audit',             method: 'GET'  },
     // Topup product dynamic inputs (admin defines the order form per product)
     { path: '/topup-product/:id/inputs',     method: 'POST' },
     { path: '/topup-product/:id/categories', method: 'POST' },

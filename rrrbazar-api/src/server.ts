@@ -17,10 +17,19 @@ import { registerUserValidator } from "./middleware/validators/registerUserValid
 const app = express();
 app.use(loggerMiddleware);
 
-app.use(cors());
+// Credentialed CORS so the admin panel can send its Secure httpOnly session
+// cookie cross-subdomain (admin.* → api.*). `origin: true` reflects the
+// request's Origin (required — a wildcard "*" is illegal with credentials).
+// Header-based requests are unaffected, so this is safe for the current
+// client too.
+const corsOptions = {
+  origin: true,
+  credentials: true,
+};
+app.use(cors(corsOptions));
 // Express 5: use a regex catch-all instead of "*"
 // @ts-ignore: Unreachable code error
-app.options(/.*/, cors());
+app.options(/.*/, cors(corsOptions));
 
 app.use(express.static("uploads"));
 app.use(express.json({ limit: "2mb" }));
@@ -49,10 +58,25 @@ console.log(
 
 app.use(`/api/v1/`, userRouter);
 app.use("/api/v1/", uploadRoute);
-app.use(`/api/admin/`, adminRoute);
-app.get("/api/admin/check-username/:username", adminController.checkUsername);
 
-app.use("/api/admin/login", authController.adminLogin);
+// Secret admin URL prefix. When ADMIN_URL_SECRET is set, the entire admin
+// surface (API routes + pre-auth login/logout/OTP/reset) moves under
+// /api/<SECRET>/admin, so the panel's API can't be found by guessing /admin.
+// Unset → behaves exactly as before (/api/admin), so this is a safe, opt-in
+// hardening. The admin client must use the same slug in its API base.
+const ADMIN_SECRET = String(process.env.ADMIN_URL_SECRET || "").trim();
+const ADMIN_BASE = ADMIN_SECRET ? `/api/${ADMIN_SECRET}/admin` : "/api/admin";
+console.log("[env] admin base path =", ADMIN_BASE);
+
+app.use(`${ADMIN_BASE}/`, adminRoute);
+app.get(`${ADMIN_BASE}/check-username/:username`, adminController.checkUsername);
+
+app.use(`${ADMIN_BASE}/login`, authController.adminLogin);
+app.post(`${ADMIN_BASE}/login/verify-otp`, authController.adminLoginVerifyOtp);
+app.post(`${ADMIN_BASE}/logout`, authController.adminLogout);
+// Forgot-password (SMS OTP) — public, pre-auth.
+app.post(`${ADMIN_BASE}/forgot-password`, authController.adminForgotPasswordRequest);
+app.post(`${ADMIN_BASE}/reset-password`, authController.adminResetPassword);
 
 app.post("/api/v1/login", authController.userLogin);
 app.post(

@@ -20,6 +20,12 @@ export default (sequelize: Sequelize) => {
     public wallet!: number;
     public password!: string;
     public status!: number;
+    // SMS OTP scaffolding for the security module (login step-up + password
+    // reset). Hashed codes only; never plaintext. See migration 015.
+    public login_otp!: string | null;
+    public login_otp_expires_at!: Date | null;
+    public reset_otp!: string | null;
+    public reset_otp_expires_at!: Date | null;
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
 
@@ -84,6 +90,26 @@ export default (sequelize: Sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0
+    },
+    login_otp: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    login_otp_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    reset_otp: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    reset_otp_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     created_at: {
       type: DataTypes.DATE,

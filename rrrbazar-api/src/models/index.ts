@@ -15,6 +15,7 @@ Schema.Category.associate(Schema)
 Schema.Voucher.associate(Schema)
 Schema.BotDispatch.associate(Schema)
 Schema.VerificationSubmission.associate(Schema)
+Schema.AdminSession.associate(Schema)
 //Schema.AutoServer.associate(Schema)
 
 

@@ -22,6 +22,13 @@ import {
   parsePubgBotBody,
   processPubgResponse,
 } from '../helpers/topupOrderHandler';
+import {
+  revokeAdminSession,
+  revokeOtherAdminSessions,
+  readCookie,
+  resolveAdminSession,
+  ADMIN_COOKIE_NAME,
+} from '../utils/adminSession.utils';
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // import bcrypt from 'bcryptjs'
@@ -49,6 +56,8 @@ const {
   Voucher,
   SiteSetting,
   BotDispatch,
+  AdminSession,
+  AdminLoginAudit,
 } = Schema;
 
 // Crude HTML → plaintext for the saved-comment picker. Doesn't try to be
@@ -1132,7 +1141,16 @@ class AdminController {
     const response = new responseUtils()
     try {
       const admin = await Admin.findByPk((req as any).admin.id);
-      response.data = admin!;
+      // Never leak the password hash or the OTP hashes to the client.
+      const safe: any = admin ? admin.toJSON() : null;
+      if (safe) {
+        delete safe.password;
+        delete safe.login_otp;
+        delete safe.login_otp_expires_at;
+        delete safe.reset_otp;
+        delete safe.reset_otp_expires_at;
+      }
+      response.data = safe;
       res.send(response.response);
     } catch (error) {
       console.log(error)
@@ -2174,8 +2192,120 @@ class AdminController {
       await admin.save()
 
       response.message = 'Password changed'
+
+      // Security: changing the password invalidates every OTHER session, so a
+      // stolen session can't outlive a password change. The current device
+      // (this request's session) is kept logged in.
+      try {
+        const currentSessionId = (req as any).adminSession?.id;
+        await revokeOtherAdminSessions(admin.id, currentSessionId);
+      } catch (e) {
+        console.log('revoke other sessions on change-password failed (non-fatal):', (e as any)?.message || e);
+      }
+
       res.send(response.response)
 
+    } catch (error) {
+      console.log(error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  // ---- Device / session management -----------------------------------------
+  // The security module's "currently logged-in devices" surface. Lists the
+  // admin's own active (non-revoked, non-expired) sessions, flags which one is
+  // the current device, and lets them revoke a specific device or all others
+  // ("log out everywhere else").
+
+  listMySessions = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const adminId = (req as any).admin.id;
+      const currentToken = readCookie(req, ADMIN_COOKIE_NAME);
+      const current = currentToken ? await resolveAdminSession(currentToken) : null;
+      const currentId = current?.id ?? (req as any).adminSession?.id ?? null;
+
+      const sessions = await AdminSession.findAll({
+        where: { admin_id: adminId, revoked_at: null, expires_at: { [Op.gt]: new Date() } },
+        order: [['last_seen_at', 'DESC']],
+        attributes: ['id', 'user_agent', 'ip', 'remember', 'last_seen_at', 'expires_at', 'created_at'],
+      });
+
+      response.data = sessions.map((s: any) => ({
+        id: s.id,
+        user_agent: s.user_agent,
+        ip: s.ip,
+        remember: s.remember,
+        last_seen_at: s.last_seen_at,
+        expires_at: s.expires_at,
+        created_at: s.created_at,
+        current: currentId != null && Number(s.id) === Number(currentId),
+      }));
+      res.send(response.response);
+    } catch (error) {
+      console.log(error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  revokeMySession = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const adminId = (req as any).admin.id;
+      const sessionId = Number(req.params.id);
+      // Scope to the caller's own sessions — an admin can never revoke another
+      // admin's device here.
+      const session = await AdminSession.findOne({
+        where: { id: sessionId, admin_id: adminId },
+      });
+      if (!session) {
+        response.message = 'Session not found';
+        response.status = 400;
+        response.success = false;
+        return res.status(400).send(response.response);
+      }
+      await revokeAdminSession(session);
+      response.message = 'Device logged out';
+      res.send(response.response);
+    } catch (error) {
+      console.log(error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  revokeOtherSessions = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const adminId = (req as any).admin.id;
+      const currentToken = readCookie(req, ADMIN_COOKIE_NAME);
+      const current = currentToken ? await resolveAdminSession(currentToken) : null;
+      const keepId = current?.id ?? (req as any).adminSession?.id;
+      const revoked = await revokeOtherAdminSessions(adminId, keepId);
+      response.message = `Logged out ${revoked} other device(s)`;
+      response.data = { revoked };
+      res.send(response.response);
+    } catch (error) {
+      console.log(error)
+      res.status(400).send(response.internalError)
+    }
+  }
+
+  // ---- Login audit trail ---------------------------------------------------
+  // Recent login attempts (success + failure) for the current admin, newest
+  // first. Powers the security module's "login history" panel.
+  listMyLoginAudit = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    try {
+      const adminId = (req as any).admin.id;
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit?.toString() || '50')));
+      const rows = await AdminLoginAudit.findAll({
+        where: { admin_id: adminId },
+        order: [['created_at', 'DESC']],
+        limit,
+        attributes: ['id', 'success', 'reason', 'ip', 'user_agent', 'created_at'],
+      });
+      response.data = rows;
+      res.send(response.response);
     } catch (error) {
       console.log(error)
       res.status(400).send(response.internalError)

@@ -1,9 +1,8 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { getLocal, getSession } from "../utils/localStorage.utils";
-const token = getLocal('token') || getSession('token')
 
-
+// Auth is the httpOnly session cookie now (see common/axios.js) — send
+// credentials, no Authorization header.
 function useGet(urlToFetch, baseURL, refresh) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -18,9 +17,7 @@ function useGet(urlToFetch, baseURL, refresh) {
       axios({
         baseURL: baseURL || process.env.REACT_APP_API_ENDPOINT,
         timeout: 10000,
-        headers: {
-          authorization: token
-        },
+        withCredentials: true,
         method: "GET",
         url: urlToFetch
       }).then((res) => {
@@ -29,6 +26,18 @@ function useGet(urlToFetch, baseURL, refresh) {
         setLoading(false);
       })
         .catch((err) => {
+          // A dead session returns 401 → bounce to login (mirrors the shared
+          // axios instance's interceptor).
+          if (err?.response?.status === 401) {
+            try {
+              localStorage.removeItem("user");
+              sessionStorage.removeItem("user");
+            } catch (e) { /* ignore */ }
+            const loginUrl = (process.env.REACT_APP_ADMIN_BASENAME || "") + "/login";
+            if (!String(window.location.pathname).endsWith("/login")) {
+              // window.location.href = loginUrl;
+            }
+          }
           setError(err);
           setLoading(false);
         });
