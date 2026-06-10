@@ -23,6 +23,10 @@ import {
   sendAdminOtpSms,
   ADMIN_OTP_EXPIRY_MINUTES,
 } from '../utils/adminOtp.utils';
+import {
+  setUserAuthCookie,
+  clearUserAuthCookie,
+} from '../utils/userCookie.utils';
 const { generateToken } = require('../utils/auth.utils')
 const { OAuth2Client } = require('google-auth-library');
 
@@ -340,6 +344,12 @@ class AuthController {
 
       userObj.image_url = urljoin(util.getImagePath(req), userObj.image || '');
       userObj.image_thumb_url = urljoin(util.getImagePath(req), 'thumb', userObj.image || '');
+
+      // Deliver the session as a Secure httpOnly cookie. The token is still
+      // returned in the body for transition, but the client no longer persists
+      // it — the cookie is the source of truth.
+      setUserAuthCookie(res, token);
+
       response.message = 'Login Success';
       response.data = {
         user: userObj,
@@ -350,6 +360,15 @@ class AuthController {
       console.log(error);
       res.send(response.internalError)
     }
+  }
+
+  // Clears the httpOnly auth cookie. The user JWT is stateless, so there's no
+  // server-side session to revoke — clearing the cookie is the logout.
+  userLogout = async (req: express.Request, res: express.Response) => {
+    const response = new responseUtils()
+    clearUserAuthCookie(res)
+    response.message = 'Logged out'
+    res.send(response.getResponse())
   }
 
   async userRegistration(req: express.Request, res: express.Response) {
@@ -420,6 +439,8 @@ class AuthController {
       userObj.profile_image_url = urljoin(util.getImagePath(req), userObj.profile_image || '');
       userObj.profile_image_thumb_url = urljoin(util.getImagePath(req), 'thumb', userObj.profile_image || '');
 
+      setUserAuthCookie(res, token);
+
       response.message = 'Login Success';
       response.data = {
         user: userObj,
@@ -463,6 +484,8 @@ class AuthController {
         const userObj: any = user.toJSON();
         delete userObj.password
 
+        setUserAuthCookie(res, token);
+
         response.data = {
           user: userObj,
           token
@@ -490,6 +513,7 @@ class AuthController {
         user_email: newUser.email
       }, '30000h')
 
+      setUserAuthCookie(res, newUserToken);
 
       response.data = {
         user: newUser,

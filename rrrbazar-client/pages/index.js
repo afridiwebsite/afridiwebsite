@@ -456,8 +456,6 @@ export async function getServerSideProps(ctx) {
     try {
       const res2 = await api.get("/topupproduct");
       topup_products = res2?.data?.data || [];
-
-      console.log(topup_products);
     } catch (e) {
       topup_products = topup_products || [];
     }
@@ -472,18 +470,49 @@ export async function getServerSideProps(ctx) {
 
   try {
     const headerNotice = await api.get("/notice-header");
-
     header_notice = headerNotice?.data?.data;
-    console.log(header_notice, "dsd");
   } catch (error) {
     header_notice = null;
   }
 
   try {
     const res = await api.get("/product-orders");
-    product_order = res?.data?.data;
+    // The page only renders the latest 12 rows, and OrderRow only reads a
+    // handful of fields. Slicing + projecting to a lean shape here keeps the
+    // serialized props small (the raw list with nested User/Product/Package
+    // rows was the bulk of the >130 kB page-data payload).
+    // Coerce every field to null when missing — getServerSideProps can't
+    // serialize `undefined`.
+    product_order = (res?.data?.data || []).slice(0, 12).map((o) => {
+      const u = o.User || o.user;
+      const pkg = o.TopupPackage || o.package;
+      return {
+        id: o.id ?? null,
+        name: o.name ?? null,
+        amount: o.amount ?? null,
+        status: o.status ?? null,
+        created_at: o.created_at ?? null,
+        updated_at: o.updated_at ?? null,
+        completed_at: o.completed_at ?? null,
+        User: u
+          ? {
+              username: u.username ?? null,
+              email: u.email ?? null,
+              avatar: u.avatar ?? null,
+            }
+          : null,
+        TopupPackage: pkg ? { logo: pkg.logo ?? null } : null,
+      };
+    });
   } catch (error) {
     product_order = null;
+  }
+
+  // The flat product list is only a fallback for when there are no categories.
+  // When categories are present it duplicates every product already in the
+  // categorized tree, so drop it from the payload.
+  if (Array.isArray(products_by_category) && products_by_category.length > 0) {
+    topup_products = null;
   }
 
   return {

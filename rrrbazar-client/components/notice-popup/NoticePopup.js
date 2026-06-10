@@ -13,7 +13,7 @@ import { useQuery } from "react-query";
 import { getPopupNotice } from "../../api/api";
 import {
   __last_seen_modal_key,
-  __access_token_key,
+  __user_key,
 } from "../../config/globalConfig";
 import reactQueryConfig from "../../config/reactQueryConfig";
 import { hasData, imgPath } from "../../helpers/helpers";
@@ -29,8 +29,10 @@ function NoticePopup({ productId = null }) {
 
   useEffect(() => {
     if (hasData(data)) {
-      const accessToken = getLocal(__access_token_key);
-      const persistenceKey = `${__last_seen_modal_key}_${data.id}_${accessToken || "guest"}`;
+      // Namespace "seen" state per-user. Auth is a httpOnly cookie now, so key
+      // off the persisted user id instead of the (gone) token.
+      const user = getLocal(__user_key);
+      const persistenceKey = `${__last_seen_modal_key}_${data.id}_${user?.id || "guest"}`;
       const isAlreadySeen = getLocal(persistenceKey);
 
       if (!isAlreadySeen) {

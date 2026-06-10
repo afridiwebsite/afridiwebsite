@@ -18,19 +18,26 @@ class PublicTopupProductController {
         try {
             products = await TopupProduct.findAll({
                 where: { is_active: 1 },
-                attributes: {
-                    include: [
-                        'logo',
-                        [
-                            fn('CONCAT', reqPath + '/images/', col('TopupProduct.logo')),
-                            'logo_full_url',
-                        ],
+                // Lean projection — the home grid's Game tile only reads
+                // id/name/logo/product_link. Selecting the full row (long
+                // description/meta columns) was the bulk of the page payload.
+                attributes: [
+                    'id',
+                    'name',
+                    'logo',
+                    'product_link',
+                    [
+                        fn('CONCAT', reqPath + '/images/', col('TopupProduct.logo')),
+                        'logo_full_url',
                     ],
-                },
+                ],
                 include: [
                     {
                         model: Category,
                         as: 'categories',
+                        // Only the id is needed (grouping below); skipping the
+                        // rest keeps the nested category objects tiny.
+                        attributes: ['id'],
                         through: { attributes: [] },
                         required: false,
                     },
@@ -43,15 +50,16 @@ class PublicTopupProductController {
             console.error('listWithCategories: include failed, falling back', err);
             products = await TopupProduct.findAll({
                 where: { is_active: 1 },
-                attributes: {
-                    include: [
-                        'logo',
-                        [
-                            fn('CONCAT', reqPath + '/images/', col('TopupProduct.logo')),
-                            'logo_full_url',
-                        ],
+                attributes: [
+                    'id',
+                    'name',
+                    'logo',
+                    'product_link',
+                    [
+                        fn('CONCAT', reqPath + '/images/', col('TopupProduct.logo')),
+                        'logo_full_url',
                     ],
-                },
+                ],
                 order: [['serial', 'ASC']],
             });
         }

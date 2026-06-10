@@ -61,7 +61,10 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
 
   const [authUser, setAuthUser] = useState(user);
   const [accessToken, setAccessToken] = useState(access_token);
-  const [isAuth, setIsAuth] = useState(authUser && accessToken ? true : false);
+  // The auth credential is now an httpOnly cookie that JS can't read, so login
+  // state is derived from the persisted (non-sensitive) user object instead of
+  // the token. Legacy sessions that still carry a token also resolve as authed.
+  const [isAuth, setIsAuth] = useState(user ? true : false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   // Best-effort "is the PWA already installed" flag, surfaced via context so
@@ -230,7 +233,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   }, []);
 
   useEffect(() => {
-    if (isAuth && accessToken) {
+    if (isAuth) {
       getUserProfile()
         .then((res) => {
           const userObj = res?.data?.data;
@@ -240,7 +243,7 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
         })
         .catch(() => {});
     }
-  }, [isAuth, accessToken]);
+  }, [isAuth]);
 
   // Refresh siteSettings client-side too, so admin edits propagate without
   // a full reload. This is purely a freshness pass — the favicon was
@@ -283,6 +286,9 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
   }, []);
 
   const signOut = () => {
+    // Clear the httpOnly auth cookie server-side; JS can't remove it itself.
+    // Fire-and-forget — local state is cleared regardless of the result.
+    api.post("/logout").catch(() => {});
     removeBoth(__user_key);
     removeBoth(__access_token_key);
     localStorage.removeItem("closed_notices");
@@ -299,22 +305,14 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
     removeBoth(__access_token_key);
     localStorage.removeItem("closed_notices");
 
-    if (rememberMe) {
-      setLocal(__user_key, userObj);
-      setLocal(__access_token_key, accessToken);
-    } else {
-      setSession(__user_key, userObj);
-      setSession(__access_token_key, accessToken);
-    }
-
-    // Adding accessToken to api interceptor
-    api.interceptors.request.use((config) => {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-      return config;
-    });
+    // The token is no longer persisted — it lives in a Secure httpOnly cookie
+    // the API sets on login. We only persist the (non-sensitive) user object,
+    // and always in localStorage so login state survives the external
+    // payment-portal redirect and any new tab/context the provider returns in.
+    setLocal(__user_key, userObj);
 
     setAuthUser(userObj);
-    setAccessToken(accessToken);
+    setAccessToken(null);
     setIsAuth(true);
 
     router.push(redirectUrl || routes.profile.name);
@@ -454,6 +452,28 @@ function MyApp({ Component, pageProps, initialSiteSettings }) {
       </Head>
       <globalContext.Provider value={glovalContextData}>
         <QueryClientProvider client={queryClient}>
+          {/* Developer notice — a static, env-driven banner pinned to the very
+              top of every page. Set NEXT_PUBLIC_DEV_NOTICE in .env to show it;
+              leave it unset/empty to hide the bar entirely. */}
+          {process.env.NEXT_PUBLIC_DEV_NOTICE ? (
+            <div
+              role="status"
+              style={{
+                width: "100%",
+                textAlign: "center",
+                padding: "8px 16px",
+                fontSize: "13px",
+                fontWeight: 600,
+                lineHeight: 1.4,
+                color: "#ffffff",
+                background: "#b45309",
+                position: "relative",
+                zIndex: 100000,
+              }}
+            >
+              {process.env.NEXT_PUBLIC_DEV_NOTICE}
+            </div>
+          ) : null}
           <Layout
             disabledHeader={isDisabledHeader}
             disabledFooter={isDisabledFooter}

@@ -9,12 +9,17 @@ import routes from '../config/routes';
 import { addRedirectQuery, setFlashMessage } from '../helpers/helpers';
 import { getLocal, getSession, removeBoth } from '../lib/localStorage';
 
+// Auth now rides in a Secure httpOnly cookie set by the API on login.
+// `withCredentials` makes the browser attach it on every request (and accept
+// Set-Cookie back). The legacy localStorage token is only used as a
+// transitional fallback for clients that logged in before the cookie rollout.
 const access_token =
   getLocal(__access_token_key) || getSession(__access_token_key);
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_URL,
-  headers: { Authorization: `Bearer ${access_token}` },
+  withCredentials: true,
+  headers: access_token ? { Authorization: `Bearer ${access_token}` } : {},
 });
 
 api.interceptors.response.use(undefined, (err) => {

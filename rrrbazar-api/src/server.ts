@@ -79,6 +79,7 @@ app.post(`${ADMIN_BASE}/forgot-password`, authController.adminForgotPasswordRequ
 app.post(`${ADMIN_BASE}/reset-password`, authController.adminResetPassword);
 
 app.post("/api/v1/login", authController.userLogin);
+app.post("/api/v1/logout", authController.userLogout);
 app.post(
   "/api/v1/register",
   registerUserValidator,

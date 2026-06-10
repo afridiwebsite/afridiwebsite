@@ -2,13 +2,20 @@ const jwt = require('jsonwebtoken')
 import express from 'express';
 import Schema from '../models';
 import Response from '../utils/response.utils';
+import { readCookie } from '../utils/adminSession.utils';
+import { USER_COOKIE_NAME } from '../utils/userCookie.utils';
 const {
     User
 } = Schema;
 const userAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const response = new Response()
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        // Prefer the httpOnly cookie (new path); fall back to the legacy
+        // Authorization header so already-logged-in clients that still hold a
+        // localStorage token keep working until they re-login and get a cookie.
+        const token =
+            readCookie(req, USER_COOKIE_NAME) ||
+            req.headers.authorization?.split(' ')[1];
         if (!token) {
             throw new Error("Access Denied")
         }

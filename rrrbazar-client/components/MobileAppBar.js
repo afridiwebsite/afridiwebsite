@@ -44,9 +44,10 @@ function MobileAppBar() {
   const [hydratedAuth, setHydratedAuth] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    // Auth is now a httpOnly cookie (unreadable here), so login state is
+    // derived from the persisted user object, not a token.
     const u = getLocal(__user_key) || getSession(__user_key);
-    const t = getLocal(__access_token_key) || getSession(__access_token_key);
-    setHydratedAuth(!!(u && t));
+    setHydratedAuth(!!u);
     setMounted(true);
   }, [ctxIsAuth]);
   const isAuth = hydratedAuth;

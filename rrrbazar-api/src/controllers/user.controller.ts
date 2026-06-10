@@ -1071,39 +1071,21 @@ class UserController {
     const response = new responseUtils();
 
     try {
+      // Feeds the home "Latest Orders" list only, which renders 12 rows and
+      // reads just these fields. Trimmed to match: dropped playerid/product_id/
+      // user_id, the unused diff_in_seconds computation, and the TopupProduct
+      // join (the tile never reads it).
       const orders = await Order.findAll({
-        attributes: [
-          "id",
-          "name",
-          "playerid",
-          "status",
-          "created_at",
-          "updated_at",
-          "user_id",
-          "product_id",
-          [
-            // Qualify with `Order` so the joined User / TopupProduct tables
-            // don't make MySQL complain about ambiguous created_at/updated_at.
-            Sequelize.literal(
-              "TIMESTAMPDIFF(SECOND, `Order`.`created_at`, `Order`.`updated_at`)",
-            ),
-            "diff_in_seconds",
-          ],
-        ],
+        attributes: ["id", "name", "status", "created_at", "updated_at"],
         include: [
           {
             model: User,
             attributes: ["id", "username", "email", "avatar"],
             required: false,
           },
-          {
-            model: TopupProduct,
-            attributes: ["id", "name", "logo"],
-            required: false,
-          },
         ],
         order: [[Sequelize.col("Order.created_at"), "DESC"]],
-        limit: 20,
+        limit: 12,
       });
 
       response.data = orders;
