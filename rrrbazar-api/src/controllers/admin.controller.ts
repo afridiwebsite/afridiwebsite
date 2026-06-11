@@ -1993,8 +1993,8 @@ class AdminController {
 
   async getDashboardStats(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const admin = (req.admin as any);
-    const adminId = admin.id;
+    // Dashboard stats are store-wide for every admin: no per-admin scoping.
+    // `filter` is kept empty so the spreads below stay no-ops.
     const filter: any = {};
 
     try {
@@ -2003,10 +2003,6 @@ class AdminController {
       const TODAY_START = moment().startOf('day').toDate();
       const NOW = moment().endOf('day').toDate();
       const MONTH_START = moment().startOf('month').toDate();
-
-      if (adminId != 1) {
-        filter.completed_by = adminId
-      }
 
       const todaysOrder = await Order.count({
         where: {
@@ -2200,8 +2196,8 @@ class AdminController {
         totalOrder,
         totalCompletedOrderAmount: Number(totalCompletedOrderAmount || 0),
         todaysCompletedOrder,
-        totalWallet: (adminId == 1) ? Number(totalWallet || 0) : 0,
-        todaysTotalWallet: (adminId == 1) ? Number(todaysTotalWallet || 0) : 0,
+        totalWallet: Number(totalWallet || 0),
+        todaysTotalWallet: Number(todaysTotalWallet || 0),
         todaysUser,
         uniPin: uniAvaiCount,
         todaysCoinsEarned: Number(todaysCoinsEarned || 0),
