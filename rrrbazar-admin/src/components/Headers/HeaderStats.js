@@ -16,7 +16,7 @@ export default function HeaderStats() {
       )}
 
       {!error && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="grid grid-cols-2 gap-2 items-start">
           {/* Left column: totals / today's primary stats */}
           <div className="flex flex-col gap-2">
             <CardStats
@@ -29,7 +29,6 @@ export default function HeaderStats() {
             <CardStats
               statSubtitle="Total Wallet"
               statTitle={`৳ ${Number(stats?.totalWallet || 0).toFixed(2)}`}
-              statDescripiron={`Today Added: ৳ ${Number(stats?.todaysTotalWallet || 0).toFixed(2)}`}
               statIconName="fas fa-wallet"
               color="emerald"
               loading={loading}
@@ -60,6 +59,7 @@ export default function HeaderStats() {
             <CardStats
               statSubtitle="Coins Converted Today"
               statTitle={`${stats?.todaysConvertedCoins || 0} Coins`}
+              statDescripiron={`Value: ৳ ${Number(stats?.todaysConvertedMoney || 0).toFixed(2)}`}
               statIconName="fas fa-exchange-alt"
               color="rose"
               loading={loading}
@@ -80,6 +80,13 @@ export default function HeaderStats() {
               statTitle={stats?.todaysUser}
               statIconName="fas fa-user-plus"
               color="sky"
+              loading={loading}
+            />
+            <CardStats
+              statSubtitle="Wallet Added Today"
+              statTitle={`৳ ${Number(stats?.todaysTotalWallet || 0).toFixed(2)}`}
+              statIconName="fas fa-plus-circle"
+              color="emerald"
               loading={loading}
             />
             <CardStats

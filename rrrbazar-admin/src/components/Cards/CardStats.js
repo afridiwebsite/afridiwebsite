@@ -40,26 +40,26 @@ export default function CardStats({
         <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-black/10" />
 
         {loading && <Loader absolute />}
-        <div className="relative flex-auto px-6 py-6">
+        <div className="relative flex-auto px-4 py-4">
           <div className="flex items-start justify-between">
-            <div className="relative w-full pr-4 max-w-full flex-grow flex-1">
-              <h5 className="text-white/70 uppercase font-bold text-[10px] tracking-widest mb-1">
+            <div className="relative w-full pr-3 max-w-full flex-grow flex-1">
+              <h5 className="text-white/70 uppercase font-bold text-[9px] tracking-widest mb-1">
                 {statSubtitle}
               </h5>
-              <span className="text-2xl text-white font-extrabold block drop-shadow-sm">
+              <span className="text-lg text-white font-extrabold block drop-shadow-sm break-words">
                 {statTitle}
               </span>
             </div>
             <div className="relative w-auto flex-initial">
-              <div className="text-white p-3 text-center inline-flex items-center justify-center w-12 h-12 shadow-lg rounded-xl bg-white/20 backdrop-blur-sm transform transition-transform group-hover:scale-110">
+              <div className="text-white text-sm text-center inline-flex items-center justify-center w-9 h-9 shadow-lg rounded-lg bg-white/20 backdrop-blur-sm transform transition-transform group-hover:scale-110">
                 <i className={statIconName}></i>
               </div>
             </div>
           </div>
           {statDescripiron && (
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
-              <p className="text-xs text-white/90 font-medium italic">
+              <p className="text-[11px] text-white/90 font-medium italic">
                 {statDescripiron}
               </p>
             </div>
