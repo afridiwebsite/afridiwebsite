@@ -53,6 +53,11 @@ class SpinController {
             let coins = 0;
             let spinsToday = 0;
             let freeSpins = 0;
+            // When the rolling 24h quota is used up, this is the ISO time the
+            // next spin frees up (oldest counted spin + 24h) so the client can
+            // show a live countdown. Null while the user still has spins left.
+            let nextSpinAt: string | null = null;
+            const dailyLimit = Number(settings.spin_daily_limit) || 0;
             const userId = (req as any).user?.id;
             if (userId) {
                 const user = await User.findByPk(userId);
@@ -68,6 +73,26 @@ class SpinController {
                         is_free: 0,
                     },
                 });
+
+                // At the cap (and with no banked free spins) the user must
+                // wait for the oldest counted spin to roll out of the 24h
+                // window. Surface that moment as next_spin_at.
+                if (dailyLimit > 0 && spinsToday >= dailyLimit && freeSpins <= 0) {
+                    const oldest = await SpinResult.findOne({
+                        where: {
+                            user_id: userId,
+                            created_at: { [Op.gte]: since },
+                            is_free: 0,
+                        },
+                        order: [['created_at', 'ASC']],
+                    });
+                    if (oldest) {
+                        nextSpinAt = new Date(
+                            new Date((oldest as any).created_at).getTime() +
+                                24 * 3600 * 1000,
+                        ).toISOString();
+                    }
+                }
             }
 
             response.data = {
@@ -82,8 +107,9 @@ class SpinController {
                     try_again_count: r.try_again_count,
                 })),
                 cost: Number(settings.spin_cost_coins) || 0,
-                daily_limit: Number(settings.spin_daily_limit) || 0,
+                daily_limit: dailyLimit,
                 spins_today: spinsToday,
+                next_spin_at: nextSpinAt,
                 free_spins: freeSpins,
                 coins,
                 coin_to_money_rate: Number(settings.coin_to_money_rate) || 0,

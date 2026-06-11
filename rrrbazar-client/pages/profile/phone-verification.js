@@ -49,6 +49,20 @@ const COUNTRY_CODES = [
 
 const DEFAULT_DIAL = '880';
 
+// How long the Send/Resend button stays blocked after an OTP is sent.
+// Matches the server-side OTP expiry (2 minutes) so the user can request a
+// fresh code exactly when the previous one lapses. The server still echoes
+// `expires_in_seconds`, which we prefer when present.
+const RESEND_COOLDOWN_SECONDS = 120;
+
+// Format a seconds count as M:SS for the resend timer.
+function formatCountdown(totalSeconds) {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const mm = Math.floor(s / 60);
+    const ss = String(s % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+}
+
 // Build the provider-ready number: country code + subscriber number with
 // the national trunk "0" (and any other leading zeros) stripped, so
 // `880` + `01680793142` → `8801680793142` rather than `880001680793142`.
@@ -100,6 +114,17 @@ function PhoneVerificationInner() {
     const [otpVerified, setOtpVerified] = useState(false);
     const [code, setCode] = useState('');
     const [busy, setBusy] = useState(false);
+    // Seconds remaining before a fresh OTP can be requested. 0 = button live.
+    const [resendIn, setResendIn] = useState(0);
+
+    // Tick the resend countdown down to zero once an OTP has been sent.
+    useEffect(() => {
+        if (resendIn <= 0) return undefined;
+        const id = setInterval(() => {
+            setResendIn((s) => (s <= 1 ? 0 : s - 1));
+        }, 1000);
+        return () => clearInterval(id);
+    }, [resendIn]);
 
     // Seed the input from the server state once it loads, splitting the
     // stored full number back into its dial code + local parts.
@@ -125,9 +150,19 @@ function PhoneVerificationInner() {
             toast.error('Enter a phone number');
             return;
         }
+        // Guard against double-sends while the cooldown is running.
+        if (resendIn > 0) return;
         setBusy(true);
         try {
-            await sendVerificationOtp(fullPhone);
+            const res = await sendVerificationOtp(fullPhone);
+            // Prefer the server's reported expiry so the resend unlocks
+            // exactly when the code lapses; fall back to the local default.
+            const serverSeconds = Number(
+                res?.data?.data?.expires_in_seconds,
+            );
+            setResendIn(
+                serverSeconds > 0 ? serverSeconds : RESEND_COOLDOWN_SECONDS,
+            );
             setOtpSent(true);
             toast.success('OTP sent. Check your phone.');
         } catch (err) {
@@ -267,19 +302,40 @@ function PhoneVerificationInner() {
                                         <button
                                             type="button"
                                             onClick={handleSendOtp}
-                                            disabled={busy}
+                                            disabled={busy || resendIn > 0}
                                             className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-60 whitespace-nowrap"
                                         >
-                                            {otpSent ? 'Resend OTP' : 'Send OTP'}
+                                            {resendIn > 0
+                                                ? `Resend in ${formatCountdown(resendIn)}`
+                                                : otpSent
+                                                  ? 'Resend OTP'
+                                                  : 'Send OTP'}
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        We&apos;ll send a 6-digit code by SMS to{' '}
-                                        <span className="font-mono">
-                                            +{fullPhone}
-                                        </span>
-                                        . A leading 0 is removed automatically.
-                                    </p>
+                                    {resendIn > 0 ? (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Code sent to{' '}
+                                            <span className="font-mono">
+                                                +{fullPhone}
+                                            </span>
+                                            . It expires in{' '}
+                                            <span className="font-mono font-semibold text-gray-700">
+                                                {formatCountdown(resendIn)}
+                                            </span>
+                                            — you can request a new one when the
+                                            timer ends.
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            We&apos;ll send a 6-digit code by SMS
+                                            to{' '}
+                                            <span className="font-mono">
+                                                +{fullPhone}
+                                            </span>
+                                            . A leading 0 is removed
+                                            automatically.
+                                        </p>
+                                    )}
                                 </div>
 
                                 {otpSent && (

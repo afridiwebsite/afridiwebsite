@@ -61,7 +61,17 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
 
       return (
         <div className="flex gap-2 flex-wrap">
-          <p className='w-max'>{pkgName}</p>
+          <p
+            className="w-max cursor-pointer hover:text-blue-600"
+            title="Tap to copy package name"
+            onClick={() => {
+              if (!pkgName) return;
+              navigator.clipboard.writeText(String(pkgName));
+              toast.info(`Copied package name: ${pkgName}`, toastDefault);
+            }}
+          >
+            {pkgName}
+          </p>
 
           {q > 1 && (
             <span

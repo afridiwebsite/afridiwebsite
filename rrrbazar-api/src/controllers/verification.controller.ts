@@ -121,7 +121,7 @@ export const STEP_DEFINITIONS: StepDef[] = [
   },
 ];
 
-const OTP_EXPIRY_MINUTES = 5;
+const OTP_EXPIRY_MINUTES = 2;
 const OTP_MAX_ATTEMPTS = 5;
 // Rate-limit OTP sends: at most 3 codes per phone per 10 minutes so the
 // gateway bill (and the user's annoyance) doesn't get out of hand.

@@ -45,6 +45,18 @@ const DEFAULT_COLORS = [
   "#facc15",
 ];
 
+// Format a seconds count as H:MM:SS (hours dropped when zero) for the
+// "next spin available" countdown shown once the daily quota is used up.
+function formatSpinCountdown(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
 function polarToCartesian(cx, cy, r, deg) {
   const rad = ((deg - 90) * Math.PI) / 180.0;
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
@@ -331,6 +343,32 @@ function SpinPage() {
   const overLimit = dailyLimit > 0 && spinsToday >= dailyLimit;
   const cannotAfford = cost > 0 && coins < cost;
 
+  // Live countdown to when the daily quota frees up again. The server sends
+  // `next_spin_at` (ISO) only when the user is currently capped; we tick it
+  // down every second and auto-refresh the overview once it elapses so the
+  // wheel re-enables itself without a manual reload.
+  const nextSpinAt = overview?.next_spin_at || null;
+  const [spinCountdown, setSpinCountdown] = useState(0);
+  useEffect(() => {
+    if (!nextSpinAt) {
+      setSpinCountdown(0);
+      return undefined;
+    }
+    const target = new Date(nextSpinAt).getTime();
+    let id;
+    const tick = () => {
+      const left = Math.max(0, Math.round((target - Date.now()) / 1000));
+      setSpinCountdown(left);
+      if (left <= 0) {
+        clearInterval(id);
+        load(); // window rolled — pull a fresh overview to unlock the wheel
+      }
+    };
+    id = setInterval(tick, 1000);
+    tick();
+    return () => clearInterval(id);
+  }, [nextSpinAt, load]);
+
   // Live preview shown on the Convert button — recomputes as the user types.
   // Two-decimal display so partial-paisa values are visible (1 coin × 0.01 BDT
   // = 0.01 instead of being rounded to 0).
@@ -490,7 +528,9 @@ function SpinPage() {
                 disabled={spinning || cannotAfford || overLimit}
                 ctaLabel={
                   overLimit
-                    ? "Come back tomorrow"
+                    ? spinCountdown > 0
+                      ? `Next spin in ${formatSpinCountdown(spinCountdown)}`
+                      : "Come back tomorrow"
                     : cannotAfford
                       ? `Need ${cost} coins`
                       : ctaLabel
@@ -507,6 +547,12 @@ function SpinPage() {
               {cost > 0 && (
                 <span className="spin-chip">
                   Cost per spin: <strong>{cost}</strong> coins
+                </span>
+              )}
+              {overLimit && spinCountdown > 0 && (
+                <span className="spin-chip">
+                  Next spin in{" "}
+                  <strong>{formatSpinCountdown(spinCountdown)}</strong>
                 </span>
               )}
             </div>
