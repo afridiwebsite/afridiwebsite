@@ -21,8 +21,17 @@ function ManageAuthPermission(props) {
     }, [adminauthModules])
 
     const isChecked = (id) => {
-        return !loadingAdminAuthModules && adminauthModules?.includes(id)
+        return selectedAuthIds.includes(Number(id))
     }
+
+    // Grant-all / clear-all helpers. The all-access policy means an admin
+    // normally has every module checked; these make bulk toggling one click.
+    const selectAll = () => {
+        if (!hasData(authModules)) return
+        setselectedAuthIds(authModules.map(m => Number(m.id)))
+    }
+
+    const clearAll = () => setselectedAuthIds([])
 
     const submitHandler = (e) => {
         e.preventDefault();
@@ -52,10 +61,18 @@ function ManageAuthPermission(props) {
     return (
         <section className="relative container_admin" >
             <div className="bg-white overflow-hidden rounded">
-                <div className="px-6 py-3 border-b border-gray-200">
+                <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
                     <h3 className="text-lg font-bold text-black">
                         Manage Auth Permission
                     </h3>
+                    <div className="flex items-center gap-2">
+                        <button type="button" onClick={selectAll} className="cstm_btn_small">
+                            Select All
+                        </button>
+                        <button type="button" onClick={clearAll} className="cstm_btn_small btn_red">
+                            Clear All
+                        </button>
+                    </div>
                 </div>
                 <div className="md:px-6 grid grid-cols-1 md:grid-cols-[70%,auto] gap-6 my-10 " >
                     <div className="border rounded border-gray-200 relative overflow-hidden">
@@ -74,7 +91,7 @@ function ManageAuthPermission(props) {
                                         <label className="py-2 px-4 cursor-pointer hover:bg-gray-200 border-b w-full grid grid-cols-[1fr,1fr,50px] gap-4 last:border-b-0 select-none" >
                                             <span>
                                                 <span className="mr-3.5" >
-                                                    <input type="checkbox" value={authModule.id} defaultChecked={isChecked(authModule.id)} onChange={onChangeHandler} />
+                                                    <input type="checkbox" value={authModule.id} checked={isChecked(authModule.id)} onChange={onChangeHandler} />
                                                 </span>
                                                 {authModule.name || 'Not named'}
                                             </span>

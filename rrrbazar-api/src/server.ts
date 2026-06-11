@@ -71,8 +71,9 @@ console.log("[env] admin base path =", ADMIN_BASE);
 app.use(`${ADMIN_BASE}/`, adminRoute);
 app.get(`${ADMIN_BASE}/check-username/:username`, adminController.checkUsername);
 
-app.post(`${ADMIN_BASE}/login`, authController.adminLogin);
+app.post(`${ADMIN_BASE}/login/send-otp`, authController.adminSendLoginOtp);
 app.post(`${ADMIN_BASE}/login/verify-otp`, authController.adminLoginVerifyOtp);
+app.post(`${ADMIN_BASE}/login`, authController.adminLogin);
 app.post(`${ADMIN_BASE}/logout`, authController.adminLogout);
 // Forgot-password (email OTP) — public, pre-auth.
 app.get(`${ADMIN_BASE}/forgot-password/otp-info`, authController.adminForgotPasswordOtpInfo);

@@ -14,73 +14,52 @@ export default function CardStats({
   loading,
   color = "white"
 }) {
-  // Map color names to subtle border/background classes
+  // Map color names to full-body gradient backgrounds
   const colorMap = {
-    blue: "border-blue-200 bg-blue-50/30",
-    emerald: "border-emerald-200 bg-emerald-50/30",
-    orange: "border-orange-200 bg-orange-50/30",
-    sky: "border-sky-200 bg-sky-50/30",
-    indigo: "border-indigo-200 bg-indigo-50/30",
-    green: "border-green-200 bg-green-50/30",
-    purple: "border-purple-200 bg-purple-50/30",
-    teal: "border-teal-200 bg-teal-50/30",
-    amber: "border-amber-200 bg-amber-50/30",
-    rose: "border-rose-200 bg-rose-50/30",
-    pink: "border-pink-200 bg-pink-50/30",
-    white: "border-gray-200 bg-white"
+    blue: "bg-gradient-to-br from-blue-500 to-blue-700",
+    emerald: "bg-gradient-to-br from-emerald-500 to-emerald-700",
+    orange: "bg-gradient-to-br from-orange-500 to-orange-600",
+    sky: "bg-gradient-to-br from-sky-500 to-sky-700",
+    indigo: "bg-gradient-to-br from-indigo-500 to-indigo-700",
+    green: "bg-gradient-to-br from-green-500 to-green-700",
+    purple: "bg-gradient-to-br from-purple-500 to-purple-700",
+    teal: "bg-gradient-to-br from-teal-500 to-teal-700",
+    amber: "bg-gradient-to-br from-amber-400 to-amber-600",
+    rose: "bg-gradient-to-br from-rose-500 to-rose-700",
+    pink: "bg-gradient-to-br from-pink-500 to-pink-700",
+    white: "bg-gradient-to-br from-gray-600 to-gray-800"
   };
 
   const colorClass = colorMap[color] || colorMap.white;
 
-  // Map color names to solid accent colors
-  const accentMap = {
-    blue: "bg-blue-500",
-    emerald: "bg-emerald-500",
-    orange: "bg-orange-500",
-    sky: "bg-sky-500",
-    indigo: "bg-indigo-500",
-    green: "bg-green-500",
-    purple: "bg-purple-500",
-    teal: "bg-teal-500",
-    amber: "bg-amber-500",
-    rose: "bg-rose-500",
-    pink: "bg-pink-500",
-    white: "bg-gray-200"
-  };
-  const accentClass = accentMap[color] || accentMap.white;
-
   return (
     <>
-      <div className={`relative overflow-hidden flex flex-col min-w-0 break-words rounded-xl shadow-md border ${colorClass} transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 bg-white`}>
-        {/* Top Accent Bar */}
-        <div className={`h-1.5 w-full ${accentClass}`} />
-        
+      <div className={`group relative overflow-hidden flex flex-col min-w-0 break-words rounded-xl shadow-md ${colorClass} transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
+        {/* Decorative glow */}
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
+        <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-black/10" />
+
         {loading && <Loader absolute />}
-        <div className="flex-auto px-6 py-6">
+        <div className="relative flex-auto px-6 py-6">
           <div className="flex items-start justify-between">
             <div className="relative w-full pr-4 max-w-full flex-grow flex-1">
-              <h5 className="text-blueGray-400 uppercase font-bold text-[10px] tracking-widest mb-1">
+              <h5 className="text-white/70 uppercase font-bold text-[10px] tracking-widest mb-1">
                 {statSubtitle}
               </h5>
-              <span className="text-2xl text-blueGray-800 font-extrabold block">
+              <span className="text-2xl text-white font-extrabold block drop-shadow-sm">
                 {statTitle}
               </span>
             </div>
             <div className="relative w-auto flex-initial">
-              <div
-                className={
-                  "text-white p-3 text-center inline-flex items-center justify-center w-12 h-12 shadow-lg rounded-xl transform transition-transform group-hover:scale-110 " +
-                  statIconColor
-                }
-              >
+              <div className="text-white p-3 text-center inline-flex items-center justify-center w-12 h-12 shadow-lg rounded-xl bg-white/20 backdrop-blur-sm transform transition-transform group-hover:scale-110">
                 <i className={statIconName}></i>
               </div>
             </div>
           </div>
           {statDescripiron && (
             <div className="mt-4 flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${accentClass}`} />
-              <p className="text-xs text-blueGray-500 font-medium italic">
+              <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+              <p className="text-xs text-white/90 font-medium italic">
                 {statDescripiron}
               </p>
             </div>

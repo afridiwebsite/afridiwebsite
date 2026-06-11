@@ -125,18 +125,89 @@ async function issueAdminLoginSuccess(
  *                              User Controller
  ******************************************************************************/
 class AuthController {
+  // Step 1 of login: email a one-time code to the admin's account email.
+  // Triggered by the "Send OTP" button next to the email field — it runs on
+  // the email alone (no password), so the code can be sent before the admin
+  // types their password. Every admin has an account email, so OTP is always
+  // available; there is no separate otp_email column in this flow anymore.
+  async adminSendLoginOtp(req: express.Request, res: express.Response) {
+    const response = new responseUtils()
+    const identity = String(req.body.identity || '').trim()
+
+    const admin = await Admin.findOne({ where: { email: identity } })
+    if (!admin) {
+      await auditAdminLogin(req, { identity, success: false, reason: 'no_user' })
+      response.status = 400
+      response.success = false
+      response.message = 'No admin account found for that email.'
+      return res.status(400).send(response.getResponse())
+    }
+
+    const email = String(admin.email || '').trim()
+    if (!email) {
+      response.status = 400
+      response.success = false
+      response.message = 'This account has no email to send a code to.'
+      return res.status(400).send(response.getResponse())
+    }
+
+    const code = generateOtpCode()
+    admin.login_otp = hashOtp(code)
+    admin.login_otp_expires_at = otpExpiry()
+    await admin.save()
+
+    const send = await sendAdminOtpEmail(email, code)
+    if (!send.ok) {
+      await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_failed' })
+      response.status = 502
+      response.success = false
+      response.message = send.error || 'Could not send the login code. Try again.'
+      return res.status(502).send(response.getResponse())
+    }
+
+    await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_sent' })
+    response.message = 'A one-time code has been emailed to you.'
+    response.data = {
+      otp_sent: true,
+      email_hint: maskEmail(email),
+      expires_in_minutes: ADMIN_OTP_EXPIRY_MINUTES,
+    }
+    return res.send(response.getResponse())
+  }
+
+  // Step 2 of login: validate the emailed code so the client can unlock the
+  // password + Login controls. This deliberately does NOT issue a session and
+  // does NOT consume the code — the final adminLogin re-verifies it (the
+  // server never trusts the client's "verified" flag) and consumes it then.
+  async adminLoginVerifyOtp(req: express.Request, res: express.Response) {
+    const response = new responseUtils()
+    const identity = String(req.body.identity || '').trim()
+    const otp = String(req.body.otp || '')
+
+    const admin = await Admin.findOne({ where: { email: identity } })
+    if (!admin || !verifyOtp(otp, admin.login_otp, admin.login_otp_expires_at)) {
+      response.status = 400
+      response.success = false
+      response.message = 'Invalid or expired code.'
+      return res.status(400).send(response.getResponse())
+    }
+
+    response.message = 'Code verified.'
+    response.data = { verified: true }
+    return res.send(response.getResponse())
+  }
+
+  // Step 3 of login: final sign-in. Requires email + password + the emailed
+  // OTP. The OTP is mandatory (re-verified here, not trusted from the client)
+  // and consumed on success so it can't be replayed. On success a revocable
+  // server-side session + cookie is issued.
   async adminLogin(req: express.Request, res: express.Response) {
     const response = new responseUtils()
-    const identity = String(req.body.identity || '')
+    const identity = String(req.body.identity || '').trim()
+    const otp = String(req.body.otp || '')
     const remember = req.body.remember == 1
 
-    const admin = await Admin.findOne({
-      where: {
-        email: identity
-      }
-    })
-
-    console.log(admin,'admin')
+    const admin = await Admin.findOne({ where: { email: identity } })
     if (!admin) {
       await auditAdminLogin(req, { identity, success: false, reason: 'no_user' })
       response.status = 400
@@ -144,6 +215,7 @@ class AuthController {
       response.success = false;
       return res.status(400).send(response.getResponse())
     }
+
     const compare = await bcrypt.compare(req.body.password, admin.password);
     if (!compare) {
       await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'password' })
@@ -153,70 +225,13 @@ class AuthController {
       return res.status(400).send(response.getResponse())
     }
 
-    // Two-factor step-up: if the admin has an otp_email on file, password
-    // alone is not enough — we email a one-time code and require it via
-    // verify-otp before issuing any session. Admins without an otp_email keep
-    // the password-only flow ("OTP only when set").
-    const otpEmail = String(admin.otp_email || '').trim()
-    if (otpEmail) {
-      const code = generateOtpCode()
-      admin.login_otp = hashOtp(code)
-      admin.login_otp_expires_at = otpExpiry()
-      await admin.save()
-
-      const send = await sendAdminOtpEmail(otpEmail, code)
-      if (!send.ok) {
-        await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_failed' })
-        response.status = 502
-        response.success = false
-        response.message = send.error || 'Could not send the login OTP. Try again.'
-        return res.status(502).send(response.getResponse())
-      }
-
-      await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_sent' })
-      response.message = 'OTP sent to your registered email.'
-      response.data = {
-        otp_required: true,
-        identity: admin.email,
-        // Masked hint so the UI can say where the code went without leaking
-        // the full address.
-        email_hint: maskEmail(otpEmail),
-        expires_in_minutes: ADMIN_OTP_EXPIRY_MINUTES,
-      }
-      return res.send(response.getResponse())
-    }
-
-    // No otp_email → password is sufficient. Issue the session immediately.
-    await auditAdminLogin(req, { admin_id: admin.id, identity, success: true, reason: 'success' })
-    return issueAdminLoginSuccess(req, res, admin, remember, response)
-  }
-
-  // Step 2 of an OTP-gated login. Verifies the SMS code minted by adminLogin
-  // and, on success, issues the session. The code is single-use (cleared on
-  // success) and time-limited.
-  async adminLoginVerifyOtp(req: express.Request, res: express.Response) {
-    const response = new responseUtils()
-    const identity = String(req.body.identity || '')
-    const otp = String(req.body.otp || '')
-    const remember = req.body.remember == 1
-
-    console.log('log',otp)
-
-    const admin = await Admin.findOne({ where: { email: identity } })
-    if (!admin) {
-      await auditAdminLogin(req, { identity, success: false, reason: 'otp_failed' })
-      response.status = 400
-      response.success = false
-      response.message = 'Invalid or expired code.'
-      return res.status(400).send(response.getResponse())
-    }
-
-    const ok = verifyOtp(otp, admin.login_otp, admin.login_otp_expires_at)
-    if (!ok) {
+    // OTP is required for every admin login. The code emailed by
+    // /login/send-otp must be present and valid.
+    if (!verifyOtp(otp, admin.login_otp, admin.login_otp_expires_at)) {
       await auditAdminLogin(req, { admin_id: admin.id, identity, success: false, reason: 'otp_failed' })
       response.status = 400
       response.success = false
-      response.message = 'Invalid or expired code.'
+      response.message = 'Invalid or expired code. Request a new one.'
       return res.status(400).send(response.getResponse())
     }
 

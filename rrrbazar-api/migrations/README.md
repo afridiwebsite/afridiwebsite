@@ -16,6 +16,7 @@ mean you can safely run them again.
 | `008_quantity_and_prefix.sql` | Adds `orders.quantity` (default 1) so refunds/admin views/reward sync have a single source of truth for unit count, and `topup_products.quantity_prefix` so the admin can re-label the storefront quantity stepper (e.g. "Dollars"). Together they extend the existing `allow_quantity` flag to non-voucher products. |
 | `009_product_allow_quantity.sql` | Adds `topup_products.allow_quantity` — product-level master switch for the quantity stepper. Storefront ORs it with the per-package flag from 006 so the admin can enable quantity at either level (per-package was originally voucher-only, so AND-ing them would have restricted quantity to vouchers). |
 | `010_verification_module.sql` | Phase A of the KYC / user verification module. Adds the master toggle `site_settings.verification_enabled` plus four admin-configurable SMS gateway columns, the `verification_submissions` table (one row per user+step, statuses under_review/verified/rejected), and the `otp_attempts` table (hashed codes, expiry, attempts counter). No UX is exposed yet — the storefront forms, admin review, and order-block enforcement land in later phases. Toggle off ⇒ everything is a no-op. |
+| `017_grant_all_admins_all_permissions.sql` | All-access policy backfill. Inserts the missing `admin_auth` (route/module) and `topup_package_permissions` (order/package) rows so every existing admin has every permission. Idempotent (only fills gaps). New admins get the same grant at creation time in `createNewAdmin`. |
 
 ## Apply
 

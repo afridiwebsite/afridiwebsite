@@ -18,7 +18,6 @@ function Profile() {
             last_name: '',
             email: '',
             phone: '',
-            otp_email: '',
             image: ''
         },
         onSubmit: async (values) => {
@@ -48,7 +47,6 @@ function Profile() {
                 last_name: data.last_name || '',
                 email: data.email || '',
                 phone: data.phone || '',
-                otp_email: data.otp_email || '',
                 image: data.image || ''
             })
         }
@@ -153,20 +151,6 @@ function Profile() {
                                     className="border-0 px-3 py-2 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ease-linear transition-all duration-150"
                                     {...formik.getFieldProps('phone')}
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold mb-1">OTP Email</label>
-                                <input
-                                    type="email"
-                                    name="otp_email"
-                                    placeholder="e.g. you@example.com"
-                                    className="border-0 px-3 py-2 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ease-linear transition-all duration-150"
-                                    {...formik.getFieldProps('otp_email')}
-                                />
-                                <p className="text-xs text-gray-400 mt-1">
-                                    When set, a one-time code is emailed here at login and
-                                    enables email password reset. Leave blank to disable OTP.
-                                </p>
                             </div>
                         </div>
                         <button

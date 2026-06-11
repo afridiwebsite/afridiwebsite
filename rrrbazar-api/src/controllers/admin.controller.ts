@@ -1958,6 +1958,31 @@ class AdminController {
       }
 
       await admin.save()
+
+      // Every admin gets every permission. Grant all auth modules and all
+      // topup packages on creation so a new admin can immediately do
+      // everything (mirrors the all-access policy backfilled for existing
+      // admins by migration 017). Best-effort: a grant failure logs but never
+      // fails the create — the backfill / Manage pages can reconcile later.
+      try {
+        const [modules, packages] = await Promise.all([
+          AuthModule.findAll({ attributes: ['id'] }),
+          TopupPackage.findAll({ attributes: ['id'] }),
+        ])
+        if (modules.length > 0) {
+          await AdminAuth.bulkCreate(
+            modules.map((m: any) => ({ admin_id: admin.id, auth_module_id: m.id }))
+          )
+        }
+        if (packages.length > 0) {
+          await TopupPackagePermission.bulkCreate(
+            packages.map((p: any) => ({ admin_id: admin.id, topup_package_id: p.id }))
+          )
+        }
+      } catch (grantErr) {
+        console.log('createNewAdmin: granting all permissions failed (non-fatal):', (grantErr as any)?.message || grantErr)
+      }
+
       response.message = 'Admin Created Success'
       res.send(response.response)
     } catch (error) {
