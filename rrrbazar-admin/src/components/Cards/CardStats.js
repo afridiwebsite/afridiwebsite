@@ -34,7 +34,7 @@ export default function CardStats({
 
   return (
     <>
-      <div className={`group relative overflow-hidden flex flex-col min-w-0 break-words rounded-xl shadow-md ${colorClass} transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
+      <div className={`group relative overflow-hidden flex h-full flex-col min-w-0 break-words rounded-xl shadow-md ${colorClass} transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
         {/* Decorative glow */}
         <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
         <div className="absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-black/10" />
