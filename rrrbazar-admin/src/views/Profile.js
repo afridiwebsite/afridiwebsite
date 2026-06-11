@@ -72,7 +72,7 @@ export default function Profile() {
     <>
       <Navbar transparent />
       <main className="profile-page">
-        <section className="relative block h-500-px">
+        <section className="relative block h-64 sm:h-80 lg:h-[500px]">
           <div
             className="absolute top-0 w-full h-full bg-center bg-cover"
             style={{
@@ -86,7 +86,7 @@ export default function Profile() {
             ></span>
           </div>
           <div
-            className="top-auto bottom-0 left-0 right-0 w-full absolute pointer-events-none overflow-hidden h-70-px"
+            className="top-auto bottom-0 left-0 right-0 w-full absolute pointer-events-none overflow-hidden h-[70px]"
             style={{ transform: "translateZ(0)" }}
           >
             <svg
@@ -107,15 +107,15 @@ export default function Profile() {
         </section>
         <section className="relative py-16 bg-blueGray-200">
           <div className="container mx-auto px-4">
-            <div className="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-xl rounded-lg -mt-64">
-              <div className="px-6">
+            <div className="relative flex flex-col min-w-0 break-words bg-white w-full mb-6 shadow-xl rounded-lg -mt-32 sm:-mt-48 lg:-mt-64">
+              <div className="px-4 sm:px-6">
                 <div className="flex flex-wrap justify-center">
                   <div className="w-full lg:w-3/12 px-4 lg:order-2 flex justify-center">
-                    <div className="relative group cursor-pointer h-32 w-32 -m-16 -ml-20 lg:-ml-16">
+                    <div className="relative group cursor-pointer h-32 w-32 -mt-20 mb-4 lg:-m-16 lg:-ml-16">
                       <img
                         alt="Admin Profile"
                         src={profileImg}
-                        className="shadow-xl rounded-full h-32 w-32 object-cover align-middle border-none absolute inset-0 max-w-150-px"
+                        className="shadow-xl rounded-full h-32 w-32 object-cover align-middle border-none absolute inset-0 max-w-[150px]"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <label htmlFor="admin-profile-image" className="cursor-pointer text-white text-xs font-bold text-center w-full h-full flex items-center justify-center">
@@ -126,7 +126,7 @@ export default function Profile() {
                     </div>
                   </div>
                   <div className="w-full lg:w-4/12 px-4 lg:order-3 lg:text-right lg:self-center">
-                    <div className="py-6 px-3 mt-32 sm:mt-0">
+                    <div className="py-6 px-3 mt-2 sm:mt-0">
                       <button
                         className="bg-indigo-600 !text-white active:bg-indigo-700 uppercase font-bold hover:shadow-md shadow text-xs px-4 py-2 rounded outline-none focus:outline-none sm:mr-2 mb-1 ease-linear transition-all duration-150"
                         type="button"
@@ -157,7 +157,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="text-center mt-12">
-                  <h3 className="text-4xl font-semibold leading-normal mb-2 text-blueGray-700 mb-2">
+                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-semibold leading-normal mb-2 text-blueGray-700 break-words">
                     {data?.first_name || 'Admin'} {data?.last_name || ''}
                   </h3>
                   <div className="text-sm leading-normal mt-0 mb-2 text-blueGray-400 font-bold uppercase">
