@@ -24,6 +24,11 @@ export default (sequelize: Sequelize) => {
         // verify_type !== 'none'.
         public verify_type!: string;
         public verify_game!: string;
+        // Only meaningful for verify_type === 'dynamic'. When 1, the storefront
+        // blocks the order until the customer runs a successful name check for
+        // the entered Player ID (gamerspay is always mandatory, so it doesn't
+        // need this flag).
+        public verify_required!: number;
         public serial!: number;
 
         static associate({ TopupProduct }: typeof Schema) {
@@ -77,6 +82,11 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING(32),
             allowNull: true,
             defaultValue: '',
+        },
+        verify_required: {
+            type: DataTypes.TINYINT,
+            allowNull: false,
+            defaultValue: 0,
         },
         serial: {
             type: DataTypes.INTEGER,

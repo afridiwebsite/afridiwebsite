@@ -2968,6 +2968,11 @@ class AdminController {
             verifyType === 'dynamic'
               ? String(it?.region_lock || '').trim().toUpperCase()
               : ''
+          // "Name check required" only applies to the dynamic backend — it
+          // turns the storefront name check into a hard order gate. Cleared
+          // for every other type so a backend switch leaves no stale flag.
+          const verifyRequired =
+            verifyType === 'dynamic' && it?.verify_required ? 1 : 0
 
           return {
             topup_product_id: product_id,
@@ -2979,6 +2984,7 @@ class AdminController {
             verify_game: verifyGame,
             api_token: apiToken,
             region_lock: regionLock,
+            verify_required: verifyRequired,
             serial: typeof it?.serial === 'number' ? it.serial : idx,
           }
         })
@@ -3033,6 +3039,7 @@ class AdminController {
           'verify_url',
           'verify_game',
           'region_lock',
+          'verify_required',
           'api_token',
           'serial',
         ],
@@ -3094,6 +3101,8 @@ class AdminController {
             verifyType === 'dynamic'
               ? String(it?.region_lock || '').trim().toUpperCase()
               : ''
+          const verifyRequired =
+            verifyType === 'dynamic' && it?.verify_required ? 1 : 0
 
           return {
             topup_package_id: package_id,
@@ -3105,6 +3114,7 @@ class AdminController {
             verify_game: verifyGame,
             api_token: apiToken,
             region_lock: regionLock,
+            verify_required: verifyRequired,
             serial: typeof it?.serial === 'number' ? it.serial : idx,
           }
         })

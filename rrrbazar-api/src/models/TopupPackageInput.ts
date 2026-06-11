@@ -19,6 +19,9 @@ export default (sequelize: Sequelize) => {
         public region_lock!: string;
         public verify_type!: string;
         public verify_game!: string;
+        // See TopupProductInput: only used for verify_type === 'dynamic' to
+        // make the storefront name check a hard order gate.
+        public verify_required!: number;
         public serial!: number;
 
         static associate({ TopupPackage }: typeof Schema) {
@@ -72,6 +75,11 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING(32),
             allowNull: true,
             defaultValue: '',
+        },
+        verify_required: {
+            type: DataTypes.TINYINT,
+            allowNull: false,
+            defaultValue: 0,
         },
         serial: {
             type: DataTypes.INTEGER,

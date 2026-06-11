@@ -71,6 +71,8 @@ function EditTopupProduct(props) {
     verify_game: "",
     api_token: "",
     region_lock: "",
+    // Dynamic-only: makes the storefront name check a hard order gate.
+    verify_required: false,
   });
 
   // Same set as AddTopupProduct / AddPackage's PUBG-bot game dropdown.
@@ -134,6 +136,7 @@ function EditTopupProduct(props) {
             verify_game: it.verify_game || "",
             api_token: it.api_token || "",
             region_lock: it.region_lock || "",
+            verify_required: Number(it.verify_required) === 1,
           };
         });
       setProductInputs(rows);
@@ -307,6 +310,8 @@ function EditTopupProduct(props) {
                 verify_game: it.verify_game || "",
                 api_token: it.api_token || "",
                 region_lock: it.region_lock || "",
+                verify_required:
+                  it.verify_type === "dynamic" && it.verify_required ? 1 : 0,
                 serial: idx,
               })),
             },
@@ -671,6 +676,24 @@ function EditTopupProduct(props) {
                                       </option>
                                     ))}
                                   </select>
+                                  <label className="flex items-start gap-2 mt-3 cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      className="mt-1"
+                                      checked={!!row.verify_required}
+                                      onChange={(e) =>
+                                        updateInputAt(idx, {
+                                          verify_required: e.target.checked,
+                                        })
+                                      }
+                                    />
+                                    <span className="text-xs text-gray-700">
+                                      <strong>Name check required</strong> —
+                                      block the order unless the customer runs a
+                                      successful name check first. The storefront
+                                      pings the Check button until they do.
+                                    </span>
+                                  </label>
                                 </div>
                               )}
 

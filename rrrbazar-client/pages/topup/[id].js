@@ -2,7 +2,7 @@ import { Formik } from "formik";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import ReactHtmlParser from "react-html-parser";
 import { HiOutlineExternalLink } from "react-icons/hi";
@@ -166,6 +166,19 @@ function TopupOrderPage() {
   // detect post-verification edits (gamerspay checks become stale if the
   // customer changes the ID after passing once).
   const [verifyState, setVerifyState] = useState({}); // { [id]: { loading, data, error, value } }
+  // Ref to the Player ID "Check" button so we can scroll the customer to it
+  // when an order is blocked for a missing/stale name check.
+  const verifyBtnRef = useRef(null);
+  const scrollToVerifyBtn = () => {
+    if (verifyBtnRef.current) {
+      verifyBtnRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    } else {
+      scrollTopWindow();
+    }
+  };
   const runVerify = async (input, value) => {
     const trimmed = String(value || "").trim();
     if (!trimmed) {
@@ -198,17 +211,20 @@ function TopupOrderPage() {
     }
   };
 
-  // True iff the Player ID input requires the GamersPay validate call AND
-  // we don't currently have a passing result for the value the customer
-  // typed in. Drives the submit gate below and the inline hint on the
-  // verify button.
-  const isGamerspayVerified = (currentValue) => {
-    if (playerIdInput?.verify_type !== "gamerspay") return true;
+  // A player-name check is a hard order gate when the Player ID input either
+  // uses GamersPay (always mandatory) or uses the dynamic backend with the
+  // admin's "Name check required" box ticked. In both cases the customer must
+  // press "Check" and get a passing result for the exact value they're
+  // submitting — the result goes stale if they edit the ID afterward.
+  const playerNameCheckMandatory =
+    playerIdInput?.verify_type === "gamerspay" ||
+    (playerIdInput?.verify_type === "dynamic" &&
+      Number(playerIdInput?.verify_required) === 1);
+  const isPlayerNameChecked = (currentValue) => {
+    if (!playerNameCheckMandatory) return true;
     const v = verifyState[playerIdInput.id];
     if (!v || !v.data || v.error) return false;
-    return (
-      String(v.value || "").trim() === String(currentValue || "").trim()
-    );
+    return String(v.value || "").trim() === String(currentValue || "").trim();
   };
 
   // ReactHtmlParser keeps wrapper tags even for blank input, so strip tags
@@ -374,27 +390,29 @@ function TopupOrderPage() {
                         payment_mathod,
                       } = values;
 
-                      // GamersPay name-check is a hard gate. If the admin
-                      // configured this product to validate against the
-                      // GamersPay API and the customer hasn't passed it
-                      // (or edited the ID after passing), bail out before
-                      // we hit /packageorder. Inline error tells them to
-                      // press "Check Player ID".
-                      if (playerIdInput?.verify_type === "gamerspay") {
-                        if (!isGamerspayVerified(playerid)) {
-                          const stale =
-                            verifyState[playerIdInput.id]?.data &&
-                            String(
-                              verifyState[playerIdInput.id]?.value || "",
-                            ).trim() !== String(playerid || "").trim();
-                          setServerError(
-                            stale
-                              ? `Please re-check ${playerIdInput.title} — it changed after the last verification.`
-                              : `Please verify ${playerIdInput.title} first — this product requires a successful GamersPay name check before ordering.`,
-                          );
-                          scrollTopWindow();
-                          return;
-                        }
+                      // Player-name check is a hard gate (GamersPay always, or
+                      // dynamic when the admin ticked "Name check required").
+                      // If the customer hasn't passed it for the value they're
+                      // submitting (or edited the ID after passing), bail out
+                      // before we hit /packageorder and scroll them to the
+                      // Check button so they know what to do.
+                      if (
+                        playerNameCheckMandatory &&
+                        !isPlayerNameChecked(playerid)
+                      ) {
+                        const vs = verifyState[playerIdInput.id];
+                        const stale =
+                          vs?.data &&
+                          String(vs?.value || "").trim() !==
+                            String(playerid || "").trim();
+                        const label = playerIdInput.title || "Player ID";
+                        setServerError(
+                          stale
+                            ? `Please re-check ${label} — it changed after the last verification.`
+                            : `Please check ${label} first — this product requires a successful name check before ordering.`,
+                        );
+                        scrollToVerifyBtn();
+                        return;
                       }
 
                       // Quantity gate: only the per-package switch matters.
@@ -1169,6 +1187,15 @@ function TopupOrderPage() {
                                       : `dyn_${inp.id}`;
                                     const vState = verifyState[inp.id] || {};
                                     const showVerify = !!inp.verify_player_name;
+                                    // Ping the Check button while a mandatory
+                                    // name check is still outstanding for the
+                                    // Player ID input, nudging the customer to
+                                    // press it before they can order.
+                                    const needsCheckAttention =
+                                      inp.is_player_id &&
+                                      playerNameCheckMandatory &&
+                                      !vState.loading &&
+                                      !isPlayerNameChecked(values[fieldName]);
                                     return (
                                       <div key={inp.id} className="_grid_2">
                                         <div>
@@ -1183,6 +1210,11 @@ function TopupOrderPage() {
                                             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                                               <button
                                                 type="button"
+                                                ref={
+                                                  inp.is_player_id
+                                                    ? verifyBtnRef
+                                                    : undefined
+                                                }
                                                 disabled={vState.loading}
                                                 onClick={() =>
                                                   runVerify(
@@ -1190,7 +1222,11 @@ function TopupOrderPage() {
                                                     values[fieldName],
                                                   )
                                                 }
-                                                className="topup-verify-btn"
+                                                className={`topup-verify-btn ${
+                                                  needsCheckAttention
+                                                    ? "topup-verify-btn--ping"
+                                                    : ""
+                                                }`}
                                               >
                                                 {vState.loading
                                                   ? "Checking..."
@@ -1462,13 +1498,13 @@ function TopupOrderPage() {
                                   // Float-quantity limit gate — mirrors
                                   // the inline warning under the input.
                                   quantityOverLimit ||
-                                  // GamersPay gate — same rule as the
+                                  // Name-check gate — same rule as the
                                   // onSubmit guard above so the button
                                   // visually reflects what'll happen on
-                                  // click.
-                                  (playerIdInput?.verify_type ===
-                                    "gamerspay" &&
-                                    !isGamerspayVerified(values.playerid))
+                                  // click (GamersPay always, or dynamic when
+                                  // the admin marked the check required).
+                                  (playerNameCheckMandatory &&
+                                    !isPlayerNameChecked(values.playerid))
                                 }
                                 onClick={handleSubmit}
                                 type="submit"
