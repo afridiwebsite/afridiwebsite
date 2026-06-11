@@ -2100,6 +2100,34 @@ class AdminController {
         }
       })
 
+      const totalOrder = await Order.count({
+        where: {
+          payment_status: 1,
+          ...filter
+        }
+      })
+
+      const totalCompletedOrderAmount = await Order.sum('amount', {
+        where: {
+          payment_status: 1,
+          status: 'completed',
+          ...filter
+        }
+      })
+
+      // Coins earned today across users — `claim` (spin reward) and
+      // `purchase` (order-based award) are the positive earn types;
+      // `convert`/`refund` are excluded so this reflects coins gained.
+      const todaysCoinsEarned = await CoinTransaction.sum('amount', {
+        where: {
+          type: { [Op.in]: ['claim', 'purchase'] },
+          created_at: {
+            [Op.gte]: TODAY_START,
+            [Op.lte]: NOW
+          }
+        }
+      })
+
       const todaysConvertedCoins = await CoinTransaction.sum('amount', {
         where: {
           type: 'convert',
@@ -2169,11 +2197,15 @@ class AdminController {
         monthlyCompletedOrderBPrice: Number(monthlyCompletedOrderBPrice || 0),
         monthlyCompletedOrderAmount: Number(monthlyCompletedOrderAmount || 0),
         monthlyProfitAmount: Number((monthlyCompletedOrderAmount || 0) - (monthlyCompletedOrderBPrice || 0)),
+        totalOrder,
+        totalCompletedOrderAmount: Number(totalCompletedOrderAmount || 0),
         todaysCompletedOrder,
         totalWallet: (adminId == 1) ? Number(totalWallet || 0) : 0,
         todaysTotalWallet: (adminId == 1) ? Number(todaysTotalWallet || 0) : 0,
         todaysUser,
         uniPin: uniAvaiCount,
+        todaysCoinsEarned: Number(todaysCoinsEarned || 0),
+        todaysCoinsEarnedMoney: Number((todaysCoinsEarned || 0) * rate),
         todaysConvertedCoins: Math.abs(Number(todaysConvertedCoins || 0)),
         monthlyConvertedCoins: Math.abs(Number(monthlyConvertedCoins || 0)),
         todaysConvertedMoney: Math.abs(Number((todaysConvertedCoins || 0) * rate)),
