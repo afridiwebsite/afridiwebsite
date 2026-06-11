@@ -5,6 +5,14 @@ import useGet from '../../hooks/useGet'
 import CardStats from "../../components/Cards/CardStats.js";
 import { getErrors } from "../../utils/handler.utils";
 
+// Format a money amount with thousands separators and two decimals
+// (e.g. 1234567.5 -> "1,234,567.50").
+const money = (v) =>
+  Number(v || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
 export default function HeaderStats() {
   const [stats, loading, error] = useGet('admin/dashboard-stats')
   return (
@@ -36,14 +44,14 @@ export default function HeaderStats() {
           {/* Row 2: Total Wallet | Today Add Wallet */}
           <CardStats
             statSubtitle="Total Wallet"
-            statTitle={`৳ ${Number(stats?.totalWallet || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.totalWallet)}`}
             statIconName="fas fa-wallet"
             color="emerald"
             loading={loading}
           />
           <CardStats
             statSubtitle="Wallet Added Today"
-            statTitle={`৳ ${Number(stats?.todaysTotalWallet || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.todaysTotalWallet)}`}
             statIconName="fas fa-plus-circle"
             color="emerald"
             loading={loading}
@@ -52,14 +60,14 @@ export default function HeaderStats() {
           {/* Row 3: Total Sales | Today Sales */}
           <CardStats
             statSubtitle="Total Sales"
-            statTitle={`৳ ${Number(stats?.totalCompletedOrderAmount || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.totalCompletedOrderAmount)}`}
             statIconName="fas fa-coins"
             color="indigo"
             loading={loading}
           />
           <CardStats
             statSubtitle="Todays Sales"
-            statTitle={`৳ ${Number(stats?.todaysCompletedOrderAmount || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.todaysCompletedOrderAmount)}`}
             statIconName="fas fa-chart-line"
             color="indigo"
             loading={loading}
@@ -75,7 +83,7 @@ export default function HeaderStats() {
           />
           <CardStats
             statSubtitle="Monthly Sales"
-            statTitle={`৳ ${Number(stats?.monthlyCompletedOrderAmount || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.monthlyCompletedOrderAmount)}`}
             statIconName="fas fa-calendar-check"
             color="purple"
             loading={loading}
@@ -101,14 +109,14 @@ export default function HeaderStats() {
           {/* Row 7: Monthly Profit | Today Profit */}
            <CardStats
             statSubtitle="Today Profit"
-            statTitle={`৳ ${Number(stats?.todaysProfileAmount || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.todaysProfileAmount)}`}
             statIconName="fas fa-hand-holding-usd"
             color="teal"
             loading={loading}
           />
           <CardStats
             statSubtitle="Monthly Profit"
-            statTitle={`৳ ${Number(stats?.monthlyProfitAmount || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.monthlyProfitAmount)}`}
             statIconName="fas fa-money-bill-wave"
             color="teal"
             loading={loading}
@@ -118,14 +126,14 @@ export default function HeaderStats() {
            {/* Row 9: Monthly Cashback | Today Cashback */}
           <CardStats
             statSubtitle="Cashback This Month"
-            statTitle={`৳ ${Number(stats?.monthlyCashback || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.monthlyCashback)}`}
             statIconName="fas fa-gift"
             color="pink"
             loading={loading}
           />
           <CardStats
             statSubtitle="Cashback Today"
-            statTitle={`৳ ${Number(stats?.todaysCashback || 0).toFixed(2)}`}
+            statTitle={`৳ ${money(stats?.todaysCashback)}`}
             statIconName="fas fa-gift"
             color="pink"
             loading={loading}
@@ -135,7 +143,7 @@ export default function HeaderStats() {
           <CardStats
             statSubtitle="Total User Coins"
             statTitle={`${stats?.totalCoinsAcrossUsers || 0} Coins`}
-            statDescripiron={`Value: ৳ ${Number(stats?.totalCoinsMoney || 0).toFixed(2)}`}
+            statDescripiron={`Value: ৳ ${money(stats?.totalCoinsMoney)}`}
             statIconName="fas fa-coins"
             color="amber"
             loading={loading}
@@ -143,7 +151,7 @@ export default function HeaderStats() {
           <CardStats
             statSubtitle="Coins Earned Today"
             statTitle={`${stats?.todaysCoinsEarned || 0} Coins`}
-            statDescripiron={`Value: ৳ ${Number(stats?.todaysCoinsEarnedMoney || 0).toFixed(2)}`}
+            statDescripiron={`Value: ৳ ${money(stats?.todaysCoinsEarnedMoney)}`}
             statIconName="fas fa-coins"
             color="amber"
             loading={loading}
@@ -154,7 +162,7 @@ export default function HeaderStats() {
           <CardStats
             statSubtitle="Coins Converted This Month"
             statTitle={`${stats?.monthlyConvertedCoins || 0} Coins`}
-            statDescripiron={`Value: ৳ ${Number(stats?.monthlyConvertedMoney || 0).toFixed(2)}`}
+            statDescripiron={`Value: ৳ ${money(stats?.monthlyConvertedMoney)}`}
             statIconName="fas fa-exchange-alt"
             color="rose"
             loading={loading}
@@ -162,7 +170,7 @@ export default function HeaderStats() {
           <CardStats
             statSubtitle="Coins Converted Today"
             statTitle={`${stats?.todaysConvertedCoins || 0} Coins`}
-            statDescripiron={`Value: ৳ ${Number(stats?.todaysConvertedMoney || 0).toFixed(2)}`}
+            statDescripiron={`Value: ৳ ${money(stats?.todaysConvertedMoney)}`}
             statIconName="fas fa-exchange-alt"
             color="rose"
             loading={loading}
