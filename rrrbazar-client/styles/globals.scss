@@ -2405,27 +2405,51 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
-// Attention "ping" — pulses an expanding ring around the Check button while a
-// mandatory name check is still outstanding, nudging the customer to press it
-// before ordering.
+// Attention "ping" — a bigger, red Check button that pulses expanding rings
+// while a mandatory name check is still outstanding, nudging the customer to
+// press it before ordering. Two stacked animations: `topupVerifyRing` fires
+// the expanding halo, `topupVerifyPulse` gently throbs the button itself.
 .topup-verify-btn--ping {
-  animation: topupVerifyPing 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  // Bump the size so the call-to-action is obvious.
+  padding: 9px 20px;
+  font-size: 14px;
+  // Override the default blue gradient with a red one so it reads as "action
+  // needed", and run both the ring + throb animations together.
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  animation:
+    topupVerifyRing 1.3s cubic-bezier(0, 0, 0.2, 1) infinite,
+    topupVerifyPulse 1.3s ease-in-out infinite;
 }
-@keyframes topupVerifyPing {
+.topup-verify-btn--ping:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+@keyframes topupVerifyRing {
   0% {
     box-shadow:
-      0 6px 14px rgba(var(--theme-primary-rgb, 56 86 181) / 0.28),
-      0 0 0 0 rgba(239, 68, 68, 0.55);
+      0 6px 16px rgba(220, 38, 38, 0.45),
+      0 0 0 0 rgba(239, 68, 68, 0.6),
+      0 0 0 0 rgba(239, 68, 68, 0.35);
   }
   70% {
     box-shadow:
-      0 6px 14px rgba(var(--theme-primary-rgb, 56 86 181) / 0.28),
-      0 0 0 9px rgba(239, 68, 68, 0);
+      0 6px 16px rgba(220, 38, 38, 0.45),
+      0 0 0 14px rgba(239, 68, 68, 0),
+      0 0 0 24px rgba(239, 68, 68, 0);
   }
   100% {
     box-shadow:
-      0 6px 14px rgba(var(--theme-primary-rgb, 56 86 181) / 0.28),
+      0 6px 16px rgba(220, 38, 38, 0.45),
+      0 0 0 0 rgba(239, 68, 68, 0),
       0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+@keyframes topupVerifyPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
   }
 }
 
