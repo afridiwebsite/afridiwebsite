@@ -71,6 +71,17 @@ console.log("[env] admin base path =", ADMIN_BASE);
 app.use(`${ADMIN_BASE}/`, adminRoute);
 app.get(`${ADMIN_BASE}/check-username/:username`, adminController.checkUsername);
 
+// The admin panel's image uploader posts to
+// `${REACT_APP_API_ENDPOINT}/v1/upload/image`. When the panel's API base is
+// the secret-prefixed path (/api/<SECRET>), that resolves to
+// /api/<SECRET>/v1/upload/image — which 404s, because uploadRoute is only
+// mounted under /api/v1. Mirror it under the secret base so admin uploads work
+// without exposing the bare /api/v1 path to the panel. No-op when the secret
+// is unset (admin already shares the /api/v1 base then).
+if (ADMIN_SECRET) {
+  app.use(`/api/${ADMIN_SECRET}/v1/`, uploadRoute);
+}
+
 app.post(`${ADMIN_BASE}/login/send-otp`, authController.adminSendLoginOtp);
 app.post(`${ADMIN_BASE}/login/verify-otp`, authController.adminLoginVerifyOtp);
 app.post(`${ADMIN_BASE}/login`, authController.adminLogin);

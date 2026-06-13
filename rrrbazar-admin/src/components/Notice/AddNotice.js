@@ -7,6 +7,7 @@ import { getErrors, toastDefault } from '../../utils/handler.utils';
 import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
 import useGet from '../../hooks/useGet';
+import ImageUpload from '../ImageUpload/ImageUpload';
 
 const TYPE_LABELS = {
     normal: 'Normal',
@@ -87,7 +88,7 @@ function AddNotice() {
                                     <>
                                         <div>
                                             <label htmlFor="image">Image</label>
-                                            <input id="image" className="form_input" type="file" onChange={e => setNoticeLogo(e.target.files[0])} />
+                                            <ImageUpload id="image" onFileSelected={setNoticeLogo} />
                                         </div>
 
                                         <div>

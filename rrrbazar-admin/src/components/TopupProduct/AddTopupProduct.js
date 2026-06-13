@@ -7,10 +7,10 @@ import useUpload from "../../hooks/useUpload";
 import { getErrors, toastDefault } from "../../utils/handler.utils";
 import Loader from "../Loader/Loader";
 import TextEditor from "../TextEditor/TextEditor";
+import ImageUpload from "../ImageUpload/ImageUpload";
 
 function AddTopupProduct() {
   const name = useRef(null);
-  const logo = useRef(null);
   // isactivefortopup is no longer surfaced as a checkbox — it's auto-derived
   // from whether a "Player ID" dynamic input is defined.
   const is_active_product = useRef(null);
@@ -337,13 +337,10 @@ function AddTopupProduct() {
 
                   <div>
                     <label htmlFor="logo">Logo</label>
-                    <input
-                      ref={logo}
+                    <ImageUpload
                       id="logo"
-                      className="form_input"
-                      type="file"
                       required
-                      onChange={(e) => setProductLogo(e.target.files[0])}
+                      onFileSelected={setProductLogo}
                     />
                   </div>
                 </div>

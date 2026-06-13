@@ -35,6 +35,29 @@ class UploadController {
         res.send(responseFormat({image: req?.file?.filename}, true, 200, 'Icon Successfully Uploaded'))
     }
 
+    // Windows (AV / Search indexer) can briefly hold a write lock on a file
+    // multer just created, so a writeFile to the same directory can fail with
+    // EBUSY / EPERM / UNKNOWN. Retry a few times with a short backoff before
+    // giving up — without this the upload 500s and the admin sees a spurious
+    // "image upload failed" toast even though the file is fine.
+    #writeFileWithRetry = async (target: string, buf: Buffer, tries = 4) => {
+        for (let i = 0; i < tries; i++) {
+            try {
+                await fs.promises.writeFile(target, buf);
+                return;
+            } catch (err: any) {
+                const code = err?.code;
+                const retryable =
+                    code === "EBUSY" ||
+                    code === "EPERM" ||
+                    code === "UNKNOWN" ||
+                    code === "EACCES";
+                if (!retryable || i === tries - 1) throw err;
+                await new Promise((r) => setTimeout(r, 150 * (i + 1)));
+            }
+        }
+    };
+
     #resizeAndGenerateThumb = async (file: any) => {
         const { filename: image } = file;
         // Read into a Buffer first and feed sharp the Buffer (not file.path).
@@ -63,8 +86,8 @@ class UploadController {
             inputBuf[2] === 0x46 && // 'F'
             inputBuf[3] === 0x38; // '8' (87a / 89a)
         if (isGifExt || isGifMagic) {
-            await fs.promises.writeFile(path.join(file.destination, image), inputBuf);
-            await fs.promises.writeFile(path.join(thumbDir, image), inputBuf);
+            await this.#writeFileWithRetry(path.join(file.destination, image), inputBuf);
+            await this.#writeFileWithRetry(path.join(thumbDir, image), inputBuf);
             return image;
         }
 
@@ -78,8 +101,8 @@ class UploadController {
             .withMetadata()
             .toBuffer()
 
-        await fs.promises.writeFile(path.join(file.destination, image), buff);
-        await fs.promises.writeFile(path.join(thumbDir, image), thumbBuff);
+        await this.#writeFileWithRetry(path.join(file.destination, image), buff);
+        await this.#writeFileWithRetry(path.join(thumbDir, image), thumbBuff);
 
         return image
 

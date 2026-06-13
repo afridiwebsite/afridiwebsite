@@ -7,6 +7,7 @@ import useUpload from "../../hooks/useUpload";
 import { getErrors, hasData, toastDefault } from "../../utils/handler.utils";
 import TextEditor from "../TextEditor/TextEditor";
 import Loader from "../Loader/Loader";
+import ImageUpload from "../ImageUpload/ImageUpload";
 function EditTopupProduct(props) {
   const history = useHistory();
   const productId = props.match.params.id;
@@ -22,7 +23,6 @@ function EditTopupProduct(props) {
   }, [data]);
 
   const name = useRef(null);
-  const logo = useRef(null);
 
   const serial = useRef(null);
   const is_active_product = useRef(null);
@@ -367,12 +367,10 @@ function EditTopupProduct(props) {
 
                     <div>
                       <label htmlFor="logo">Logo</label>
-                      <input
-                        ref={logo}
+                      <ImageUpload
                         id="logo"
-                        className="form_input"
-                        type="file"
-                        onChange={(e) => setProductLogo(e.target.files[0])}
+                        existing={data?.logo}
+                        onFileSelected={setProductLogo}
                       />
                     </div>
                   </div>

@@ -7,6 +7,7 @@ import useGet from "../../hooks/useGet";
 import { getErrors, hasData, toastDefault } from "../../utils/handler.utils";
 import TextEditor from "../TextEditor/TextEditor";
 import Loader from "../Loader/Loader";
+import ImageUpload from "../ImageUpload/ImageUpload";
 
 function EditPackage(props) {
   const history = useHistory();
@@ -26,7 +27,6 @@ function EditPackage(props) {
   const seller = useRef(null);
   const in_stock = useRef(null);
   const serial = useRef(null);
-  const logo = useRef(null);
   const coin_value = useRef(null);
   const bot_url = useRef(null);
   const allow_quantity = useRef(null);
@@ -618,12 +618,10 @@ function EditPackage(props) {
                     </div>
                     <div>
                       <label htmlFor="logo">Logo</label>
-                      <input
-                        ref={logo}
+                      <ImageUpload
                         id="logo"
-                        className="form_input"
-                        type="file"
-                        onChange={(e) => setPaymentLogo(e.target.files[0])}
+                        existing={data?.logo}
+                        onFileSelected={setPaymentLogo}
                       />
                     </div>
                   </div>

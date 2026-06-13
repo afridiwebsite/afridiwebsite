@@ -7,6 +7,7 @@ import useUpload from '../../hooks/useUpload';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
 import TextEditor from '../TextEditor/TextEditor';
 import Loader from '../Loader/Loader';
+import ImageUpload from '../ImageUpload/ImageUpload';
 
 const TYPE_LABELS = {
     normal: 'Normal',
@@ -94,7 +95,7 @@ function EditNotice(props) {
                                             <>
                                                 <div>
                                                     <label htmlFor="image">Image</label>
-                                                    <input id="image" className="form_input" type="file" onChange={e => setNoticeLogo(e.target.files[0])} />
+                                                    <ImageUpload id="image" existing={data?.image} onFileSelected={setNoticeLogo} />
                                                 </div>
 
                                                 <div>

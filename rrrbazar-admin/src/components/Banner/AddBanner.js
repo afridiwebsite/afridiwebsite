@@ -5,10 +5,10 @@ import axiosInstance from '../../common/axios';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
+import ImageUpload from '../ImageUpload/ImageUpload';
 
 function AddBanner() {
     const note = useRef(null);
-    const image = useRef(null);
     const link = useRef(null);
 
     const isactive = useRef(null);
@@ -70,7 +70,7 @@ function AddBanner() {
                                 </div>
                                 <div>
                                     <label htmlFor="image">Banner</label>
-                                    <input ref={image} id="image" className="form_input" type="file" required onChange={e => setBannerImage(e.target.files[0])} />
+                                    <ImageUpload id="image" required onFileSelected={setBannerImage} />
                                     <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                                         <strong>Recommended size:</strong> 1280 × 520 px for desktop banners,
                                         600 × 240 px for mobile (set Note = <code>mobile</code> below).

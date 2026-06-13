@@ -6,6 +6,7 @@ import useGet from '../../hooks/useGet';
 import useUpload from '../../hooks/useUpload';
 import { getErrors, hasData, toastDefault } from '../../utils/handler.utils';
 import Loader from '../Loader/Loader';
+import ImageUpload from '../ImageUpload/ImageUpload';
 function EditBanner(props) {
     const history = useHistory()
     const noticeId = props.match.params.id;
@@ -16,7 +17,6 @@ function EditBanner(props) {
     const { path, uploading } = useUpload(bannerImage)
 
     const note = useRef(null);
-    const banner = useRef(null);
     const link = useRef(null);
     const isactive = useRef(null);
 
@@ -67,7 +67,7 @@ function EditBanner(props) {
 
                                         <div>
                                             <label htmlFor="banner">Banner</label>
-                                            <input ref={banner} id="banner" className="form_input" type="file" onChange={e => setBannerImage(e.target.files[0])} />
+                                            <ImageUpload id="banner" existing={data?.banner} onFileSelected={setBannerImage} />
                                             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                                                 <strong>Recommended size:</strong> 1280 × 520 px for desktop banners,
                                                 600 × 240 px for mobile (Note = <code>mobile</code>).
