@@ -338,3 +338,23 @@ input[type="number"] {
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+/* react-draft-wysiwyg image/link upload popovers are absolutely positioned
+   under their toolbar button with a fixed size. On phones the popover (and
+   especially its "Add" button) spills off the bottom/right edge and becomes
+   unreachable. On small screens, pin the popover to the centre of the
+   viewport and let it scroll so every control stays in view. */
+@media (max-width: 640px) {
+  .rdw-image-modal,
+  .rdw-link-modal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(92vw, 320px) !important;
+    height: auto !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+}
