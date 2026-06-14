@@ -738,6 +738,8 @@ class UserController {
     if (input.api_token) {
       headers.Authorization = `Bearer ${input.api_token}`;
     }
+
+    console.log(`Running verification for input #${input.id} against URL: ${url}`);
     const upstream = await axios.get(url, { timeout: 8000, headers });
     const body = upstream.data;
 

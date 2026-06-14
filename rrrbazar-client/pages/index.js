@@ -138,7 +138,17 @@ function OrderRow({ order }) {
               alt=""
             />
           )}
-          <span className="topup-order-row-pack">{order.name}</span>
+          <span className="topup-order-row-pack">
+            {order.name}
+            {/* Dollar/quantity input appended inline — shown whenever it
+                differs from a single unit (incl. fractions like 0.5).
+                `quantity` is DECIMAL out of the API (e.g. "50.00"); trim
+                trailing zeros. */}
+            {Number.isFinite(Number(order?.quantity)) &&
+            Number(order?.quantity) !== 1
+              ? ` ${parseFloat(Number(order.quantity).toFixed(2))}`
+              : ""}
+          </span>
           {order.amount != null && (
             <>
               <span className="topup-order-row-sep">-</span>
@@ -490,6 +500,7 @@ export async function getServerSideProps(ctx) {
         id: o.id ?? null,
         name: o.name ?? null,
         amount: o.amount ?? null,
+        quantity: o.quantity ?? null,
         status: o.status ?? null,
         created_at: o.created_at ?? null,
         updated_at: o.updated_at ?? null,
