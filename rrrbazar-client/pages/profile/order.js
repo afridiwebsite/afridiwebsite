@@ -179,6 +179,7 @@ function OrderPage() {
                             fractions like 0.5). `quantity` is DECIMAL out of
                             the API (e.g. "50.00"); trim trailing zeros. */}
                         {Number.isFinite(Number(order?.quantity)) &&
+                        Number(order?.quantity) > 0 &&
                         Number(order?.quantity) !== 1
                           ? `${parseFloat(Number(order.quantity).toFixed(2))}`
                           : ""}

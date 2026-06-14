@@ -79,7 +79,7 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
           }}
         >
           {pkgName}
-          {q !== 1 ? ` ${qLabel}` : ""}
+          {q > 0 && q !== 1 ? ` ${qLabel}` : ""}
         </p>
       );
     },
