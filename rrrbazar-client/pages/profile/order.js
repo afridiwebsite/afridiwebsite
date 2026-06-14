@@ -180,7 +180,7 @@ function OrderPage() {
                             the API (e.g. "50.00"); trim trailing zeros. */}
                         {Number.isFinite(Number(order?.quantity)) &&
                         Number(order?.quantity) !== 1
-                          ? ` × ${parseFloat(Number(order.quantity).toFixed(2))}`
+                          ? `${parseFloat(Number(order.quantity).toFixed(2))}`
                           : ""}
                       </p>
 
