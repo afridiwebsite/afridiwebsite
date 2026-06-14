@@ -740,8 +740,10 @@ class UserController {
     }
 
     console.log(`Running verification for input #${input.id} against URL: ${url}`);
-    const upstream = await axios.get(url, { timeout: 8000, headers });
+    const upstream = await axios.get(url, {  headers });
     const body = upstream.data;
+
+    console.log(body)
 
     if (input.region_lock) {
       const expected = String(input.region_lock).trim().toUpperCase();
