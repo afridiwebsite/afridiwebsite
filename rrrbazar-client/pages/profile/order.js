@@ -161,13 +161,6 @@ function OrderPage() {
                         </span>{" "}
                         {order?.amount}
                       </p>
-                      {/* Quantity — only shown when the customer ordered
-                          more than one unit (migration 008). Single-unit
-                          orders skip it to keep the card uncluttered. The
-                          label honours the product's quantity_prefix so a
-                          bulk-dollar order reads "Dollars: 50" instead of
-                          a generic "Quantity: 50". */}
-
                       {order?.playerid && (
                         <p className="_subtitle1">
                           <span className="font-semibold mr-1.5">
@@ -181,8 +174,14 @@ function OrderPage() {
                           Package Name:
                         </span>{" "}
                         {order?.name}
-                        &nbsp;
-                        {Number(order?.quantity) > 1 && <>{order.quantity}</>}
+                        {/* Dollar/quantity input appended inline — shown
+                            whenever it differs from a single unit (incl.
+                            fractions like 0.5). `quantity` is DECIMAL out of
+                            the API (e.g. "50.00"); trim trailing zeros. */}
+                        {Number.isFinite(Number(order?.quantity)) &&
+                        Number(order?.quantity) !== 1
+                          ? ` × ${parseFloat(Number(order.quantity).toFixed(2))}`
+                          : ""}
                       </p>
 
                       {hasVouchers && (

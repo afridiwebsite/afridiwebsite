@@ -57,31 +57,30 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
       const pkgName = row["name"];
       const pkgId = row["package_id"];
 
-      const q = Number(e.row.original?.quantity || 1);
+      // Quantity is DECIMAL out of Sequelize (e.g. "50.00") and can be
+      // fractional for dollar-input packages. Show it whenever it differs
+      // from a single unit — including values below 1 (e.g. 0.5) which the
+      // old `q > 1` gate silently hid. Trim trailing zeros so 50.00 → 50
+      // and 2.50 → 2.5.
+      const rawQ = Number(e.row.original?.quantity);
+      const q = Number.isFinite(rawQ) ? rawQ : 1;
+      const qLabel = Number.isInteger(q)
+        ? String(q)
+        : String(parseFloat(q.toFixed(2)));
 
       return (
-        <div className="flex gap-2 flex-wrap">
-          <p
-            className="w-max cursor-pointer hover:text-blue-600"
-            title="Tap to copy package name"
-            onClick={() => {
-              if (!pkgName) return;
-              navigator.clipboard.writeText(String(pkgName));
-              toast.info(`Copied package name: ${pkgName}`, toastDefault);
-            }}
-          >
-            {pkgName}
-          </p>
-
-          {q > 1 && (
-            <span
-              className="inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-xs"
-              title={`Bulk order — ${q} units`}
-            >
-               {q}
-            </span>
-          )}
-        </div>
+        <p
+          className="w-max cursor-pointer hover:text-blue-600"
+          title="Tap to copy package name"
+          onClick={() => {
+            if (!pkgName) return;
+            navigator.clipboard.writeText(String(pkgName));
+            toast.info(`Copied package name: ${pkgName}`, toastDefault);
+          }}
+        >
+          {pkgName}
+          {q !== 1 ? ` × ${qLabel}` : ""}
+        </p>
       );
     },
   },

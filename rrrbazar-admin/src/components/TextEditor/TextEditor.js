@@ -1,85 +1,35 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import {
-    AtomicBlockUtils,
-    EditorState,
-    Modifier,
-    RichUtils,
-    SelectionState,
-} from 'draft-js';
-import { convertToHTML, convertFromHTML } from 'draft-convert';
-import {
-    draftFromHTMLConfig,
-    draftToHTMLConfig,
-} from '../../utils/draftEditor.utils';
+import React, { useCallback, useMemo, useRef } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
-// Default image-upload handler: inlines as a base64 data URL so the editor
-// works without a separate upload pipeline. Callers can pass `onUploadImage`
-// to swap in a real upload.
-function defaultUploadImage(file) {
+// This editor used to be built on react-draft-wysiwyg + draft-js. draft-js
+// 0.11 has a long-standing Android/IME defect: committing a word via the
+// space bar or a predictive-text suggestion drops the just-typed text and
+// throws a React synthetic-event warning, blanking the editor on mobile.
+// We swapped the engine for Quill (react-quill), which handles mobile
+// composition correctly, while keeping the exact same props contract
+// (`value` HTML in, `onHtmlChange`/`onChange` HTML out, `minHeight`, etc.)
+// so none of the ~15 call sites need to change.
+
+// Backward-compat shim: callers used to convert a draft-js EditorState to
+// HTML through this helper. The editor is HTML-native now, so a string just
+// passes through. Kept exported so any stray importer keeps working.
+export function editorStateToHtml(state) {
+    return typeof state === 'string' ? state : '';
+}
+
+function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve({ data: { link: reader.result } });
+        reader.onloadend = () => resolve(reader.result);
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
 }
 
-// Full toolbar with image, color, font, links, list, alignment, etc. Pulled
-// out so individual usages can tweak it (e.g. drop the image block).
-const DEFAULT_TOOLBAR = {
-    options: [
-        'inline',
-        'blockType',
-        'fontSize',
-        'fontFamily',
-        'list',
-        'textAlign',
-        'colorPicker',
-        'link',
-        'image',
-        'remove',
-        'history',
-    ],
-    inline: {
-        options: ['bold', 'italic', 'underline', 'strikethrough', 'monospace'],
-    },
-    list: { options: ['unordered', 'ordered'] },
-    textAlign: { options: ['left', 'center', 'right', 'justify'] },
-    link: { defaultTargetOption: '_blank' },
-    image: {
-        alt: { present: true, mandatory: false },
-        previewImage: true,
-        inputAccept: 'image/jpeg,image/jpg,image/png,image/gif,image/webp',
-        defaultSize: { height: 'auto', width: 'auto' },
-    },
-};
-
-// Convert HTML → EditorState using the shared parsing config (handles
-// images, colors, links). Falls back to empty editor on parse failure so
-// a malformed string can't crash the whole form.
-function fromHtml(html) {
-    if (!html) return EditorState.createEmpty();
-    try {
-        return EditorState.createWithContent(
-            convertFromHTML(draftFromHTMLConfig)(html),
-        );
-    } catch (e) {
-        return EditorState.createEmpty();
-    }
-}
-
-// Convert EditorState → HTML. Pulled out so callers don't have to import
-// draft-convert + the configs themselves.
-export function editorStateToHtml(state) {
-    if (!state) return '';
-    try {
-        return convertToHTML(draftToHTMLConfig)(state.getCurrentContent());
-    } catch (e) {
-        return '';
-    }
-}
+// Per-instance counter so we can scope the min-height CSS rule to one editor
+// without it leaking onto sibling editors on the same page.
+let _uid = 0;
 
 function TextEditor({
     value,
@@ -89,145 +39,125 @@ function TextEditor({
     minHeight = 220,
     wrapperStyle,
     editorStyle,
-    toolbar,
     onUploadImage,
     disabled,
     className,
 }) {
-    const [editorState, setEditorState] = useState(() => fromHtml(value));
-    // Track the most recent `value` we hydrated from, so a parent updating
-    // it later (e.g. data finishing load) seeds the editor — but a parent
-    // re-rendering with the same value doesn't clobber in-progress edits.
-    const lastSeededRef = useRef(value || '');
+    const quillRef = useRef(null);
+    const scopeClass = useMemo(() => `te-quill-${++_uid}`, []);
 
-    useEffect(() => {
-        const next = value || '';
-        if (next === lastSeededRef.current) return;
-        lastSeededRef.current = next;
-        setEditorState(fromHtml(next));
-    }, [value]);
-
-    const uploadImage = onUploadImage || defaultUploadImage;
-
-    const mergedToolbar = {
-        ...DEFAULT_TOOLBAR,
-        ...(toolbar || {}),
-        image: {
-            ...DEFAULT_TOOLBAR.image,
-            uploadCallback: uploadImage,
-            ...(toolbar?.image || {}),
-        },
-    };
-
-    const emitChange = useCallback(
-        (state) => {
-            setEditorState(state);
-            if (onChange || onHtmlChange) {
-                const html = editorStateToHtml(state);
-                lastSeededRef.current = html;
-                onChange && onChange(html, state);
-                onHtmlChange && onHtmlChange(html);
-            }
+    const emit = useCallback(
+        (html) => {
+            // Quill emits "<p><br></p>" for an empty editor; normalise to ""
+            // so the old "is this blank?" checks downstream (e.g. the
+            // storefront's hasDescription) keep behaving the same.
+            const normalised = html === '<p><br></p>' ? '' : html;
+            onChange && onChange(normalised);
+            onHtmlChange && onHtmlChange(normalised);
         },
         [onChange, onHtmlChange],
     );
 
-    // Backspace/Delete on an atomic block (image, etc.) only removes the
-    // entity by default — the atomic block itself stays as a 0-char
-    // placeholder, so the next save still emits the <img>. Detect that
-    // case and remove the whole block.
-    const handleKeyCommand = useCallback(
-        (command, state) => {
-            if (command !== 'backspace' && command !== 'delete') {
-                const next = RichUtils.handleKeyCommand(state, command);
-                if (next) {
-                    emitChange(next);
-                    return 'handled';
+    // Image button: inline the picked file as a base64 data URL so the
+    // editor works without a separate upload pipeline (matches the old
+    // defaultUploadImage behaviour). Callers can pass
+    // `onUploadImage(file) => { data: { link } }` to swap in a real upload.
+    const imageHandler = useCallback(() => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute(
+            'accept',
+            'image/jpeg,image/jpg,image/png,image/gif,image/webp',
+        );
+        input.click();
+        input.onchange = async () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            let link;
+            try {
+                if (onUploadImage) {
+                    const res = await onUploadImage(file);
+                    link = res?.data?.link;
+                } else {
+                    link = await readFileAsDataURL(file);
                 }
-                return 'not-handled';
+            } catch (e) {
+                return;
             }
-            const selection = state.getSelection();
-            if (!selection.isCollapsed()) return 'not-handled';
-            const content = state.getCurrentContent();
-            const blockKey = selection.getStartKey();
-            const block = content.getBlockForKey(blockKey);
-            if (!block) return 'not-handled';
+            if (!link) return;
+            const editor = quillRef.current && quillRef.current.getEditor();
+            if (!editor) return;
+            const range = editor.getSelection(true);
+            const index = range ? range.index : editor.getLength();
+            editor.insertEmbed(index, 'image', link, 'user');
+            editor.setSelection(index + 1, 0);
+        };
+    }, [onUploadImage]);
 
-            // If the cursor is inside an atomic block, wipe the whole
-            // block. Modifier.removeRange + a fresh selection that spans
-            // the block does the trick.
-            if (block.getType() === 'atomic') {
-                const blockSelection = new SelectionState({
-                    anchorKey: blockKey,
-                    anchorOffset: 0,
-                    focusKey: blockKey,
-                    focusOffset: block.getLength(),
-                });
-                const without = Modifier.removeRange(
-                    content,
-                    blockSelection,
-                    'backward',
-                );
-                const cleaned = Modifier.setBlockType(
-                    without,
-                    without.getSelectionAfter(),
-                    'unstyled',
-                );
-                const next = EditorState.push(state, cleaned, 'remove-range');
-                emitChange(next);
-                return 'handled';
-            }
-
-            // Backspace at the very start of a block that comes right after
-            // an atomic block: nuke the atomic block above instead of doing
-            // nothing (default behavior leaves the image in place).
-            if (command === 'backspace' && selection.getStartOffset() === 0) {
-                const prevKey = content.getKeyBefore(blockKey);
-                const prev = prevKey ? content.getBlockForKey(prevKey) : null;
-                if (prev && prev.getType() === 'atomic') {
-                    const blockSelection = new SelectionState({
-                        anchorKey: prevKey,
-                        anchorOffset: 0,
-                        focusKey: prevKey,
-                        focusOffset: prev.getLength(),
-                    });
-                    const without = Modifier.removeRange(
-                        content,
-                        blockSelection,
-                        'backward',
-                    );
-                    const next = EditorState.push(state, without, 'remove-range');
-                    emitChange(next);
-                    return 'handled';
-                }
-            }
-
-            const handled = RichUtils.handleKeyCommand(state, command);
-            if (handled) {
-                emitChange(handled);
-                return 'handled';
-            }
-            return 'not-handled';
-        },
-        [emitChange],
+    // Toolbar mirrors the formatting the old draft-js toolbar exposed:
+    // headings/size, inline styles, text + background colour, lists,
+    // alignment, links, images, and a clear-formatting button.
+    const modules = useMemo(
+        () => ({
+            toolbar: {
+                container: [
+                    [{ header: [1, 2, 3, false] }],
+                    [{ size: ['small', false, 'large', 'huge'] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ color: [] }, { background: [] }],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['link', 'image'],
+                    ['clean'],
+                ],
+                handlers: { image: imageHandler },
+            },
+            // Don't copy the source's visual background/inline styles wholesale
+            // on paste — keeps pasted content from carrying stray spans.
+            clipboard: { matchVisual: false },
+        }),
+        [imageHandler],
     );
 
+    const formats = [
+        'header',
+        'size',
+        'bold',
+        'italic',
+        'underline',
+        'strike',
+        'color',
+        'background',
+        'list',
+        'bullet',
+        'align',
+        'link',
+        'image',
+    ];
+
     return (
-        <Editor
-            editorState={editorState}
-            onEditorStateChange={emitChange}
-            handleKeyCommand={handleKeyCommand}
-            placeholder={placeholder}
-            readOnly={!!disabled}
-            wrapperClassName={className}
-            editorStyle={{ minHeight, padding: '0 12px', ...editorStyle }}
-            wrapperStyle={{
+        <div
+            className={className}
+            style={{
                 border: '1px solid #dcdcf3',
                 borderRadius: 6,
                 ...wrapperStyle,
             }}
-            toolbar={mergedToolbar}
-        />
+        >
+            <style>{`.${scopeClass} .ql-editor{min-height:${minHeight}px}`}</style>
+            <ReactQuill
+                ref={quillRef}
+                className={scopeClass}
+                theme="snow"
+                value={value || ''}
+                onChange={emit}
+                placeholder={placeholder}
+                readOnly={!!disabled}
+                modules={modules}
+                formats={formats}
+                style={editorStyle}
+            />
+        </div>
     );
 }
 
