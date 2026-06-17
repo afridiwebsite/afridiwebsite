@@ -177,12 +177,21 @@ function OrderPage() {
                         {/* Dollar/quantity input appended inline — shown
                             whenever it differs from a single unit (incl.
                             fractions like 0.5). `quantity` is DECIMAL out of
-                            the API (e.g. "50.00"); trim trailing zeros. */}
-                        {Number.isFinite(Number(order?.quantity)) &&
-                        Number(order?.quantity) > 0 &&
-                        Number(order?.quantity) !== 1
-                          ? `${parseFloat(Number(order.quantity).toFixed(2))}`
-                          : ""}
+                            the API (e.g. "50.00"); trim trailing zeros.
+                            Dollar-range sales instead carry the entered figure
+                            in `range_amount` + a symbol in `quantity_unit`
+                            (quantity stays 1), so we render e.g. "$5"/"৳500". */}
+                        {Number(order?.range_amount) > 0
+                          ? ` ${order?.quantity_unit || ""}${parseFloat(
+                              Number(order.range_amount).toFixed(2),
+                            )}`
+                          : Number.isFinite(Number(order?.quantity)) &&
+                              Number(order?.quantity) > 0 &&
+                              Number(order?.quantity) !== 1
+                            ? ` ${parseFloat(
+                                Number(order.quantity).toFixed(2),
+                              )}`
+                            : ""}
                       </p>
 
                       {hasVouchers && (

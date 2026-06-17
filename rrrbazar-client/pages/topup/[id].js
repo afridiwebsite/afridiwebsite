@@ -53,8 +53,52 @@ const fmtQuantity = (n) => {
   return String(parseFloat(num.toFixed(2)));
 };
 
+// Dollar range system helpers. A package in `quantity_mode = 'range'` carries
+// a `dollar_ranges` array (JSON string out of the API). Each row is a band in
+// both taka and dollar plus a flat price; the storefront matches the entered
+// amount for the chosen currency to a band and uses its price as the order
+// total (overriding the package price).
+const parseRanges = (raw) => {
+  let arr = raw;
+  if (typeof arr === "string") {
+    try {
+      arr = JSON.parse(arr || "[]");
+    } catch {
+      arr = [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr.map((r) => ({
+    lower_taka: Number(r?.lower_taka) || 0,
+    upper_taka: Number(r?.upper_taka) || 0,
+    lower_dollar: Number(r?.lower_dollar) || 0,
+    upper_dollar: Number(r?.upper_dollar) || 0,
+    price: Number(r?.price) || 0,
+  }));
+};
+
+// Find the band the entered amount falls into for the chosen currency.
+// Returns null when nothing matches (or the amount is invalid).
+const findRange = (rows, currency, amount) => {
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return (
+    rows.find((r) =>
+      currency === "dollar"
+        ? r.upper_dollar > 0 &&
+          amount >= r.lower_dollar &&
+          amount <= r.upper_dollar
+        : r.upper_taka > 0 &&
+          amount >= r.lower_taka &&
+          amount <= r.upper_taka,
+    ) || null
+  );
+};
+
 function TopupOrderPage() {
   const [selectedPackage, setSelectedPackage] = useState(null);
+  // Currency the customer picked for a Dollar-range package ('taka' default,
+  // or 'dollar'). Drives the input symbol and which band the amount matches.
+  const [rangeCurrency, setRangeCurrency] = useState("taka");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [serverError, setServerError] = useState(null);
   // Pack whose description modal is currently open. null = closed.
@@ -420,45 +464,86 @@ function TopupOrderPage() {
                       // so the modal can't disagree with what the user saw.
                       // Quantity is now a float — fractional units are
                       // allowed when the package opts in.
+                      // Dollar range packages price by band, not by qty —
+                      // branch the confirmation math accordingly.
+                      const isRangeOrder =
+                        selectedpackage?.allow_quantity == 1 &&
+                        String(
+                          selectedpackage?.quantity_mode || "amount",
+                        ).toLowerCase() === "range";
                       const qtyEnabled =
-                        selectedpackage?.allow_quantity == 1;
+                        selectedpackage?.allow_quantity == 1 && !isRangeOrder;
                       const rawQty = Number(values.quantity);
-                      const confirmQuantity = qtyEnabled
-                        ? Number.isFinite(rawQty) && rawQty > 0
-                          ? rawQty
-                          : 1
-                        : 1;
-                      const confirmLimit = qtyEnabled
-                        ? Math.max(
-                            0.01,
-                            Number(selectedpackage?.quantity_limit) || 100,
-                          )
-                        : 100;
-                      if (qtyEnabled && confirmQuantity > confirmLimit) {
-                        setServerError(
-                          `Quantity exceeds the package limit (${fmtQuantity(
-                            confirmLimit,
-                          )}). Lower it and try again.`,
-                        );
-                        scrollTopWindow();
-                        return;
+
+                      let confirmQuantity = 1;
+                      let confirmCharge = 0;
+                      let confirmTotal;
+                      let confirmBreakdown = "";
+
+                      if (isRangeOrder) {
+                        // Match the entered amount to a configured band; its
+                        // flat price becomes the order total.
+                        const rows = parseRanges(selectedpackage?.dollar_ranges);
+                        const entered = rawQty;
+                        const matched = findRange(rows, rangeCurrency, entered);
+                        const symbol = rangeCurrency === "dollar" ? "$" : "৳";
+                        if (!Number.isFinite(entered) || entered <= 0) {
+                          setServerError("Enter an amount for this package.");
+                          scrollTopWindow();
+                          return;
+                        }
+                        if (!matched) {
+                          setServerError(
+                            "The entered amount doesn't match any available range. Adjust it and try again.",
+                          );
+                          scrollTopWindow();
+                          return;
+                        }
+                        confirmTotal = Number(matched.price) || 0;
+                        confirmBreakdown = ` <span class="text-xs text-gray-500">(${symbol}${fmtQuantity(
+                          entered,
+                        )})</span>`;
+                      } else {
+                        confirmQuantity = qtyEnabled
+                          ? Number.isFinite(rawQty) && rawQty > 0
+                            ? rawQty
+                            : 1
+                          : 1;
+                        const confirmLimit = qtyEnabled
+                          ? Math.max(
+                              0.01,
+                              Number(selectedpackage?.quantity_limit) || 100,
+                            )
+                          : 100;
+                        if (qtyEnabled && confirmQuantity > confirmLimit) {
+                          setServerError(
+                            `Quantity exceeds the package limit (${fmtQuantity(
+                              confirmLimit,
+                            )}). Lower it and try again.`,
+                          );
+                          scrollTopWindow();
+                          return;
+                        }
+                        confirmCharge = qtyEnabled
+                          ? Math.max(
+                              0,
+                              Number(selectedpackage?.charge_amount) || 0,
+                            )
+                          : 0;
+                        const confirmUnitTotal =
+                          Number(selectedpackage?.price || 0) * confirmQuantity;
+                        confirmTotal = confirmUnitTotal + confirmCharge;
+                        confirmBreakdown =
+                          confirmQuantity !== 1 || confirmCharge > 0
+                            ? ` <span class="text-xs text-gray-500">(${fmtQuantity(
+                                confirmQuantity,
+                              )} × ৳${selectedpackage?.price}${
+                                confirmCharge > 0
+                                  ? ` + ৳${confirmCharge.toFixed(2)} charge`
+                                  : ""
+                              })</span>`
+                            : "";
                       }
-                      const confirmCharge = qtyEnabled
-                        ? Math.max(0, Number(selectedpackage?.charge_amount) || 0)
-                        : 0;
-                      const confirmUnitTotal =
-                        Number(selectedpackage?.price || 0) * confirmQuantity;
-                      const confirmTotal = confirmUnitTotal + confirmCharge;
-                      const confirmBreakdown =
-                        confirmQuantity !== 1 || confirmCharge > 0
-                          ? ` <span class="text-xs text-gray-500">(${fmtQuantity(
-                              confirmQuantity,
-                            )} × ৳${selectedpackage?.price}${
-                              confirmCharge > 0
-                                ? ` + ৳${confirmCharge.toFixed(2)} charge`
-                                : ""
-                            })</span>`
-                          : "";
 
                       // Info-only products (no packages) skip the Swal
                       // confirmation since there's no price to confirm.
@@ -537,6 +622,17 @@ function TopupOrderPage() {
                                         : 1;
                                     })()
                                   : 1,
+                              // Range packages tell the server which currency
+                              // band to price against. Omitted for other
+                              // packages so the server keeps its default path.
+                              quantity_currency:
+                                values.selectedpackage?.allow_quantity == 1 &&
+                                String(
+                                  values.selectedpackage?.quantity_mode ||
+                                    "amount",
+                                ).toLowerCase() === "range"
+                                  ? rangeCurrency
+                                  : undefined,
                             })
                             .then(async (order_res) => {
                               if (
@@ -654,8 +750,20 @@ function TopupOrderPage() {
                       // `charge_amount` is added on top of unit × qty so
                       // the admin can model a service fee without
                       // inflating the listed price.
+                      // Range mode (Dollar range system): the customer picks a
+                      // currency + enters an amount, and a configured band's
+                      // flat price overrides the package price. Detect it
+                      // first so the amount-stepper path below stays the
+                      // "Dollar input system" only.
+                      const rangeModeForOrder =
+                        values.selectedpackage?.allow_quantity == 1 &&
+                        String(
+                          values.selectedpackage?.quantity_mode || "amount",
+                        ).toLowerCase() === "range";
+
                       const qtyEnabledForOrder =
-                        values.selectedpackage?.allow_quantity == 1;
+                        values.selectedpackage?.allow_quantity == 1 &&
+                        !rangeModeForOrder;
                       const rawOrderQty = Number(values.quantity);
                       const orderQuantity = qtyEnabledForOrder
                         ? Number.isFinite(rawOrderQty) && rawOrderQty > 0
@@ -678,20 +786,37 @@ function TopupOrderPage() {
                       const orderUnitSubtotal =
                         Number(values.selectedpackage?.price || 0) *
                         orderQuantity;
-                      const totalCost = orderUnitSubtotal + orderCharge;
+
+                      // Range pricing — match the entered amount to a band.
+                      const rangeRows = rangeModeForOrder
+                        ? parseRanges(values.selectedpackage?.dollar_ranges)
+                        : [];
+                      const rangeSymbol =
+                        rangeCurrency === "dollar" ? "$" : "৳";
+                      const enteredRangeAmount = Number(values.quantity);
+                      const matchedRange = rangeModeForOrder
+                        ? findRange(rangeRows, rangeCurrency, enteredRangeAmount)
+                        : null;
+                      const rangePrice = matchedRange
+                        ? Number(matchedRange.price) || 0
+                        : 0;
+                      // True only when the customer typed something usable
+                      // that still matches no band — drives the inline error
+                      // + the Buy button gate.
+                      const rangeNoMatch =
+                        rangeModeForOrder &&
+                        Number.isFinite(enteredRangeAmount) &&
+                        enteredRangeAmount > 0 &&
+                        !matchedRange;
+
+                      const totalCost = rangeModeForOrder
+                        ? rangePrice
+                        : orderUnitSubtotal + orderCharge;
                       const quantityOverLimit =
                         qtyEnabledForOrder && rawOrderQty > orderQtyLimit;
                       const isNotEnoughMoney =
                         totalCost > Number(authUser?.wallet || 0);
 
-                      console.log(
-                        "errors",
-                        isAccountTypeError,
-                        isPaymentError,
-                        isPackageIdError,
-                        isNotEnoughMoney,
-                        errors,
-                      );
 
                       return (
                         <div className="mt-6">
@@ -1019,8 +1144,7 @@ function TopupOrderPage() {
                                         the breakdown surfaces it so the
                                         customer sees what they're paying
                                         for. */}
-                                    {values.selectedpackage?.allow_quantity ==
-                                      1 && (
+                                    {qtyEnabledForOrder && (
                                       <div className="topup-quantity-panel mt-4">
                                         <div className="topup-quantity-row flex items-center gap-3 flex-wrap">
                                           <label
@@ -1122,6 +1246,93 @@ function TopupOrderPage() {
                                             </strong>
                                           </div>
                                         </div>
+                                      </div>
+                                    )}
+
+                                    {/* Dollar range panel — currency picker +
+                                        amount input. The selected currency
+                                        sets the input symbol and which band
+                                        the amount matches; the matched band's
+                                        price overrides the package price. */}
+                                    {rangeModeForOrder && (
+                                      <div className="topup-quantity-panel mt-4">
+                                        <div className="topup-quantity-row flex items-center gap-3 flex-wrap">
+                                          <select
+                                            value={rangeCurrency}
+                                            onChange={(e) =>
+                                              setRangeCurrency(e.target.value)
+                                            }
+                                            className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+                                            aria-label="Currency"
+                                          >
+                                            <option value="taka">৳ Taka</option>
+                                            <option value="dollar">
+                                              $ Dollar
+                                            </option>
+                                          </select>
+                                          <label
+                                            htmlFor="topup-range-amount"
+                                            className="text-sm font-semibold text-gray-700"
+                                          >
+                                            {rangeSymbol}
+                                          </label>
+                                          <input
+                                            id="topup-range-amount"
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            inputMode="decimal"
+                                            value={values.quantity ?? ""}
+                                            onChange={(e) => {
+                                              const raw = e.target.value;
+                                              if (raw === "") {
+                                                setFieldValue("quantity", "");
+                                                return;
+                                              }
+                                              const parsed = parseFloat(raw);
+                                              setFieldValue(
+                                                "quantity",
+                                                Number.isFinite(parsed)
+                                                  ? parsed
+                                                  : raw,
+                                              );
+                                            }}
+                                            placeholder="Enter amount"
+                                            className={`w-32 border rounded px-3 py-1 focus:outline-none ${
+                                              rangeNoMatch
+                                                ? "border-red-500 focus:border-red-600"
+                                                : "border-gray-300 focus:border-blue-500"
+                                            }`}
+                                          />
+                                        </div>
+                                        {rangeNoMatch && (
+                                          <p className="text-xs text-red-600 mt-2">
+                                            No price range matches {rangeSymbol}
+                                            {fmtQuantity(enteredRangeAmount)}.
+                                            Adjust the amount to continue.
+                                          </p>
+                                        )}
+                                        {matchedRange && (
+                                          <div className="topup-cost-breakdown mt-3 border border-gray-200 rounded-lg bg-gradient-to-br from-gray-50 to-white p-3 text-sm">
+                                            <div className="flex justify-between items-center py-1">
+                                              <span className="text-gray-600">
+                                                Amount entered
+                                              </span>
+                                              <span className="text-gray-800 font-medium">
+                                                {rangeSymbol}{" "}
+                                                {fmtQuantity(enteredRangeAmount)}
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 mt-1 border-t border-gray-200">
+                                              <span className="text-gray-900 font-semibold">
+                                                Total
+                                              </span>
+                                              <strong className="text-base text-emerald-700">
+                                                ৳ {totalCost.toFixed(2)}
+                                              </strong>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
 
@@ -1498,6 +1709,9 @@ function TopupOrderPage() {
                                   // Float-quantity limit gate — mirrors
                                   // the inline warning under the input.
                                   quantityOverLimit ||
+                                  // Range gate — block until the entered
+                                  // amount resolves to a configured band.
+                                  (rangeModeForOrder && !matchedRange) ||
                                   // Name-check gate — same rule as the
                                   // onSubmit guard above so the button
                                   // visually reflects what'll happen on

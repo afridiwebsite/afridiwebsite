@@ -32,6 +32,55 @@ function normalizeTagList(raw: any): string[] {
     .filter((s: string) => s.length > 0);
 }
 
+// Round to 2dp, coercing non-finite/negative inputs to 0.
+function money2(raw: any): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+// Accepts the dollar-range rows the admin form sends (array or stringified
+// array) and returns a clean array of well-formed range objects. Rows that
+// don't describe a usable band (lower > upper, or both bands empty) are
+// dropped so the storefront matcher never trips over garbage.
+function normalizeDollarRanges(raw: any): Array<{
+  lower_taka: number;
+  upper_taka: number;
+  lower_dollar: number;
+  upper_dollar: number;
+  price: number;
+}> {
+  let arr: any = raw;
+  if (typeof arr === "string") {
+    try {
+      arr = JSON.parse(arr);
+    } catch {
+      arr = [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r: any) => ({
+      lower_taka: money2(r?.lower_taka),
+      upper_taka: money2(r?.upper_taka),
+      lower_dollar: money2(r?.lower_dollar),
+      upper_dollar: money2(r?.upper_dollar),
+      price: money2(r?.price),
+    }))
+    .filter((r) => {
+      const takaBand = r.upper_taka > 0 && r.upper_taka >= r.lower_taka;
+      const dollarBand = r.upper_dollar > 0 && r.upper_dollar >= r.lower_dollar;
+      // Keep a row only when it carries at least one usable band and a price.
+      return (takaBand || dollarBand) && r.price > 0;
+    });
+}
+
+// Normalise the quantity sale style. Unknown values collapse to 'amount'
+// (the legacy dollar-input behaviour).
+function normalizeQuantityMode(raw: any): string {
+  return String(raw || "").toLowerCase().trim() === "range" ? "range" : "amount";
+}
+
 // Whitelist of supported bot types — anything else is collapsed to 'none'
 // so an admin form can't accidentally save a typo into the column.
 const ALLOWED_BOT_TYPES = new Set([
@@ -171,6 +220,8 @@ class TopupPackageController {
       allow_quantity,
       charge_amount,
       quantity_limit,
+      quantity_mode,
+      dollar_ranges,
       stock_tracking,
       stock_quantity,
       is_shell,
@@ -270,6 +321,14 @@ class TopupPackageController {
           quantity_limit === ""
             ? 100
             : Math.max(0.01, Number(quantity_limit) || 100),
+        // Sale style + range rows. Ranges are only kept when the package is
+        // actually in range mode so a later mode-flip doesn't resurrect a
+        // stale band set unexpectedly.
+        quantity_mode: normalizeQuantityMode(quantity_mode),
+        dollar_ranges:
+          normalizeQuantityMode(quantity_mode) === "range"
+            ? JSON.stringify(normalizeDollarRanges(dollar_ranges))
+            : "[]",
         stock_tracking: stock_tracking == 1 ? 1 : 0,
         stock_quantity:
           stock_tracking == 1 ? Math.max(0, Number(stock_quantity) || 0) : 0,
@@ -317,6 +376,8 @@ class TopupPackageController {
       allow_quantity,
       charge_amount,
       quantity_limit,
+      quantity_mode,
+      dollar_ranges,
       stock_tracking,
       stock_quantity,
       is_shell,
@@ -412,6 +473,25 @@ class TopupPackageController {
           quantity_limit === null || quantity_limit === ""
             ? 100
             : Math.max(0.01, Number(quantity_limit) || 100);
+      }
+      // Sale style + ranges. When the caller resolves the mode (directly via
+      // quantity_mode, or implicitly by sending dollar_ranges) we reconcile
+      // both fields so range rows only persist while range mode is active.
+      if (quantity_mode !== undefined || dollar_ranges !== undefined) {
+        const nextMode =
+          quantity_mode !== undefined
+            ? normalizeQuantityMode(quantity_mode)
+            : normalizeQuantityMode((topupPackage as any).quantity_mode);
+        (topupPackage as any).quantity_mode = nextMode;
+        if (nextMode === "range") {
+          if (dollar_ranges !== undefined) {
+            (topupPackage as any).dollar_ranges = JSON.stringify(
+              normalizeDollarRanges(dollar_ranges),
+            );
+          }
+        } else {
+          (topupPackage as any).dollar_ranges = "[]";
+        }
       }
       if (stock_tracking !== undefined) {
         topupPackage.stock_tracking = stock_tracking == 1 ? 1 : 0;

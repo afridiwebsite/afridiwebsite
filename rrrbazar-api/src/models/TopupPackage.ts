@@ -36,6 +36,23 @@ export default (sequelize: Sequelize) => {
         //                    clamp). DECIMAL because quantity is now float.
         public charge_amount!: string;
         public quantity_limit!: string;
+        // Selects how the quantity panel behaves on the storefront when
+        // `allow_quantity = 1`:
+        //   'amount' — legacy "Dollar input system": pay unit_price × qty +
+        //              charge_amount.
+        //   'range'  — "Dollar range system": admin defines `dollar_ranges`
+        //              (taka band + dollar band + flat price). The customer
+        //              picks a currency, enters an amount, and the matching
+        //              range's flat price OVERRIDES the package price for the
+        //              order. See `dollar_ranges` below.
+        public quantity_mode!: string;
+        // JSON-encoded array of range rows used only when
+        // quantity_mode = 'range'. Each row:
+        //   { lower_taka, upper_taka, lower_dollar, upper_dollar, price }
+        // All values are numbers (2dp). A storefront amount matches a row
+        // when it falls within that row's band for the chosen currency, and
+        // the row's `price` becomes the order total.
+        public dollar_ranges!: string;
         // Quantity-tracked stock. `stock_tracking = 1` opts the package in;
         // each successful order decrements `stock_quantity` and the package
         // is treated as out-of-stock once the count hits 0.
@@ -213,6 +230,16 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 100,
+        },
+        quantity_mode: {
+            type: DataTypes.STRING(16),
+            allowNull: false,
+            defaultValue: 'amount',
+        },
+        dollar_ranges: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            defaultValue: '[]',
         },
         stock_tracking: {
             type: DataTypes.TINYINT,

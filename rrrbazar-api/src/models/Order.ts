@@ -30,6 +30,15 @@ export default (sequelize: Sequelize) => {
         // restore the full debited amount even if the package's configured
         // charge changes after the fact.
         public charge_amount!: string;
+        // Dollar-range sales (TopupPackage.quantity_mode = 'range'). The
+        // money amount the customer entered (`range_amount`) and the currency
+        // symbol they chose (`quantity_unit`, e.g. '$' / '৳') are recorded so
+        // the admin Orders table and the user's order list can show the
+        // figure with its symbol. `range_amount = 0` ⇒ not a range sale.
+        // NOTE: range orders keep `quantity = 1` so coin/cashback/voucher/
+        // stock multipliers stay single-unit; the entered figure lives here.
+        public range_amount!: string;
+        public quantity_unit!: string;
         public uc!: string;
         public details!: string;
         public completed_by!: number;
@@ -174,6 +183,16 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 0,
+        },
+        range_amount: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false,
+            defaultValue: 0,
+        },
+        quantity_unit: {
+            type: DataTypes.STRING(8),
+            allowNull: false,
+            defaultValue: '',
         },
         uc: {
             type: DataTypes.STRING,

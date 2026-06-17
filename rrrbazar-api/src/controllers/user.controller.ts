@@ -1139,6 +1139,9 @@ class UserController {
         payment_mathod,
         securitycode,
         quantity: rawQuantity,
+        // Dollar-range sales send the currency the customer picked
+        // ('taka' | 'dollar') so the server can resolve the matching band.
+        quantity_currency,
       } = req.body;
 
       let user_id = req.user.id;
@@ -1302,34 +1305,110 @@ class UserController {
       const isVoucherProduct = (product as any).is_voucher == 1;
       const quantityAllowed =
         Number((topupPackage as any).allow_quantity) === 1;
-      const packageLimit = Math.max(
-        0.01,
-        Number((topupPackage as any).quantity_limit) || 100,
-      );
-      const packageCharge = Math.max(
-        0,
-        Number((topupPackage as any).charge_amount) || 0,
-      );
-      let parsedQty = parseFloat(String(rawQuantity || "1"));
-      if (!Number.isFinite(parsedQty) || parsedQty <= 0) parsedQty = 1;
-      if (quantityAllowed && parsedQty > packageLimit) {
-        response.message = `Quantity exceeds the package limit (${packageLimit}). Reduce quantity and try again.`;
-        response.status = 400;
-        response.success = false;
-        return res.status(400).send(response.response);
+      const rangeMode =
+        quantityAllowed &&
+        String((topupPackage as any).quantity_mode || "amount")
+          .toLowerCase()
+          .trim() === "range";
+
+      // Operational quantity (the fulfilment-unit count downstream readers
+      // multiply by: coins, cashback, voucher pull, stock). Range sales are
+      // single-unit — the money figure the customer entered is recorded
+      // separately in `rangeAmount`/`quantityUnit` for display only.
+      let quantity = 1;
+      let chargeApplied = 0;
+      let amount: number;
+      let bprice: number;
+      let rangeAmount = 0;
+      let quantityUnit = "";
+
+      if (rangeMode) {
+        // Resolve the configured bands and pick the one the entered amount
+        // falls into for the chosen currency. The matched row's flat price
+        // OVERRIDES the package price for this order.
+        let ranges: any[] = [];
+        try {
+          const raw = (topupPackage as any).dollar_ranges;
+          const parsed =
+            typeof raw === "string"
+              ? JSON.parse(raw || "[]")
+              : Array.isArray(raw)
+                ? raw
+                : [];
+          ranges = (Array.isArray(parsed) ? parsed : []).map((r: any) => ({
+            lower_taka: Number(r?.lower_taka) || 0,
+            upper_taka: Number(r?.upper_taka) || 0,
+            lower_dollar: Number(r?.lower_dollar) || 0,
+            upper_dollar: Number(r?.upper_dollar) || 0,
+            price: Number(r?.price) || 0,
+          }));
+        } catch {
+          ranges = [];
+        }
+
+        const currency =
+          String(quantity_currency || "taka").toLowerCase().trim() === "dollar"
+            ? "dollar"
+            : "taka";
+        const entered = parseFloat(String(rawQuantity || "0"));
+        if (!Number.isFinite(entered) || entered <= 0) {
+          response.message = "Enter a valid amount for this package.";
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+        const matched = ranges.find((r) =>
+          currency === "dollar"
+            ? r.upper_dollar > 0 &&
+              entered >= r.lower_dollar &&
+              entered <= r.upper_dollar
+            : r.upper_taka > 0 &&
+              entered >= r.lower_taka &&
+              entered <= r.upper_taka,
+        );
+        if (!matched) {
+          response.message =
+            "The entered amount doesn't match any available range for this package.";
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+        amount = Math.max(0, Number(matched.price) || 0);
+        // Single-unit buy-price reference (guard against a blank/NaN
+        // package bprice so we never persist "NaN").
+        bprice = Number.isFinite(unitBprice) ? unitBprice : 0;
+        rangeAmount = Math.round(entered * 100) / 100;
+        quantityUnit = currency === "dollar" ? "$" : "৳";
+      } else {
+        const packageLimit = Math.max(
+          0.01,
+          Number((topupPackage as any).quantity_limit) || 100,
+        );
+        const packageCharge = Math.max(
+          0,
+          Number((topupPackage as any).charge_amount) || 0,
+        );
+        let parsedQty = parseFloat(String(rawQuantity || "1"));
+        if (!Number.isFinite(parsedQty) || parsedQty <= 0) parsedQty = 1;
+        if (quantityAllowed && parsedQty > packageLimit) {
+          response.message = `Quantity exceeds the package limit (${packageLimit}). Reduce quantity and try again.`;
+          response.status = 400;
+          response.success = false;
+          return res.status(400).send(response.response);
+        }
+        // Voucher products iterate quantity as a loop counter (one code
+        // per unit) — fractional values don't make sense there, so we
+        // ceil to the next whole unit when the parent product is a
+        // voucher pool. Non-voucher quantity orders keep the float.
+        quantity = quantityAllowed
+          ? isVoucherProduct
+            ? Math.max(1, Math.ceil(parsedQty))
+            : parsedQty
+          : 1;
+        chargeApplied = quantityAllowed ? packageCharge : 0;
+        amount = unitPrice * quantity + chargeApplied;
+        bprice = unitBprice * quantity;
       }
-      // Voucher products iterate quantity as a loop counter (one code
-      // per unit) — fractional values don't make sense there, so we
-      // ceil to the next whole unit when the parent product is a
-      // voucher pool. Non-voucher quantity orders keep the float.
-      const quantity = quantityAllowed
-        ? isVoucherProduct
-          ? Math.max(1, Math.ceil(parsedQty))
-          : parsedQty
-        : 1;
-      const chargeApplied = quantityAllowed ? packageCharge : 0;
-      let amount = unitPrice * quantity + chargeApplied;
-      let bprice = unitBprice * quantity;
       if (product.is_active == 0) {
         response.message = "TopupProduct is not available for order";
         return res.status(400).send(response.response);
@@ -1448,6 +1527,8 @@ class UserController {
         bprice,
         quantity,
         charge_amount: chargeApplied,
+        range_amount: rangeAmount,
+        quantity_unit: quantityUnit,
       };
 
       if (payment_mathod === "pay") {
@@ -1492,6 +1573,8 @@ class UserController {
           bprice,
           quantity,
           charge_amount: chargeApplied,
+          range_amount: rangeAmount,
+          quantity_unit: quantityUnit,
         };
 
         const meta_data = {

@@ -68,6 +68,21 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
         ? String(q)
         : String(parseFloat(q.toFixed(2)));
 
+      // Dollar-range sales record the money figure the customer entered in
+      // `range_amount` (quantity stays 1) and the chosen symbol in
+      // `quantity_unit`. Show e.g. "$5" / "৳500" so the sale style is clear.
+      const rangeAmt = Number(row?.range_amount) || 0;
+      const unit = String(row?.quantity_unit || "");
+      const rangeAmtLabel = Number.isInteger(rangeAmt)
+        ? String(rangeAmt)
+        : String(parseFloat(rangeAmt.toFixed(2)));
+      const qtySuffix =
+        rangeAmt > 0
+          ? ` ${unit}${rangeAmtLabel}`
+          : q > 0 && q !== 1
+            ? ` ${qLabel}`
+            : "";
+
       return (
         <p
           className="w-max cursor-pointer hover:text-blue-600"
@@ -79,7 +94,7 @@ export const makeOrdersTableColumns = (onAfterRetry = () => {}) => [
           }}
         >
           {pkgName}
-          {q > 0 && q !== 1 ? ` ${qLabel}` : ""}
+          {qtySuffix}
         </p>
       );
     },

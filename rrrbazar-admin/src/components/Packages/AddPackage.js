@@ -28,11 +28,32 @@ function AddPackage(props) {
   const serial = useRef(null);
   const coin_value = useRef(null);
   const bot_url = useRef(null);
-  const allow_quantity = useRef(null);
 
-  const [allowQuantityOn, setAllowQuantityOn] = useState(false);
+  // Quantity / pricing sale style. "none" disables the quantity panel;
+  // "amount" is the legacy Dollar input system (unit × qty + charge);
+  // "range" is the Dollar range system (admin-defined bands override price).
+  const [quantitySystem, setQuantitySystem] = useState("none");
   const [chargeAmount, setChargeAmount] = useState(0);
   const [quantityLimit, setQuantityLimit] = useState(100);
+
+  // Dollar-range rows: each row is one band → flat price. Values are kept
+  // as strings while editing; coerced to numbers on submit.
+  const newRangeRow = () => ({
+    _key: Math.random().toString(36).slice(2),
+    lower_taka: "",
+    upper_taka: "",
+    lower_dollar: "",
+    upper_dollar: "",
+    price: "",
+  });
+  const [dollarRanges, setDollarRanges] = useState([]);
+  const addRangeRow = () => setDollarRanges((p) => [...p, newRangeRow()]);
+  const updateRangeAt = (idx, patch) =>
+    setDollarRanges((p) =>
+      p.map((r, i) => (i === idx ? { ...r, ...patch } : r)),
+    );
+  const removeRangeAt = (idx) =>
+    setDollarRanges((p) => p.filter((_, i) => i !== idx));
 
   const [orderLimit, setOrderLimit] = useState(0);
 
@@ -195,8 +216,40 @@ function AddPackage(props) {
   const removePkgInputAt = (idx) =>
     setPackageInputs((prev) => prev.filter((_, i) => i !== idx));
 
+  // Validate the dollar-range rows: every row needs a usable band (for at
+  // least one currency) and a positive price. Returns an error string or
+  // null when ok.
+  const validateRanges = () => {
+    if (quantitySystem !== "range") return null;
+    if (dollarRanges.length === 0) {
+      return "Add at least one range row for the Dollar range system.";
+    }
+    for (let i = 0; i < dollarRanges.length; i++) {
+      const r = dollarRanges[i];
+      const lt = Number(r.lower_taka) || 0;
+      const ut = Number(r.upper_taka) || 0;
+      const ld = Number(r.lower_dollar) || 0;
+      const ud = Number(r.upper_dollar) || 0;
+      const price = Number(r.price) || 0;
+      const takaBand = ut > 0 && ut >= lt;
+      const dollarBand = ud > 0 && ud >= ld;
+      if (!takaBand && !dollarBand) {
+        return `Row ${i + 1}: enter a valid taka or dollar range (upper ≥ lower).`;
+      }
+      if (price <= 0) {
+        return `Row ${i + 1}: enter a price greater than 0.`;
+      }
+    }
+    return null;
+  };
+
   const addPackageHandler = (e) => {
     e.preventDefault();
+    const rangeError = validateRanges();
+    if (rangeError) {
+      toast.error(rangeError, toastDefault);
+      return;
+    }
     if (botType === "shell-bot") {
       const cleanShell = String(shellValue || "").trim();
       const cleanTags = tags
@@ -306,12 +359,23 @@ function AddPackage(props) {
         reseller_cashback: Number(resellerCashback) || 0,
         in_stock: in_stock.current.checked ? 1 : 0,
         order_once: orderLimit,
-        allow_quantity: allow_quantity.current?.checked ? 1 : 0,
+        allow_quantity: quantitySystem !== "none" ? 1 : 0,
+        quantity_mode: quantitySystem === "range" ? "range" : "amount",
         charge_amount: Math.max(0, Number(chargeAmount) || 0),
         quantity_limit:
           quantityLimit === "" || quantityLimit === null
             ? 100
             : Math.max(0.01, Number(quantityLimit) || 100),
+        dollar_ranges:
+          quantitySystem === "range"
+            ? dollarRanges.map((r) => ({
+                lower_taka: Number(r.lower_taka) || 0,
+                upper_taka: Number(r.upper_taka) || 0,
+                lower_dollar: Number(r.lower_dollar) || 0,
+                upper_dollar: Number(r.upper_dollar) || 0,
+                price: Number(r.price) || 0,
+              }))
+            : [],
         bot_url: bot_url.current?.value || "",
         description: descriptionHtml,
         auto_delivery: autoDeliveryOn ? 1 : 0,
@@ -618,22 +682,34 @@ function AddPackage(props) {
 
                   <div className="form_grid mt-3">
                     <div>
-                      <label className="inline-flex items-center cursor-pointer select-none">
-                        <input
-                          ref={allow_quantity}
-                          id="allow_quantity"
-                          value="1"
-                          className="form-checkbox"
-                          type="checkbox"
-                          checked={allowQuantityOn}
-                          onChange={(e) => setAllowQuantityOn(e.target.checked)}
-                        />
-                        <span className="ml-2">Dollar input system</span>
-                      </label>
+                      <span className="block font-semibold mb-1">
+                        Quantity / pricing system
+                      </span>
+                      <div className="flex flex-wrap gap-4">
+                        {[
+                          { value: "none", label: "None" },
+                          { value: "amount", label: "Dollar input system" },
+                          { value: "range", label: "Dollar range system" },
+                        ].map((opt) => (
+                          <label
+                            key={opt.value}
+                            className="inline-flex items-center cursor-pointer select-none"
+                          >
+                            <input
+                              type="radio"
+                              name="quantity_system"
+                              className="mr-2"
+                              checked={quantitySystem === opt.value}
+                              onChange={() => setQuantitySystem(opt.value)}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {allowQuantityOn && (
+                  {quantitySystem === "amount" && (
                     <div className="form_grid">
                       <div>
                         <label htmlFor="charge_amount">
@@ -663,6 +739,139 @@ function AddPackage(props) {
                           placeholder="100"
                         />
                       </div>
+                    </div>
+                  )}
+
+                  {quantitySystem === "range" && (
+                    <div className="mt-3 border border-gray-200 rounded p-3 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold">
+                          Dollar ranges ({dollarRanges.length})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={addRangeRow}
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                        >
+                          + Add more input
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Each row is one band → one price. On the storefront the
+                        customer picks a currency (taka / dollar) and enters an
+                        amount; the band it falls into sets the order price.
+                      </p>
+                      {dollarRanges.length === 0 && (
+                        <p className="text-xs text-gray-500 italic">
+                          No ranges yet. Click "Add more input".
+                        </p>
+                      )}
+                      {dollarRanges.map((row, idx) => (
+                        <div
+                          key={row._key}
+                          className="bg-white border border-gray-200 rounded p-2 mb-2"
+                        >
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">
+                                Lower (৳)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form_input !mb-0"
+                                value={row.lower_taka}
+                                onChange={(e) =>
+                                  updateRangeAt(idx, {
+                                    lower_taka: e.target.value,
+                                  })
+                                }
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">
+                                Upper (৳)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form_input !mb-0"
+                                value={row.upper_taka}
+                                onChange={(e) =>
+                                  updateRangeAt(idx, {
+                                    upper_taka: e.target.value,
+                                  })
+                                }
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">
+                                Lower ($)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form_input !mb-0"
+                                value={row.lower_dollar}
+                                onChange={(e) =>
+                                  updateRangeAt(idx, {
+                                    lower_dollar: e.target.value,
+                                  })
+                                }
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">
+                                Upper ($)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form_input !mb-0"
+                                value={row.upper_dollar}
+                                onChange={(e) =>
+                                  updateRangeAt(idx, {
+                                    upper_dollar: e.target.value,
+                                  })
+                                }
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">
+                                Price (৳)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="form_input !mb-0"
+                                value={row.price}
+                                onChange={(e) =>
+                                  updateRangeAt(idx, { price: e.target.value })
+                                }
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end mt-2">
+                            <button
+                              type="button"
+                              onClick={() => removeRangeAt(idx)}
+                              className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
 
