@@ -766,6 +766,7 @@ function AddPackage(props) {
                           No ranges yet. Click "Add more input".
                         </p>
                       )}
+                      <div className="max-h-[320px] overflow-y-auto pr-1">
                       {dollarRanges.map((row, idx) => (
                         <div
                           key={row._key}
@@ -872,6 +873,7 @@ function AddPackage(props) {
                           </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   )}
 
