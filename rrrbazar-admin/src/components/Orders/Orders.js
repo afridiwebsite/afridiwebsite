@@ -47,7 +47,7 @@ function Orders() {
   // when nothing relevant changed (e.g. the admin only flipped the page) so
   // the fetch effect's identity check skips a redundant request.
   const onSearchParamsChange = useCallback((params) => {
-    const keys = ["user_id", "order_id", "status", "uc", "start_date", "end_date"];
+    const keys = ["user_id", "order_id", "status", "uc", "package_name", "start_date", "end_date"];
     const next = {};
     keys.forEach((k) => {
       if (params?.[k]) next[k] = params[k];

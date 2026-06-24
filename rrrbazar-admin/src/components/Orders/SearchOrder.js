@@ -32,6 +32,7 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
     const [orderId, setOrderId] = useState('')
     const [orserStatus, setOrderStatus] = useState('')
     const [uc, setUc] = useState('')
+    const [packageName, setPackageName] = useState('')
     // Date range filter. Both ends optional; the backend interprets
     // start_date as inclusive (00:00:00) and end_date as inclusive
     // (23:59:59) so a same-day pair returns the whole day.
@@ -64,6 +65,11 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
         if (uc) addSearchParam('uc', uc)
         else removeSearchParam('uc')
     }, [uc, addSearchParam, removeSearchParam])
+
+    useEffect(() => {
+        if (packageName) addSearchParam('package_name', packageName)
+        else removeSearchParam('package_name')
+    }, [packageName, addSearchParam, removeSearchParam])
 
     useEffect(() => {
         if (startDate) addSearchParam('start_date', startDate)
@@ -140,6 +146,21 @@ function SearchOrder({ addSearchParam, removeSearchParam }) {
                                 const value = e.target.value;
                                 typingTimer = setTimeout(
                                     () => setUc(value),
+                                    value ? doneTypingInterval : 0,
+                                );
+                            }}
+                        />
+                    </div>
+                    <div className="flex-1 min-w-0 md:flex-none md:w-[320px]">
+                        <input
+                            type="text"
+                            placeholder="Package name"
+                            className="form_input mb-0"
+                            onChange={(e) => {
+                                clearTimeout(typingTimer);
+                                const value = e.target.value;
+                                typingTimer = setTimeout(
+                                    () => setPackageName(value),
                                     value ? doneTypingInterval : 0,
                                 );
                             }}

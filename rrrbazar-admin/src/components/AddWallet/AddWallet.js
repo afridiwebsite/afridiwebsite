@@ -218,7 +218,7 @@ function AddWallet() {
                                     placeholder="Transaction id"
                                     className="form_input mb-0 w-full md:w-[160px]"
                                 />
-                                <input value={searchWalletInput} onChange={(e) => setSearchWalletInput(e.target.value)} type="text" placeholder="Search number / user id" className="form_input mb-0 w-full md:w-auto" />
+                                <input value={searchWalletInput} onChange={(e) => setSearchWalletInput(e.target.value)} type="text" placeholder="Search user id" className="form_input mb-0 w-full md:w-auto" />
                                 {(searchWalletInput || transactionIdInput) && (
                                     <button
                                         onClick={() => {

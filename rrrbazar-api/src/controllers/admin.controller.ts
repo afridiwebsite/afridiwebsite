@@ -7,6 +7,7 @@ import { sequelize } from '../models/Schemas';
 import responseUtils from '../utils/response.utils';
 import syncOrderCoinsForStatus from '../helpers/orderCoinSync';
 import syncOrderCashbackForStatus from '../helpers/orderCashbackSync';
+import refundOrderOnce from '../helpers/refundOrder';
 import buildRewardNoteHtml, { stripRewardNote } from '../helpers/orderRewardNote';
 import { canPromoteToReseller } from './verificationAdmin.controller';
 import {
@@ -89,7 +90,7 @@ const isPlayerIdTitle = (t: any) =>
 // end_date. `payment_status = 1` is always applied so unpaid/abandoned
 // rows never count.
 async function buildAdminOrderFilter(query: any) {
-  const { user_id, order_id, status, uc, start_date, end_date } = query;
+  const { user_id, order_id, status, uc, package_name, start_date, end_date } = query;
   const filter: any = {};
 
   filter.payment_status = 1;
@@ -145,6 +146,22 @@ async function buildAdminOrderFilter(query: any) {
       orClauses.push({ id: { [Op.in]: voucherOrderIds } });
     }
     filter[Op.or] = orClauses;
+  }
+
+  if (package_name) {
+    // Filter by the joined package's name. Pre-resolve the matching
+    // topuppackage ids and constrain `Order.topuppackage_id` so the filter
+    // stays compatible with `Order.count` (which can't filter on an
+    // included table's column directly). No match → force an empty result
+    // rather than silently ignoring the filter.
+    const pkgIds = (
+      await TopupPackage.findAll({
+        where: { name: { [Op.like]: `%${package_name}%` } },
+        attributes: ['id'],
+        raw: true,
+      })
+    ).map((p: any) => p.id);
+    filter.topuppackage_id = pkgIds.length ? { [Op.in]: pkgIds } : -1;
   }
 
   return filter;
@@ -319,21 +336,10 @@ class AdminController {
     // state. Without this guard, an admin saving the modal twice on an
     // already-cancelled order would credit the wallet a second time.
     if (statusToUpdate == 'cancel' && order.status !== 'cancel') {
-      let product = await TopupProduct.findByPk(order.product_id);
-      let user = await User.findByPk(order.user_id);
-
-      if (!user || !product) {
-        response.message = `Something went wrong!`;
-        response.status = 400;
-        response.success = false;
-        return res.status(400).send(response.response)
-      }
-
-      product.price = product.price + parseFloat((order as any).bprice)
-      user.wallet = Number(user.wallet) + Number((order as any).amount)
-
-      await product.save()
-      await user.save()
+      // Idempotent, atomically-claimed refund (see helpers/refundOrder.ts).
+      // Guards against double-crediting when this manual cancel races a
+      // bot /check_order cancel callback for the same order.
+      await refundOrderOnce(order)
     }
 
     const previousStatus = order.status;
@@ -1377,16 +1383,12 @@ class AdminController {
     const limit: any = parseInt(req.query.limit?.toString() || '20')
     const page: any = parseInt(req.query.page?.toString() || '1')
 
-    const whereQuery: any = {
-      [Op.or]: [
-        {
-          number: { [Op.like]: `%${query}%` }
-        },
-        {
-          user_id: { [Op.like]: `%${query}%` }
-        }
-      ]
-    };
+    const whereQuery: any = {};
+
+    // `q` searches by user id only — number search was removed.
+    if (query) {
+      whereQuery.user_id = { [Op.like]: `%${query}%` }
+    }
 
     // Narrow further by transaction id when the admin provides one — this
     // wins over the loose `q` search.
@@ -3234,8 +3236,17 @@ class AdminController {
         return res.status(400).send(response.response)
       }
 
+      // "Total Added" = money credited into the wallet. Admin wallet
+      // reductions are stored as completed transactions too (purpose
+      // 'Admin Debit', amount = abs(diff)), so they must be excluded —
+      // otherwise reducing a wallet would inflate Total Added instead of
+      // leaving it unchanged.
       const total_added = await Transaction.sum('amount', {
-        where: { user_id: id, status: 'completed' },
+        where: {
+          user_id: id,
+          status: 'completed',
+          purpose: { [Op.ne]: 'Admin Debit' },
+        },
       })
       const total_spent = await Order.sum('amount', {
         where: { user_id: id, status: 'completed' },
