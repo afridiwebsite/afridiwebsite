@@ -3,12 +3,14 @@ import express, { NextFunction } from "express";
 import createError from "http-errors";
 import { Op, Sequelize } from "sequelize";
 import Schema from "../models";
+import { sequelize } from "../models/Schemas";
 import responseUtils from "../utils/response.utils";
 import smsHelper from "../helpers/sms";
 import fastPay from "../helpers/fastpay";
 import playerName from "../helpers/playername";
 import syncOrderCoinsForStatus from "../helpers/orderCoinSync";
 import syncOrderCashbackForStatus from "../helpers/orderCashbackSync";
+import refundOrderOnce from "../helpers/refundOrder";
 import buildRewardNoteHtml, {
   stripRewardNote,
 } from "../helpers/orderRewardNote";
@@ -1433,26 +1435,27 @@ class UserController {
         }
       }
 
-      if (product.is_offer == 1 && product.offer_items > 0) {
-        product.offer_items = product.offer_items - 1;
-        product = await product.save();
-      }
-
-      if (product.is_offer == 1 && product.offer_items <= 0) {
-        response.message = "This offer is not available at this time";
-        return res.status(400).send(response.response);
-      }
-
+      // Offer gating — read-only pre-checks for fast UX rejection only. The
+      // authoritative, race-safe decrement of offer_items happens atomically
+      // inside the payment branch below (conditional UPDATE ... WHERE
+      // offer_items > 0), so an offer slot is consumed only when the order is
+      // actually reserved — never over-claimed by concurrent buyers, and the
+      // last available slot is usable (the old decrement-then-check wasted
+      // it). The per-player uniqueness check stays here.
       if (product.is_offer == 1) {
-        const checkOrder = await Order.count({
+        const priorOfferOrders = await Order.count({
           where: {
             playerid: playerid,
             product_id: product_id,
           },
         });
-        if (checkOrder > 0) {
+        if (priorOfferOrders > 0) {
           response.message =
             "This offer has already been taken by this player ID";
+          return res.status(400).send(response.response);
+        }
+        if (Number(product.offer_items) <= 0) {
+          response.message = "This offer is not available at this time";
           return res.status(400).send(response.response);
         }
       }
@@ -1480,8 +1483,16 @@ class UserController {
       let unipin_code = "";
       let hold_unipin_id = 0;
 
+      // type=2 (StoreUnipin direct): reserve a code now. The "pay"
+      // consumption (status=2) is DEFERRED into the wallet transaction below
+      // so it commits atomically with the charge + order — if the locked
+      // balance/stock re-check fails and the transaction rolls back, the
+      // code isn't left orphaned as consumed. The auto_payment HOLD
+      // (status=5) is committed immediately because the webhook resolves it
+      // after the external payment completes.
+      let store_unipin: any = null;
       if (topupPackage.type == "2") {
-        const store_unipin = await StoreUnipin.findOne({
+        store_unipin = await StoreUnipin.findOne({
           where: {
             status: 1,
             uc: topupPackage.uc,
@@ -1497,11 +1508,7 @@ class UserController {
         order_status = "completed";
         unipin_code = store_unipin.code;
 
-        if (payment_mathod != "auto_payment") {
-          store_unipin.status = 2;
-          store_unipin.user_id = user_id;
-          await store_unipin.save();
-        } else {
+        if (payment_mathod === "auto_payment") {
           hold_unipin_id = store_unipin.id;
           store_unipin.status = 5;
           await store_unipin.save();
@@ -1531,18 +1538,89 @@ class UserController {
         quantity_unit: quantityUnit,
       };
 
+      let order: any = null;
       if (payment_mathod === "pay") {
-        // product.price = product.price - bprice;
-        // await product.save();
+        // Reserve money + stock + the offer slot + persist the order as a
+        // single atomic unit. Row locks on the user and package rows close
+        // the TOCTOU windows that previously let concurrent orders
+        // double-spend a wallet, oversell tracked stock, or over-claim an
+        // offer. The balance is re-checked against the LOCKED row and the
+        // EXACT amount is deducted — a short balance is rejected rather than
+        // floored to zero and then refunded in full on cancel (the old
+        // `else { user.wallet = 0 }` path).
+        const t = await sequelize.transaction();
+        try {
+          const lockedUser = await User.findByPk(user_id, {
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+          });
+          if (!lockedUser || Number(lockedUser.wallet) < amount) {
+            await t.rollback();
+            response.message = "Not enough balance";
+            return res.status(400).send(response.response);
+          }
 
-        // Updating user wallet
-        if (wallet - amount >= 0) {
-          user.wallet = user.wallet - amount;
-        } else {
-          user.wallet = 0;
+          if (stockTracking) {
+            const lockedPkg: any = await TopupPackage.findByPk(
+              topuppackage_id,
+              { transaction: t, lock: t.LOCK.UPDATE },
+            );
+            const liveStock = Number(lockedPkg?.stock_quantity) || 0;
+            const stockNeeded = Math.ceil(quantity);
+            if (liveStock < stockNeeded) {
+              await t.rollback();
+              response.message =
+                liveStock <= 0
+                  ? "This package is out of stock."
+                  : `Only ${liveStock} unit(s) available — reduce quantity and try again.`;
+              return res.status(400).send(response.response);
+            }
+            lockedPkg.stock_quantity = liveStock - stockNeeded;
+            await lockedPkg.save({ transaction: t });
+            (topupPackage as any).stock_quantity = lockedPkg.stock_quantity;
+          }
+
+          if (product.is_offer == 1) {
+            const [offerAffected] = await TopupProduct.update(
+              { offer_items: Sequelize.literal("offer_items - 1") },
+              {
+                where: {
+                  id: product_id,
+                  is_offer: 1,
+                  offer_items: { [Op.gt]: 0 },
+                },
+                transaction: t,
+              },
+            );
+            if (!offerAffected) {
+              await t.rollback();
+              response.message = "This offer is not available at this time";
+              return res.status(400).send(response.response);
+            }
+          }
+
+          // Consume the reserved UniPin code (type=2 pay path) inside the
+          // same transaction so a rollback can't leave it orphaned.
+          if (store_unipin) {
+            store_unipin.status = 2;
+            store_unipin.user_id = user_id;
+            await store_unipin.save({ transaction: t });
+          }
+
+          lockedUser.wallet = Number(lockedUser.wallet) - amount;
+          await lockedUser.save({ transaction: t });
+          user.wallet = lockedUser.wallet;
+
+          order = await Order.create(user_order_data, { transaction: t });
+          await t.commit();
+        } catch (e) {
+          try {
+            await t.rollback();
+          } catch {
+            /* transaction already settled */
+          }
+          throw e;
         }
-
-        await user.save();
       } else if (payment_mathod === "auto_payment") {
         // The order itself is not yet persisted — the webhook creates it once
         // payment is confirmed. To keep UddoktaPay's metadata flat (some
@@ -1601,6 +1679,26 @@ class UserController {
         // these are the only server-side breadcrumbs until the callback
         // fires. `token` is the API key, so it's omitted from the metadata
         // dump (fastPay logs a redacted version separately).
+        // Reserve the offer slot atomically before redirecting to the
+        // gateway so concurrent buyers can't over-claim. Restored in the
+        // catch below if the checkout session can't be created.
+        if (product.is_offer == 1) {
+          const [offerAffected] = await TopupProduct.update(
+            { offer_items: Sequelize.literal("offer_items - 1") },
+            {
+              where: {
+                id: product_id,
+                is_offer: 1,
+                offer_items: { [Op.gt]: 0 },
+              },
+            },
+          );
+          if (!offerAffected) {
+            response.message = "This offer is not available at this time";
+            return res.status(400).send(response.response);
+          }
+        }
+
         const { token: _omitToken, ...metaForLog } = meta_data;
         console.log("[topupPackageOrder] auto_payment → starting checkout", {
           user_id,
@@ -1648,6 +1746,20 @@ class UserController {
             err?.message,
             err?.body,
           );
+          // Compensate the reservations made above the gateway call so an
+          // abandoned/failed checkout doesn't leak inventory: restore the
+          // offer slot and release the held UniPin code.
+          if (product.is_offer == 1) {
+            await TopupProduct.update(
+              { offer_items: Sequelize.literal("offer_items + 1") },
+              { where: { id: product_id, is_offer: 1 } },
+            );
+          }
+          if (store_unipin) {
+            store_unipin.status = 1;
+            store_unipin.user_id = null;
+            await store_unipin.save();
+          }
           response.message =
             "Could not start payment session. Please try again or contact support.";
           response.status = 502;
@@ -1659,25 +1771,10 @@ class UserController {
         return res.status(400).send(response.internalError);
       }
 
-      const order = await Order.create(user_order_data);
-
-      // Decrement tracked stock now that we have a persisted order. Voucher
-      // pool exhaustion no longer destroys the order — it just parks it in
-      // "pending" for manual fulfilment, so we don't need to restore the
-      // count on those branches either.
-      //
-      // stock_quantity is still INT on the column; a fractional quantity
-      // (non-voucher service-style package) consumes whole stock units —
-      // we ceil the deduction so callers can't game the count by ordering
-      // sub-unit slices.
-      if (stockTracking) {
-        const stockDeduction = Math.ceil(quantity);
-        (topupPackage as any).stock_quantity = Math.max(
-          0,
-          stockBefore - stockDeduction,
-        );
-        await (topupPackage as any).save();
-      }
+      // The order, wallet charge, stock decrement, offer-slot consumption,
+      // and UniPin consumption were all committed atomically in the "pay"
+      // transaction above. `order` is guaranteed set here — the
+      // auto_payment and invalid-method branches return before this point.
 
       // Orders that complete inline at creation (type=2 / UniPin direct
       // path) need their coin reward awarded now — they never hit the
@@ -1900,9 +1997,6 @@ class UserController {
         mystatus = agg.status;
       }
 
-      // Capture the DB status before overwriting — needed for the refund
-      // guard below so we only refund once on the first cancel transition.
-      const previousOrderStatus = order.status;
       order.status = mystatus;
 
       // Compose user-facing brief_note + details. The details cell now
@@ -1981,31 +2075,13 @@ class UserController {
         order.uc = "";
 
         // Refund wallet — mirrors the admin manual-cancel path exactly.
-        // Guard: only on the FIRST transition into "cancel" so a repeated
-        // checkOrder callback for the same order doesn't double-credit.
-        if (previousOrderStatus !== "cancel") {
-          try {
-            const [refundUser, refundProduct] = await Promise.all([
-              User.findByPk((order as any).user_id),
-              TopupProduct.findByPk((order as any).product_id),
-            ]);
-            if (refundUser) {
-              refundUser.wallet =
-                Number(refundUser.wallet) + Number((order as any).amount);
-              await refundUser.save();
-            }
-            if (refundProduct && (order as any).bprice) {
-              refundProduct.price =
-                Number(refundProduct.price) + parseFloat((order as any).bprice);
-              await refundProduct.save();
-            }
-          } catch (e) {
-            console.error("[checkOrder] wallet refund failed", {
-              order_id: (order as any).id,
-              err: (e as any)?.message || e,
-            });
-          }
-        }
+        // Idempotency is enforced inside refundOrderOnce via an atomic
+        // claim on orders.refunded, NOT the in-memory previousOrderStatus
+        // snapshot: shell-bot / uc-bot orders fan out into one callback per
+        // dispatch, so two concurrent cancel callbacks both used to pass the
+        // status guard and credit the wallet twice. The helper guarantees a
+        // single credit no matter how many callbacks land.
+        await refundOrderOnce(order);
       } else if (mystatus === "In Progress") {
         order.brief_note =
           "সার্ভারে একটি ত্রুটি দেখা দিয়েছে। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে — কিছুক্ষণের মধ্যেই সমাধান করা হবে। সমস্যা চলতে থাকলে অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।";

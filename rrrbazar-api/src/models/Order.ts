@@ -40,6 +40,7 @@ export default (sequelize: Sequelize) => {
         public range_amount!: string;
         public quantity_unit!: string;
         public uc!: string;
+        public refunded!: boolean;
         public details!: string;
         public completed_by!: number;
 
@@ -198,6 +199,17 @@ export default (sequelize: Sequelize) => {
             type: DataTypes.STRING,
             allowNull: true,
             defaultValue: '',
+        },
+        // Persisted, atomically-claimed refund guard. Multi-dispatch bot
+        // types (shell-bot, uc-bot) emit one /check_order callback per
+        // dispatch; without a persisted flag, concurrent cancel callbacks
+        // each refunded the wallet, paying the user back N times for a
+        // single charge. See helpers/refundOrder.ts — the refund is gated
+        // on a conditional UPDATE that flips this false→true exactly once.
+        refunded: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
         },
         details: {
             type: DataTypes.TEXT,

@@ -18,6 +18,7 @@ import { createAndSendDispatch } from "./dispatchBot";
 import syncOrderCoinsForStatus from "./orderCoinSync";
 import syncOrderCashbackForStatus from "./orderCashbackSync";
 import buildRewardNoteHtml from "./orderRewardNote";
+import refundOrderOnce, { reverseRefundOnce } from "./refundOrder";
 
 const {
   BotDispatch,
@@ -698,29 +699,10 @@ async function handleLikeBot(opts: {
   await order.save();
 
   // Refund wallet + restore product bprice, mirroring the cancel branch
-  // in checkOrder and the admin manual-cancel path.
-  try {
-    const [refundUser, refundProduct] = await Promise.all([
-      User.findByPk((order as any).user_id),
-      TopupProduct.findByPk((order as any).product_id),
-    ]);
-    if (refundUser) {
-      (refundUser as any).wallet =
-        Number((refundUser as any).wallet) + Number((order as any).amount);
-      await refundUser.save();
-    }
-    if (refundProduct && (order as any).bprice) {
-      (refundProduct as any).price =
-        Number((refundProduct as any).price) +
-        parseFloat((order as any).bprice);
-      await refundProduct.save();
-    }
-  } catch (e) {
-    console.error("[handleLikeBot] wallet refund failed", {
-      order_id: order.id,
-      err: (e as any)?.message || e,
-    });
-  }
+  // in checkOrder and the admin manual-cancel path. Idempotent + atomic
+  // (helpers/refundOrder.ts) so a retry landing on failure twice — or a
+  // concurrent cancel callback — can't double-credit.
+  await refundOrderOnce(order);
 
   // Reverse any coin reward that might have been credited (no-op if
   // none — the helper is idempotent).
@@ -1039,30 +1021,11 @@ async function finalizePubgSuccess(opts: {
   // Edge case: order was previously cancel+refunded (e.g. an earlier
   // transient failure) and the retry now resolves to completed. Reverse
   // the prior refund so the wallet/product stock match the delivered
-  // state.
+  // state. reverseRefundOnce atomically claims the refunded true→false
+  // transition, so a doubled success callback can't re-debit twice, and it
+  // only fires when a refund was actually outstanding.
   if (wasPreviouslyCancelled) {
-    try {
-      const [debitUser, debitProduct] = await Promise.all([
-        User.findByPk((order as any).user_id),
-        TopupProduct.findByPk((order as any).product_id),
-      ]);
-      if (debitUser) {
-        (debitUser as any).wallet =
-          Number((debitUser as any).wallet) - Number((order as any).amount);
-        await debitUser.save();
-      }
-      if (debitProduct && (order as any).bprice) {
-        (debitProduct as any).price =
-          Number((debitProduct as any).price) -
-          parseFloat((order as any).bprice);
-        await debitProduct.save();
-      }
-    } catch (e) {
-      console.error("[finalizePubgSuccess] wallet re-debit failed", {
-        order_id: order.id,
-        err: (e as any)?.message || e,
-      });
-    }
+    await reverseRefundOnce(order);
   }
 
   await syncOrderCoinsForStatus(order, "completed");
@@ -1141,8 +1104,6 @@ async function finalizePubgFailure(opts: {
     .trim();
   const apiOrderId = String(parsed?.order_id || "");
   const apiMessage = String(parsed?.message || "");
-  const alreadyCancelled =
-    String(order.status || "").toLowerCase() === "cancel";
 
   if (dispatch) {
     (dispatch as any).status = "cancelled";
@@ -1179,32 +1140,11 @@ async function finalizePubgFailure(opts: {
   (order as any).uc = "";
   await order.save();
 
-  // Refund + restore bprice only on the first cancel — protects against
-  // double-refund if the retry path lands on failure twice.
-  if (!alreadyCancelled) {
-    try {
-      const [refundUser, refundProduct] = await Promise.all([
-        User.findByPk((order as any).user_id),
-        TopupProduct.findByPk((order as any).product_id),
-      ]);
-      if (refundUser) {
-        (refundUser as any).wallet =
-          Number((refundUser as any).wallet) + Number((order as any).amount);
-        await refundUser.save();
-      }
-      if (refundProduct && (order as any).bprice) {
-        (refundProduct as any).price =
-          Number((refundProduct as any).price) +
-          parseFloat((order as any).bprice);
-        await refundProduct.save();
-      }
-    } catch (e) {
-      console.error("[finalizePubgFailure] wallet refund failed", {
-        order_id: order.id,
-        err: (e as any)?.message || e,
-      });
-    }
-  }
+  // Refund + restore bprice. Idempotent + atomic (helpers/refundOrder.ts)
+  // so the retry path landing on failure twice — or a concurrent cancel
+  // callback — can't double-credit. Replaces the old `alreadyCancelled`
+  // status snapshot, which wasn't safe against concurrent callbacks.
+  await refundOrderOnce(order);
 
   await syncOrderCoinsForStatus(order, "cancel");
   await syncOrderCashbackForStatus(order, "cancel");
