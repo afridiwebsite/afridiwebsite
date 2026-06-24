@@ -31,7 +31,8 @@ import Schema from "../models";
 import userController from "../controllers/user.controller";
 import refundOrderOnce, { reverseRefundOnce } from "../helpers/refundOrder";
 
-const { User, TopupProduct, TopupPackage, Order, BotDispatch } = Schema;
+const { User, TopupProduct, TopupPackage, Order, BotDispatch, Voucher } =
+  Schema;
 
 const TAG = "__concurrency_test__";
 
@@ -124,8 +125,17 @@ async function cleanup() {
     await BotDispatch.destroy({ where: { order_id: orderIds } });
     await Order.destroy({ where: { id: orderIds } });
   }
+
+  const packages = (await TopupPackage.findAll({
+    where: productIds.length ? { product_id: productIds } : { id: -1 },
+    attributes: ["id"],
+  })) as any[];
+  const packageIds = packages.map((p) => p.id);
+  if (packageIds.length) {
+    await Voucher.destroy({ where: { package_id: packageIds } });
+    await TopupPackage.destroy({ where: { id: packageIds } });
+  }
   if (productIds.length) {
-    await TopupPackage.destroy({ where: { product_id: productIds } });
     await TopupProduct.destroy({ where: { id: productIds } });
   }
   await User.destroy({ where: { username: `${TAG}_user` } });
@@ -287,6 +297,48 @@ async function testReverseRefundIdempotent() {
   );
 }
 
+async function testVoucherOrderWalletIntact() {
+  console.log("\n[6] Voucher order: wallet deducted once, coins credited");
+  // Voucher orders are the path that calls user.save() downstream (to
+  // credit coins). This guards against the deduction being lost/clobbered
+  // or double-applied by that save.
+  const product = await makeProduct({ is_voucher: 1 });
+  const pkg = await makePackage((product as any).id, {
+    price: "100",
+    coin_value: 7,
+  });
+  await Voucher.create({
+    package_id: (pkg as any).id,
+    data: `${TAG}-CODE-1`,
+    is_used: 0,
+  } as any);
+  const user = await makeUser(1000);
+
+  const res = await callOrder((user as any).id, {
+    topuppackage_id: (pkg as any).id,
+    product_id: (product as any).id,
+    payment_mathod: "pay",
+    playerid: "100200300",
+    phone: "017",
+  });
+
+  const fresh: any = await User.findByPk((user as any).id);
+  const orderCount = await Order.count({
+    where: { user_id: (user as any).id },
+  });
+  check("voucher order created", orderCount === 1 && res.sent);
+  check(
+    "wallet deducted exactly once (1000 - 100 = 900)",
+    Number(fresh.wallet) === 900,
+    `wallet=${fresh.wallet}`,
+  );
+  check(
+    "coins credited (7) without resetting wallet",
+    Number(fresh.coins) === 7,
+    `coins=${fresh.coins}`,
+  );
+}
+
 async function main() {
   try {
     await sequelize.authenticate();
@@ -315,6 +367,7 @@ async function main() {
     await testConcurrentRefundIdempotent();
     await testPartialRefund();
     await testReverseRefundIdempotent();
+    await testVoucherOrderWalletIntact();
   } finally {
     await cleanup();
   }

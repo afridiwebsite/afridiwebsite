@@ -1609,7 +1609,12 @@ class UserController {
 
           lockedUser.wallet = Number(lockedUser.wallet) - amount;
           await lockedUser.save({ transaction: t });
-          user.wallet = lockedUser.wallet;
+          // NOTE: deliberately do NOT mirror the new balance onto the
+          // outer `user` instance. The charge is durably committed on
+          // `lockedUser`; dirtying `user.wallet` here would let a later
+          // user.save() in this request (e.g. handleVoucherProduct crediting
+          // coins) flush a stale wallet and clobber a concurrent deduction.
+          // `user.wallet` is not read again after this point.
 
           order = await Order.create(user_order_data, { transaction: t });
           await t.commit();
